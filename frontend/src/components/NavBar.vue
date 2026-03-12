@@ -1,11 +1,14 @@
 <template>
-  <nav style="display:flex; gap:12px; padding:12px 16px; border-bottom:1px solid #ddd;">
-    <RouterLink to="/">Főoldal</RouterLink>
-    <RouterLink to="/puzzlelist">Rejtvények</RouterLink>
-
-    <span style="flex:1"></span>
-
-    <RouterLink to="/login">Belépés</RouterLink>
-    <RouterLink to="/register">Regisztráció</RouterLink>
+  <nav>
+    <RouterLink class="nav-button" to="/">Főoldal</RouterLink>
+    <RouterLink class="nav-button" to="/puzzlelist">Rejtvények</RouterLink>
+    <div class="right-side">
+      <RouterLink class="nav-button" to="/login">Belépés</RouterLink>
+      <RouterLink class="nav-button" to="/register">Regisztráció</RouterLink>
+    </div>
   </nav>
 </template>
+
+<style lang="scss" scoped>
+@import "@/styles/navbar.scss";
+</style>

@@ -1,5 +1,9 @@
 <template>
-  <main style="max-width: 420px; margin: 60px auto; padding: 16px">
+  <main class="auth-layout">
     <router-view />
   </main>
 </template>
+
+<style lang="scss">
+@import "@/styles/auth.scss";
+</style>

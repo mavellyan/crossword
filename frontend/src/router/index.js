@@ -30,7 +30,11 @@ const routes = [
       { path: 'register', name: 'register', component: RegisterPage },
     ],
   },
-  { path: '/:pathMatch(.*)*', name: 'notfound', component: NotFoundPage },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'notfound',
+    component: NotFoundPage
+  },
 ]
 
 export default createRouter({

@@ -1,0 +1,27 @@
+nav {
+    background: #06402B;
+    color: white;
+    display: flex;
+    gap: 12px;
+    border-bottom: 3px solid black;
+}
+
+.nav-button {
+    color: white;
+    text-decoration: none;
+    padding: 20px;
+    border-radius: 4px;
+
+    &:hover {
+        background: #0A5B3B;
+    }
+}
+
+.right-side {
+    margin-left: auto;
+    display: flex;
+}
+
+.router-link-exact-active {
+    background: #0A5B3B;
+}

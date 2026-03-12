@@ -1,21 +1,40 @@
-<script setup>
-import { ref } from 'vue'
+<template>
+  <div class="register-page">
+    <h1 class="title">Regisztráció</h1>
+    <div class="form-wrapper">
+      <form @submit.prevent="onSubmit">
+        <label for="username">Felhasználónév</label>
+        <input id="username" v-model="username" type="text" required />
+        <label for="email">Email</label>
+        <input id="email" v-model="email" type="email" required />
+        <label for="password">Jelszó</label>
+        <input id="password" v-model="password" type="password" required />
+        <button type="submit">Regisztráció</button>
+      </form>
+    </div>
+  </div>
+</template>
 
-const name = ref('')
-const email = ref('')
-const password = ref('')
+<script>
+export default {
+  name: 'RegisterPage',
+  data() {
+    return {
+      username: '',
+      email: '',
+      password: ''
+    }
+  },
+  methods: {
+    onSubmit() {
+      const msg = "Regisztráció sikeres! Adatok: \n" +
+        "Username: " + this.username + "\n" +
+        "Email: " + this.email + "\n" +
+        "Password: " + this.password
 
-function onSubmit() {
-  alert(`Register: ${name.value}`)
+      window.alert(msg)
+      this.$router.push('/')
+    }
+  }
 }
 </script>
-
-<template>
-  <h1>Regisztráció</h1>
-  <form @submit.prevent="onSubmit" style="display:grid; gap:12px;">
-    <label>Név <input v-model="name" required /></label>
-    <label>Email <input v-model="email" type="email" required /></label>
-    <label>Jelszó <input v-model="password" type="password" required /></label>
-    <button type="submit">Regisztráció</button>
-  </form>
-</template>
