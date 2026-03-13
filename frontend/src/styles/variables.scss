@@ -1,0 +1,50 @@
+// ====================
+// COLOR SYSTEM
+// ====================
+
+// Primary colors
+$color-base-blue: #70A6BE;
+$color-dark-blue: #2F5D73;
+$color-blue: #4F8FA8;
+$color-light-blue: #9CC2D3;
+$color-very-light-blue: #E7F1F6;
+
+// Neutral colors
+$color-white: #FFFFFF;
+$color-black: #000000;
+
+$color-gray-900: #1E1E1E;
+$color-gray-800: #2F2F2F;
+$color-gray-700: #4A4A4A;
+$color-gray-600: #6B6B6B;
+$color-gray-500: #909090;
+$color-gray-400: #B8B8B8;
+$color-gray-300: #D6D6D6;
+$color-gray-200: #EAEAEA;
+$color-gray-100: #F7F7F7;
+
+// Semantic colors
+$color-success: #2E8B57;
+$color-warning: #D4A017;
+$color-danger: #C94C4C;
+$color-info: #3B82F6;
+
+// Text
+$text-primary: $color-gray-900;
+$text-secondary: $color-gray-700;
+$text-muted: $color-gray-600;
+$text-on-dark: $color-white;
+
+// Borders
+$border-light: 1px solid $color-gray-300;
+
+// Inputs
+$input-bg: $color-white;
+$input-border: 1px solid $color-gray-300;
+$input-text: $color-gray-900;
+$input-placeholder: $color-gray-500;
+
+// Shadows
+$shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.08);
+$shadow-md: 0 6px 18px rgba(0, 0, 0, 0.12);
+$shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.16);

@@ -1,7 +1,7 @@
 <template>
   <div class="register-page">
-    <h1 class="title">Regisztráció</h1>
     <div class="form-wrapper">
+      <h1 class="title">Regisztráció</h1>
       <form @submit.prevent="onSubmit">
         <label for="username">Felhasználónév</label>
         <input id="username" v-model="username" type="text" required />

@@ -1,19 +1,22 @@
+@import './variables.scss';
+
 nav {
-    background: #06402B;
+    background: $color-base-blue;
     color: white;
     display: flex;
     gap: 12px;
-    border-bottom: 3px solid black;
+    z-index: 10;
+    align-items: center;
 }
 
 .nav-button {
     color: white;
     text-decoration: none;
-    padding: 20px;
-    border-radius: 4px;
+    padding: 26px;
+    border-radius: 10px;
 
     &:hover {
-        background: #0A5B3B;
+        background: $color-light-blue;
     }
 }
 
@@ -22,6 +25,10 @@ nav {
     display: flex;
 }
 
+.left-side {
+    display: flex;
+}
+
 .router-link-exact-active {
-    background: #0A5B3B;
+    background: $color-light-blue;
 }

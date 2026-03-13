@@ -1,0 +1,16 @@
+@import './variables.scss';
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.home-img {
+    width: 1000px;
+    margin: auto 0 auto auto;
+}
+
+
+.home-img img {
+    width: 100%;
+}

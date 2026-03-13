@@ -5,5 +5,5 @@
 </template>
 
 <style lang="scss">
-@import "@/styles/auth.scss";
+@import "@/styles/authLayout.scss";
 </style>

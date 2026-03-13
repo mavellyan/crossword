@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
-    <h1 class="title">Belépés</h1>
     <div class="form-wrapper">
+      <h1 class="title">Belépés</h1>
       <form @submit.prevent="onSubmit">
         <label for="email">Email</label>
         <input id="email" v-model="email" type="email" required />
