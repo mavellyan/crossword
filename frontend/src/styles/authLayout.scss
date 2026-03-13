@@ -42,6 +42,17 @@
         font-size: 20px;
     }
 
+    label {
+        margin-bottom: 10px;
+    }
+
+    .form-row {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+
     input {
         width: 75%;
         height: 60px;
@@ -65,8 +76,18 @@
             background: $color-light-blue;
         }
     }
+
+    .field-error {
+        border-color: $color-danger;
+    }
+
+    .error-message {
+        color: $color-danger;
+        font-size: 14px;
+        margin-top: 10px;
+    }
 }
 
 .register-page form {
-    height: 500px;
+    height: 700px;
 }
