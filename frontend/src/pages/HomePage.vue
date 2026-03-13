@@ -11,7 +11,7 @@
 </template>
 
 <script>
-import RejtvenyKep from '@/assets/rejtvenykep-no-bg-final.png'
+import RejtvenyKep from '@/assets/rejtvenykep-no-bg-final-v2.png'
 
 export default {
   name: 'HomePage',
