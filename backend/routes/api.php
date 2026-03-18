@@ -16,7 +16,8 @@ Route::get('/health', function () {
 
 Route::post('/register', [\App\Http\Controllers\AuthController::class, 'register']);
 
+Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login']);
+
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login']);
     Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->middleware('auth:sanctum');
 });

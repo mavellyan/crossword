@@ -1,5 +1,6 @@
 <template>
   <div class="register-page">
+    <div v-if="generalError !== null">{{ generalError }}</div>
     <div class="form-wrapper">
       <h1 class="title">Regisztráció</h1>
       <form @submit.prevent="onSubmit">
@@ -9,18 +10,19 @@
             id="username"
             v-model="username"
             type="text"
-            :class="{ 'field-error': isInputWrong('username') }"
+            :class="{ 'field-error': fieldErrors.username }"
           />
-          <p v-if="showErrorMessage('username')" class="error-message">{{ showErrorMessage('username') }}</p>
+          <p v-if="fieldErrors.username" class="error-message">{{ fieldErrors.username }}</p>
         </div>
         <div class="form-row">
           <label for="email">Email</label>
           <input
             id="email"
             v-model="email"
-            :class="{ 'field-error': isInputWrong('email') }"
+            type="email"
+            :class="{ 'field-error': fieldErrors.email }"
           />
-          <p v-if="showErrorMessage('email')" class="error-message">{{ showErrorMessage('email') }}</p>
+          <p v-if="fieldErrors.email" class="error-message">{{ fieldErrors.email }}</p>
         </div>
         <div class="form-row">
           <label for="password">Jelszó</label>
@@ -28,9 +30,9 @@
             id="password"
             v-model="password"
             type="password"
-            :class="{ 'field-error': isInputWrong('password') }"
+            :class="{ 'field-error': fieldErrors.password }"
           />
-          <p v-if="showErrorMessage('password')" class="error-message">{{ showErrorMessage('password') }}</p>
+          <p v-if="fieldErrors.password" class="error-message">{{ fieldErrors.password }}</p>
         </div>
         <div class="form-row">
           <label for="password-confirm">Jelszó megerősítése</label>
@@ -38,18 +40,20 @@
             id="password-confirm"
             v-model="passwordConfirm"
             type="password"
-            :class="{ 'field-error': isInputWrong('passwordConfirm') }"
+            :class="{ 'field-error': fieldErrors.passwordConfirm }"
           />
-          <p v-if="showErrorMessage('passwordConfirm')" class="error-message">{{ showErrorMessage('passwordConfirm') }}</p>
+          <p v-if="fieldErrors.passwordConfirm" class="error-message">{{ fieldErrors.passwordConfirm }}</p>
         </div>
-        <button type="submit">Regisztráció</button>
+        <div class="form-row">
+          <button type="submit">Regisztráció</button>
+        </div>
       </form>
     </div>
   </div>
 </template>
 
 <script>
-import axios from 'axios';
+import axios from 'axios'
 
 export default {
   name: 'RegisterPage',
@@ -59,7 +63,8 @@ export default {
       email: '',
       password: '',
       passwordConfirm: '',
-      fieldErrors: [],
+      fieldErrors: {},
+      generalError: null,
     }
   },
   methods: {
@@ -67,23 +72,49 @@ export default {
      * TODO: Regisztrációs api meghívása
      */
     onSubmit() {
-      this.fieldErrors = []
+      this.fieldErrors = {}
+      this.generalError = null
 
       if (!this.validateForm()) {
-        console.log(this.fieldErrors)
         return
       }
 
       axios.post('/api/register', {
-        username: this.username,
-        email: this.email,
-        password: this.password,
-        password_confirmation: this.passwordConfirm
-      }).then(response => {
-        console.log(response.data)
-        //this.$router.push('/login')
+        username: this.username.trim(),
+        email: this.email.trim(),
+        password: this.password.trim(),
+        password_confirmation: this.passwordConfirm.trim()
+      }).then(() => {
+        this.$router.push('/login')
       }).catch(error => {
-        console.error(error)
+        if (error.response) {
+          if (error.response.status === 422) {
+            const errors = error.response.data.errors
+
+            if (errors.username !== undefined) {
+              this.fieldErrors.username = errors.username[0]
+            }
+
+            if (errors.email !== undefined) {
+              this.fieldErrors.email = errors.email[0]
+            }
+
+            if (errors.password !== undefined) {
+              if (errors.password[0].includes('nem egyeznek')) {
+                this.fieldErrors.passwordConfirm = errors.password[0]
+              } else {
+                this.fieldErrors.password = errors.password[0]
+              }
+            }
+
+          } else if (error.response.status === 500) {
+            this.generalError = 'Szerverhiba történt.'
+          } else {
+            this.generalError = error.response.data.message || 'Ismeretlen hiba történt'
+          }
+        } else {
+          this.generalError = 'Nem sikerült kapcsolódni a szerverhez.'
+        }
       })
     },
     /**
@@ -91,41 +122,42 @@ export default {
      */
     validateForm() {
       if (this.password.trim() !== this.passwordConfirm.trim()) {
-        this.fieldErrors.push({
-          field: 'passwordConfirm',
-          message: 'A jelszavak nem egyeznek!'
-        })
+        this.fieldErrors.passwordConfirm = 'A jelszavak nem egyeznek!'
       }
 
       if (this.password.trim().length < 6) {
-        this.fieldErrors.push({
-          field: 'password',
-          message: 'A jelszónak legalább 6 karakter hosszúnak kell lennie!'
-        })
+        this.fieldErrors.password = 'A jelszónak legalább 6 karakter hosszúnak kell lennie!'
       }
 
       if (this.passwordConfirm.trim().length < 6) {
-        this.fieldErrors.push({
-          field: 'passwordConfirm',
-          message: 'A jelszónak legalább 6 karakter hosszúnak kell lennie!'
-        })
+        this.fieldErrors.passwordConfirm = 'A jelszónak legalább 6 karakter hosszúnak kell lennie!'
       }
 
       if (this.username.trim().length < 5) {
-        this.fieldErrors.push({
-          field: 'username',
-          message: 'A felhasználónévnek legalább 5 karakter hosszúnak kell lennie!'
-        })
+        this.fieldErrors.username = 'A felhasználónévnek legalább 5 karakter hosszúnak kell lennie!'
       }
 
       if (!this.validateEmail(this.email)) {
-        this.fieldErrors.push({
-          field: 'email',
-          message: 'Érvénytelen email cím!'
-        })
+        this.fieldErrors.email = 'Érvénytelen email cím!'
       }
 
-      if (this.fieldErrors.length > 0) {
+      if (this.username.trim() === '') {
+        this.fieldErrors.username = 'Mező kitöltése kötelező'
+      }
+
+      if (this.password.trim() === '') {
+        this.fieldErrors.password = 'Mező kitöltése kötelező'
+      }
+
+      if (this.passwordConfirm.trim() === '') {
+        this.fieldErrors.passwordConfirm = 'Mező kitöltése kötelező'
+      }
+
+      if (this.email.trim() === '') {
+        this.fieldErrors.email = 'Mező kitöltése kötelező'
+      }
+
+      if (Object.keys(this.fieldErrors).length > 0) {
         return false
       }
 
@@ -133,7 +165,7 @@ export default {
     },
     /**
      * Email cím validálása
-     * 
+     *
      * @param email
      * @returns boolean
      */
@@ -141,25 +173,6 @@ export default {
       const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
       return regex.test(email.trim())
     },
-        /**
-     * Ellenőrzi, hogy a megadott mező hibás-e, piros körvonallal kiemeli ha igen
-     * 
-      * @param field mező neve (username, email, password, passwordConfirm)
-      * @returns boolean
-     */
-    isInputWrong(field) {
-      return this.fieldErrors.some(error => error.field === field)
-    },
-    /**
-     * Visszaadja a megadott mezőhöz tartozó hibaüzenetet, ha van
-     * 
-      * @param field mező neve (username, email, password, passwordConfirm)
-      * @returns string hibaüzenet vagy üres string, ha nincs hiba
-     */
-    showErrorMessage(field) {
-      const error = this.fieldErrors.find(error => error.field === field)
-        return error ? error.message : ''
-    }
   },
 }
 </script>
