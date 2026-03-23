@@ -75,7 +75,7 @@ class Word {
         $this->y_pos = $y_pos;
         $this->is_main = $is_main;
         $this->topic = $topic;
-        $this->length = strlen($solution);
+        $this->length = mb_strlen($solution);
     }
 
     /**

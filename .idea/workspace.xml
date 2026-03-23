@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="44270f5a-144d-4ef1-83b8-61b1c29b0280" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/laravel-idea.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/laravel-idea.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/Console/Commands/TestGenerator.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/Console/Commands/TestGenerator.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/Models/SimpleCrossword.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/Models/SimpleCrossword.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app/Models/Word.php" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/Models/Word.php" afterDir="false" />
     </list>
@@ -206,7 +204,8 @@
       <workItem from="1774093976226" duration="19000" />
       <workItem from="1774190611719" duration="4046000" />
       <workItem from="1774203497863" duration="863000" />
-      <workItem from="1774204373543" duration="3649000" />
+      <workItem from="1774204373543" duration="3725000" />
+      <workItem from="1774280550849" duration="3747000" />
     </task>
     <servers />
   </component>

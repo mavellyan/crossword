@@ -14,7 +14,8 @@ class SimpleCrossword extends Crossword {
      * @throws Exception
      */
     #[\Override]
-    public function setWords(array $words): void {
+    public function setWords(array $words): void
+    {
         if (empty($words)) {
             throw new Exception("Üres tömb átadva?");
         }
@@ -34,6 +35,11 @@ class SimpleCrossword extends Crossword {
         if (!$this->canAssignWordsToLetters($main_letters, $words)) {
             throw new Exception("A megadott szavakból nem állítható össze rejtvény!");
         }
+
+        // Y pozíció szerint növekvő sorba rakjuk a betűket
+        usort($words, function ($a, $b) {
+            return $a->getYPos() <=> $b->getYPos();
+        });
 
         parent::setWords($words);
     }
@@ -96,28 +102,81 @@ class SimpleCrossword extends Crossword {
      */
     public function generateGrid(): array
     {
-        $x_positions = [];
-        $y_positions = [];
+        $height = $this->getMainSolution()->getLength();
+        $width = $this->getMinCrosswordWidth();
+
+        $grid = [];
+
+        $mainWordPos = $width / 2;
+
+
         foreach ($this->getWords() as $word) {
-            $x_positions[] = $word->getXPos();
-            $y_positions[] = $word->getYPos();
+            $grid[] = $this->generateRow($word, $mainWordPos, $width);
         }
 
-        $width = max($x_positions);
-        $height = max($y_positions);
 
-        $grid = array_fill(0, $width, array_fill(0, $height, '.'));
+        return $grid;
+    }
 
+    /**
+     * Visszadja a rejtvény minimum szélességét (a legszélesebb szó kétszerese)
+     * Ha páros, akkor hozzáadunk egyet, hogy a közepére tehessük a főmegoldást
+     *
+     * @return int
+     */
+    public function getMinCrosswordWidth(): int
+    {
+        $width = 0;
         foreach ($this->getWords() as $word) {
-            $letters = mb_str_split(mb_strtoupper($word->getSolution()));
-            $index = 0;
-
-            foreach ($letters as $letter) {
-                $grid[$word->getYPos()][$index] = $letter;
-                $index++;
+            if ($word->getLength() * 2 > $width) {
+                $width = $word->getLength() * 2;
             }
         }
 
-        return $grid;
+        if ($width % 2 === 0) {
+            $width++;
+        }
+
+        return $width;
+    }
+
+    /**
+     * Feltölti a sorokat az adott szó betűivel
+     *
+     * @param Word $word
+     * @param int $mainWordPos
+     * @param int $width
+     * @return array
+     */
+    public function generateRow(Word $word, int $mainWordPos, int $width): array
+    {
+        $row = array_fill(0, $width, '#');
+        $letters = mb_str_split(mb_strtoupper($word->getSolution()));
+        $matchingPos = $word->getXPos();
+
+        // Különválasztjuk a metszet előtti betűket és a metszet utáni betűket,
+        // Hogy könnyebben megtaláljuk a pozíciójukat az adott sorban
+        $lettersBeforeIntersection = array_slice($letters, 0, $matchingPos);
+        $lettersAfterIntersection = array_slice($letters, $matchingPos);
+
+        // A sor elejétől elindulunk a közepéig
+        for ($i = 0; $i < $mainWordPos; $i++) {
+            // Ha az adott pozíciónktól a metszetig tartó betűk pont elérnék a főmegoldás pozícióit
+            // Akkor feltöltjük a főmegoldásig a szó előtte lévő betűivel
+            if ($i + count($lettersBeforeIntersection) === $mainWordPos) {
+                foreach ($lettersBeforeIntersection as $letter) {
+                    $row[$i] = $letter;
+                    $i++;
+                }
+                break;
+            }
+        }
+
+        // Utána csak végigmegyünk a szó maradék betűin a főmegoldás pozíciójától és beletesszük a sorba őket
+        foreach ($lettersAfterIntersection as $letterIndex => $letter) {
+            $row[$mainWordPos + $letterIndex] = $letter;
+        }
+
+        return $row;
     }
 }
