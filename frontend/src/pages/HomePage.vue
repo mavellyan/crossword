@@ -6,7 +6,7 @@
     </div>
   </div>
   <div  class="home-img">
-    <img :src="rejtvenySrc" alt="Rejtveny kép">
+    <img :src="rejtvenySrc" alt="Rejtveny kép"/>
   </div>
 </template>
 
