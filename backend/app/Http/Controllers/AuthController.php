@@ -7,9 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Laravel\Sanctum\HasApiTokens;
 
 class AuthController extends Controller
 {
+    /**
+     * Regisztráció, validálja az input adatokat, hiba esetén megfelelő hibaüzenetet ad vissza
+     * Amennyiben valid az összes adat, létrehozza a felhasználót
+     */
     public function register(Request $request)
     {
         $validatedData = $request->validate([
@@ -32,7 +37,7 @@ class AuthController extends Controller
             'password.confirmed' => 'A jelszavak nem egyeznek!',
         ]);
 
-        $user = User::create([
+        User::create([
             'username' => $validatedData['username'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
@@ -44,30 +49,45 @@ class AuthController extends Controller
         ], 201);
     }
 
+    /**
+     * Bejelentkeztető metódus, validálja az input adatokat, hiba esetén megfelelő hibaüzenetet küld vissza
+     */
     public function login(Request $request)
     {
         $validatedData = $request->validate([
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255',
             'password' => 'required|string',
         ]);
 
-        if (Auth::attempt([
+        if (!Auth::attempt([
             'email' => $validatedData['email'],
             'password' => $validatedData['password']
         ])) {
-            $user = Auth::user();
-        } else {
-            $user = null;
+            return response()->json([
+                'message' => 'Hibás email cím vagy jelszó!',
+            ], 401);
         }
 
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
-            'message' => 'idk',
+            'message' => 'Sikeres bejelentkezés!',
             'user' => $user,
+            'token' => $token,
         ], 201);
     }
 
+    /**
+     * Kijelentkeztető metódus, törli a jelenlegi tokent, így érvénytelenítve a bejelentkezést
+     */
     public function logout(Request $request)
     {
-        // Logout logic will go here
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'message' => 'Sikeres kijelentkezés!',
+        ]);
     }
 }
