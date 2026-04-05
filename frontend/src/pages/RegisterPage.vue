@@ -53,7 +53,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
   name: 'RegisterPage',
@@ -67,11 +67,18 @@ export default {
       generalError: null,
     }
   },
+  setup() {
+    const auth = useAuthStore()
+
+    return {
+      auth
+    }
+  },
   methods: {
     /**
      * TODO: Regisztrációs api meghívása
      */
-    onSubmit() {
+    async onSubmit() {
       this.fieldErrors = {}
       this.generalError = null
 
@@ -79,14 +86,15 @@ export default {
         return
       }
 
-      axios.post('/api/register', {
-        username: this.username.trim(),
-        email: this.email.trim(),
-        password: this.password.trim(),
-        password_confirmation: this.passwordConfirm.trim()
-      }).then(() => {
+      try {
+        await this.auth.register(
+          this.username.trim(),
+          this.email.trim(),
+          this.password.trim(),
+          this.passwordConfirm.trim()
+        )
         this.$router.push('/login')
-      }).catch(error => {
+      } catch (error) {
         if (error.response) {
           if (error.response.status === 422) {
             const errors = error.response.data.errors
@@ -115,7 +123,7 @@ export default {
         } else {
           this.generalError = 'Nem sikerült kapcsolódni a szerverhez.'
         }
-      })
+      }
     },
     /**
      * Regisztrációs adatok validálása

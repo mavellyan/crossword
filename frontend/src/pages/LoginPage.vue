@@ -3,6 +3,7 @@
     <div class="form-wrapper">
       <h1 class="title">Belépés</h1>
       <form @submit.prevent="onSubmit">
+        <p v-if="showErrorMessage('general')" class="error-message">{{ showErrorMessage('general') }}</p>
         <div class="form-row">
           <label for="email">Email</label>
           <input
@@ -32,7 +33,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
   name: 'LoginPage',
@@ -43,29 +44,37 @@ export default {
       fieldErrors: [],
     }
   },
+  setup() {
+    const auth = useAuthStore()
+
+    return {
+      auth
+    }
+  },
   methods: {
-    onSubmit() {
+    async onSubmit() {
       this.fieldErrors = []
 
       if (!this.validateForm()) {
         return
       }
 
-      axios.post('/api/login', {
-        email: this.email.trim(),
-        password: this.password.trim(),
-      }).then(response => {
-        console.log(response)
-      }).catch(error => {
-        console.error(error)
-      })
-
-      const msg = "Belépés sikeres! Adatok: \n" +
-        "Email: " + this.email + "\n" +
-        "Password: " + this.password
-
-      //window.alert(msg)
-      //this.$router.push('/')
+      try {
+        await this.auth.login(this.email.trim(), this.password.trim())
+        this.$router.push('/')
+      } catch (error) {
+        if (error.response.status === 401) {
+          this.fieldErrors.push({
+            field: 'invalid-login',
+            message: 'Hibás email cím vagy jelszó!'
+          })
+        } else {
+          this.fieldErrors.push({
+            field: 'general',
+            message: 'Hiba történt a bejelentkezés során. Kérlek próbáld újra később!'
+          })
+        }
+      }
     },
     /**
      * Bejelentkezési adatok validálása

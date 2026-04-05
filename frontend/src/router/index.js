@@ -37,7 +37,23 @@ const routes = [
   },
 ]
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
 })
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('auth_token')
+
+  if (to.name === 'login' && token) {
+    next({ name: 'home' })
+  }
+
+  if (to.matched.some(record => record.meta.requiresAuth) && !token) {
+    next({ name: 'login' })
+  } else {
+    next()
+  }
+})
+
+export default router
