@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\SimpleCrossword;
-use App\Models\Word;
+use App\Models\Clue;
 use Illuminate\Console\Command;
 use App\Services\CrosswordGenerator;
 use Exception;
@@ -71,7 +71,7 @@ class TestGenerator extends Command
         ];
 
         foreach ($testlist as $key => $word) {
-            $test_word = new Word(
+            $test_word = new Clue(
                 $key,
                 $word,
             );
@@ -81,7 +81,7 @@ class TestGenerator extends Command
 
         //$main_word = new Word('main_solution', self::$main_solution);
 
-        $main_word = new Word('main_solution', 'piros');
+        $main_word = new Clue('main_solution', 'piros');
         $crossword = new SimpleCrossword($main_word);
 
         try {

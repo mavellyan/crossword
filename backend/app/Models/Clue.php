@@ -4,7 +4,7 @@ namespace App\Models;
 
 // TODO: Refaktorálni az egészet, átnevezni Clue-ra, alosztályt csinálni Crossword Clue néven
 // TODO: Pozíciókat pl. fixen ki kell innen szedni, is_main-t is, ezek mind crossword specifikus dolgok, nem generikus szó dolgok
-class Word {
+class Clue {
     /**
      * A megoldás hossza
      *
@@ -69,7 +69,7 @@ class Word {
         int $x_pos = -1,
         int $y_pos = -1,
         bool $is_main = false,
-        string $topic = null,
+        ?string $topic = null,
     ) {
         $this->definition = $definition;
         $this->solution = $solution;

@@ -25,8 +25,8 @@ class SimpleCrossword extends Crossword {
         }
 
         foreach ($words as $word) {
-            if (!$word instanceof Word) {
-                throw new Exception("A tömbbe bekerült valami, ami nem Word típusú?");
+            if (!$word instanceof Clue) {
+                throw new Exception("A tömbbe bekerült valami, ami nem Clue típusú?");
             }
         }
 
@@ -143,12 +143,12 @@ class SimpleCrossword extends Crossword {
     /**
      * Feltölti a sorokat az adott szó betűivel
      *
-     * @param Word $word
+     * @param Clue $word
      * @param int $mainWordPos
      * @param int $width
      * @return array
      */
-    public function generateRow(Word $word, int $mainWordPos, int $width): array
+    public function generateRow(Clue $word, int $mainWordPos, int $width): array
     {
         $row = array_fill(0, $width, '#');
         $letters = mb_str_split(mb_strtoupper($word->getSolution()));
