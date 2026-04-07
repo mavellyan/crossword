@@ -2,8 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\SimpleCrossword;
+use App\Models\Word;
 use Illuminate\Console\Command;
 use App\Services\CrosswordGenerator;
+use Exception;
 
 class TestGenerator extends Command
 {
@@ -57,11 +60,51 @@ class TestGenerator extends Command
      */
     public function handle()
     {
+        $test_words = [];
+
+        $testlist = [
+            'A Duna romániai mellékfolyója' => 'zsil',
+            'Feljáró' => 'rámpa',
+            'Tisztességtelen haszon' => 'sáp',
+            'Idős rokon' => 'dédi',
+            'Fr. író (Emile)' => 'zola',
+        ];
+
+        foreach ($testlist as $key => $word) {
+            $test_word = new Word(
+                $key,
+                $word,
+            );
+
+            $test_words[] = $test_word;
+        }
+
+        //$main_word = new Word('main_solution', self::$main_solution);
+
+        $main_word = new Word('main_solution', 'piros');
+        $crossword = new SimpleCrossword($main_word);
+
+        try {
+            $crossword->setWords($test_words);
+
+            $grid = $crossword->generateGrid();
+
+            foreach ($grid as $word) {
+                foreach ($word as $letter) {
+                    echo $letter . ' ';
+                }
+
+                echo "\n";
+            }
+        } catch (Exception $e) {
+            echo $e->getMessage();
+        }
+        /*
         // CrosswordGenerator::generate();
 
         $generator = new \App\Services\ScandinavianCrosswordGenerator();
 
-        
+
         $puzzle = $generator->generate(
             'ALMA',
             [
@@ -94,5 +137,6 @@ class TestGenerator extends Command
             }
             echo "\n";
         }
+        */
     }
 }
