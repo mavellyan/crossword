@@ -4,8 +4,8 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 
 import HomePage from '@/pages/HomePage.vue'
-import PuzzleListPage from '@/pages/PuzzleListPage.vue'
-import PuzzlePage from '@/pages/PuzzlePage.vue'
+import CrosswordListPage from '@/pages/CrosswordListPage.vue'
+import CrosswordPage from '@/pages/CrosswordPage.vue'
 
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
@@ -18,8 +18,8 @@ const routes = [
     component: AppLayout,
     children: [
       { path: '', name: 'home', component: HomePage },
-      { path: 'puzzlelist', name: 'puzzlelist', component: PuzzleListPage },
-      { path: 'puzzles/:id', name: 'puzzle', component: PuzzlePage, props: true },
+      { path: 'crosswordlist', name: 'crosswordlist', component: CrosswordListPage },
+      { path: 'crossword/:id', name: 'crossword', component: CrosswordPage, props: true },
     ],
   },
   {

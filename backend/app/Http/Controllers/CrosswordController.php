@@ -46,6 +46,18 @@ class CrosswordController extends Controller
             ], 422);
         }
     }
+
+    public function getCrossword($id): JsonResponse {
+        
+
+        return response()->json([
+            'success' => true,
+            'puzzle' => [
+                'id' => $id,
+                'main_solution' => 'idk',
+            ],
+        ]);
+    }
 }
 
 

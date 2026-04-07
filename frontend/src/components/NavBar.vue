@@ -2,7 +2,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3">
     <div class="navbar-nav">
       <RouterLink class="nav-link" to="/">Főoldal</RouterLink>
-      <RouterLink class="nav-link" to="/puzzlelist">Rejtvények</RouterLink>
+      <RouterLink class="nav-link" to="/crosswordlist">Rejtvények</RouterLink>
     </div>
     <div class="navbar-nav ms-auto">
       <template v-if="auth.isLoggedIn">
