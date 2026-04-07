@@ -36,7 +36,7 @@ class SimpleCrossword extends Crossword {
             throw new Exception("A megadott szavakból nem állítható össze rejtvény!");
         }
 
-        // Y pozíció szerint növekvő sorba rakjuk a betűket
+        // Y pozíció szerint növekvő sorba rakjuk a betűket, hogy könnyebb legyen őket majd elhelyezni a rácsban
         usort($words, function ($a, $b) {
             return $a->getYPos() <=> $b->getYPos();
         });
