@@ -1,93 +1,36 @@
-@import './variables.scss';
-
-.auth-layout {
-    flex: 1;
-    display: flex;
-}
-
 .login-page, .register-page {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     background: $color-very-light-blue;
 
-    .title {
-        color: $color-black;
-        text-align: center;
-        text-transform: uppercase;
-        font-size: 30px;
-    }
-
-    .form-wrapper{
-        width: 100%;
+    .form-width {
         max-width: 600px;
-        padding: 24px;
-        background: $color-white;
-        border-radius: 10px;
-        box-shadow: 0 5px 50px $color-gray-300;
-        margin-top: 20px;
-        margin-bottom: 100px;
-    }
-
-    form {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        text-align: center;
-        align-items: center;
-        justify-content: center;
-        height: 400px;
-        font-size: 20px;
-    }
-
-    label {
-        margin-bottom: 10px;
-    }
-
-    .form-row {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
         width: 100%;
     }
 
-    input {
-        width: 75%;
-        height: 60px;
-        padding: 0 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        box-sizing: border-box;
+    .title {
+        font-size: 30px;
+        font-weight: bold;
+    }
+
+    input, label {
         font-size: 20px;
+    }
+
+    .alert {
+        font-size: 16px;
+        padding: 0.75rem;
     }
 
     button {
-        width: 75%;
-        height: 60px;
-        border: none;
-        border-radius: 5px;
-        background: $color-base-blue;
         color: $color-white;
-        cursor: pointer;
+        border: none;
 
         &:hover {
             background: $color-light-blue;
         }
     }
 
-    .field-error {
-        border-color: $color-danger;
-    }
-
-    .error-message {
-        color: $color-danger;
+    .invalid-feedback {
         font-size: 14px;
-        margin-top: 10px;
+        margin-bottom: 0.25rem;
     }
-}
-
-.register-page form {
-    height: 700px;
 }

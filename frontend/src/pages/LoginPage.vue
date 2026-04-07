@@ -1,32 +1,34 @@
 <template>
-  <div class="login-page">
-    <div class="form-wrapper">
-      <h1 class="title">Belépés</h1>
+  <div class="login-page d-flex flex-fill align-items-center justify-content-center w-100">
+    <div class="card shadow p-4 form-width">
+      <h1 class="text-center text-uppercase mb-3 title">Belépés</h1>
       <form @submit.prevent="onSubmit">
-        <p v-if="showErrorMessage('general')" class="error-message">{{ showErrorMessage('general') }}</p>
-        <div class="form-row">
-          <label for="email">Email</label>
+        <p v-if="showErrorMessage('general')" class="alert alert-danger">{{ showErrorMessage('general') }}</p>
+        <p v-if="showErrorMessage('invalid-login')" class="alert alert-danger">{{  showErrorMessage('invalid-login') }}</p>
+
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
           <input
             id="email"
             v-model="email"
             type="email"
-            :class="{ 'field-error': isInputWrong('invalid-login') }"
+            class="form-control"
+            :class="{ 'is-invalid': isInputWrong('invalid-login') }"
           />
-          <p v-if="showErrorMessage('invalid-login')" class="error-message">{{ showErrorMessage('invalid-login') }}</p>
         </div>
-        <div class="form-row">
-          <label for="password">Jelszó</label>
+
+        <div class="mb-3">
+          <label for="password" class="form-label">Jelszó</label>
           <input
             id="password"
             v-model="password"
             type="password"
-            :class="{ 'field-error': isInputWrong('invalid-login') }"
+            class="form-control"
+            :class="{ 'is-invalid': isInputWrong('invalid-login') }"
           />
-          <p v-if="showErrorMessage('invalid-login')" class="error-message">{{ showErrorMessage('invalid-login') }}</p>
         </div>
-        <div class="form-row">
-          <button type="submit">Belépés</button>
-        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Belépés</button>
       </form>
     </div>
   </div>

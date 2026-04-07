@@ -1,5 +1,5 @@
 <template>
-  <main class="auth-layout">
+  <main class="d-flex flex-fill">
     <router-view />
   </main>
 </template>

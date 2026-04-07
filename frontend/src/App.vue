@@ -1,7 +1,9 @@
 <template>
   <div class="app">
     <NavBar />
-    <router-view />
+    <main class="d-flex flex-fill">
+      <router-view />
+    </main>
   </div>
 </template>
 
@@ -15,15 +17,15 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss"> 
 .app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  z-index: 1;
 }
 
 main {
-  display: flex;
-  flex: 1;
+  z-index: 1;
 }
 </style>

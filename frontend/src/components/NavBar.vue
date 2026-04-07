@@ -1,17 +1,17 @@
 <template>
-  <nav>
-    <div class="left-side">
-      <RouterLink class="nav-button" to="/">Főoldal</RouterLink>
-      <RouterLink class="nav-button" to="/puzzlelist">Rejtvények</RouterLink>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3">
+    <div class="navbar-nav">
+      <RouterLink class="nav-link" to="/">Főoldal</RouterLink>
+      <RouterLink class="nav-link" to="/puzzlelist">Rejtvények</RouterLink>
     </div>
-    <div class="right-side">
-      <div v-if="auth.isLoggedIn">
-        <button class="nav-button" @click="logout">Kijelentkezés</button>
-      </div>
-      <div v-else>
-        <RouterLink class="nav-button" to="/login">Belépés</RouterLink>
-        <RouterLink class="nav-button" to="/register">Regisztráció</RouterLink>
-      </div>
+    <div class="navbar-nav ms-auto">
+      <template v-if="auth.isLoggedIn">
+          <button class="btn btn-outline-light" @click="logout">Kijelentkezés</button>
+      </template>
+      <template v-else>
+        <RouterLink class="nav-link" to="/login">Belépés</RouterLink>
+        <RouterLink class="nav-link" to="/register">Regisztráció</RouterLink>
+      </template>
     </div>
   </nav>
 </template>

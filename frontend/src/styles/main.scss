@@ -1,6 +1,22 @@
+@import './variables.scss';
+
+$primary: $color-base-blue;
+$danger: $color-danger;
+$warning: $color-warning;
+$success: $color-success;
+$info: $color-info;
+
+@import "bootstrap/scss/bootstrap";
+
 * {
   margin: 0;
   padding: 0;
+}
+
+html {
+  font-size: 18px;
+}
+
+body {
   font-family: 'Inter', sans-serif;
-  font-size: 26px;
 }
