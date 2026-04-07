@@ -32,16 +32,29 @@ class SimpleCrossword extends Crossword {
 
         $main_letters = mb_str_split(mb_strtoupper($this->getMainSolution()->getSolution()));
 
-        if (!$this->canAssignWordsToLetters($main_letters, $words)) {
+        $assignment = $this->canAssignWordsToLetters($main_letters, $words);
+        if (!$assignment->isValid()) {
             throw new Exception("A megadott szavakból nem állítható össze rejtvény!");
         }
 
+        $crosswordClues = [];
+        foreach ($words as $i => $word) {
+            $crosswordClue = new CrosswordClue(
+                $word->getDefinition(),
+                $word->getSolution(),
+                $assignment->getHorizontalPositions()[$i],
+                $assignment->getVerticalPositions()[$i],
+            );
+
+            $crosswordClues[] = $crosswordClue;
+        }
+
         // Y pozíció szerint növekvő sorba rakjuk a betűket, hogy könnyebb legyen őket majd elhelyezni a rácsban
-        usort($words, function ($a, $b) {
+        usort($crosswordClues, function ($a, $b) {
             return $a->getYPos() <=> $b->getYPos();
         });
 
-        parent::setWords($words);
+        parent::setWords($crosswordClues);
     }
 
     /**
@@ -52,18 +65,23 @@ class SimpleCrossword extends Crossword {
      * @param array $words
      * @param int $letterIndex
      * @param array $usedWordIndexes
-     * @return bool
+     * @param array $verticalPositions
+     * @param array $horizontalPositions
+     * 
+     * @return AssignmentResult
      */
     private function canAssignWordsToLetters(
         array $letters,
         array $words,
         int $letterIndex = 0,
-        array $usedWordIndexes = []
-    ): bool
+        array $usedWordIndexes = [],
+        array $verticalPositions = [],
+        array $horizontalPositions = [],
+    ): AssignmentResult
     {
         // Ha végigértünk a betűkön, akkor sikerült mindhez szót találni
         if ($letterIndex >= count($letters)) {
-            return true;
+            return new AssignmentResult(true, $verticalPositions, $horizontalPositions);
         }
 
         $currentLetter = $letters[$letterIndex];
@@ -76,23 +94,29 @@ class SimpleCrossword extends Crossword {
 
             $solution = mb_strtoupper($word->getSolution());
 
+            $pos = mb_strpos($solution, $currentLetter);
+
             // Ha megtaláljuk a keresett betűt a szóban, akkor eltároljuk az indexét mert felhasználtuk a szót
             // Majd újra meghívjuk a metódust
-            if (mb_strpos($solution, $currentLetter) !== false) {
-                $newUsed = $usedWordIndexes;
-                $newUsed[] = $wordIndex;
+            if ($pos !== false) {
+                $newUsed = [...$usedWordIndexes, $wordIndex];
 
                 // Beállítjuk a szavak pozícióját a rejtvényen belül
-                $word->setYPos($letterIndex);
-                $word->setXPos(mb_strpos($solution, $currentLetter));
+                $newVertical = $verticalPositions;
+                $newHorizontal = $horizontalPositions;
 
-                if ($this->canAssignWordsToLetters($letters, $words, $letterIndex + 1, $newUsed)) {
-                    return true;
+                $newVertical[$wordIndex] = $letterIndex;
+                $newHorizontal[$wordIndex] = $pos;
+
+                $result = $this->canAssignWordsToLetters($letters, $words, $letterIndex + 1, $newUsed, $newVertical, $newHorizontal);
+
+                if ($result->isValid()) {
+                    return $result;
                 }
             }
         }
 
-        return false;
+        return new AssignmentResult(false, [], []);
     }
 
     /**
@@ -102,7 +126,6 @@ class SimpleCrossword extends Crossword {
      */
     public function generateGrid(): array
     {
-        $height = $this->getMainSolution()->getLength();
         $width = $this->getMinCrosswordWidth();
 
         $grid = [];
@@ -112,6 +135,7 @@ class SimpleCrossword extends Crossword {
 
         foreach ($this->getWords() as $word) {
             $grid[] = $this->generateRow($word, $mainWordPos, $width);
+            $word->getDebug();
         }
 
 
@@ -143,12 +167,12 @@ class SimpleCrossword extends Crossword {
     /**
      * Feltölti a sorokat az adott szó betűivel
      *
-     * @param Clue $word
+     * @param CrosswordClue $word
      * @param int $mainWordPos
      * @param int $width
      * @return array
      */
-    public function generateRow(Clue $word, int $mainWordPos, int $width): array
+    public function generateRow(CrosswordClue $word, int $mainWordPos, int $width): array
     {
         $row = array_fill(0, $width, '#');
         $letters = mb_str_split(mb_strtoupper($word->getSolution()));

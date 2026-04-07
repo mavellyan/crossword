@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\SimpleCrossword;
+use App\Models\CrosswordClue;
 use App\Models\Clue;
 use Illuminate\Console\Command;
 use App\Services\CrosswordGenerator;
@@ -81,7 +82,7 @@ class TestGenerator extends Command
 
         //$main_word = new Word('main_solution', self::$main_solution);
 
-        $main_word = new Clue('main_solution', 'piros');
+        $main_word = new CrosswordClue('main_solution', 'piros');
         $crossword = new SimpleCrossword($main_word);
 
         try {

@@ -6,12 +6,12 @@ use Exception;
 
 abstract class Crossword {
     /**
-     * @var Clue
+     * @var CrosswordClue
      */
-    private Clue $main_solution;
+    private CrosswordClue $main_solution;
 
     /**
-     * @var Clue[]
+     * @var CrosswordClue[]
      */
     private array $words;
 
@@ -21,23 +21,23 @@ abstract class Crossword {
     private bool $is_solved;
 
     /**
-     * @param Clue $main_solution
+     * @param CrosswordClue $main_solution
      */
-    public function __construct(Clue $main_solution) {
+    public function __construct(CrosswordClue $main_solution) {
         $this->main_solution = $main_solution;
         $this->words = [];
         $this->is_solved = false;
     }
 
     /**
-     * @return Clue
+     * @return CrosswordClue
      */
-    public function getMainSolution(): Clue {
+    public function getMainSolution(): CrosswordClue {
         return $this->main_solution;
     }
 
     /**
-     * @return Clue[]
+     * @return CrosswordClue[]
      */
     public function getWords(): array {
         return $this->words;
@@ -51,10 +51,10 @@ abstract class Crossword {
     }
 
     /**
-     * @param Clue $main_solution
+     * @param CrosswordClue $main_solution
      * @return void
      */
-    public function setMainSolution(Clue $main_solution): void {
+    public function setMainSolution(CrosswordClue $main_solution): void {
         $this->main_solution = $main_solution;
     }
 
