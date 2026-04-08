@@ -139,7 +139,7 @@ class SimpleCrossword extends Crossword {
         }
 
 
-        return $grid;
+        return $this->trimGrid($grid);
     }
 
     /**
@@ -202,5 +202,45 @@ class SimpleCrossword extends Crossword {
         }
 
         return $row;
+    }
+
+    /**
+     * Levágja a rácsnak a szélén lévő oszlopokat, hogyha azokban egyetlen betű sem szerepel
+     * 
+     * @param array $grid
+     * @return array
+     */
+    public function trimGrid(array $grid): array
+    {
+        // Végigmegyünk az oszlopokon, megnézve, hogy szerepel-e benne bármilyen betű
+        // Ha nincs egy sem, akkor levágjuk az egész oszlopot
+        $currentCol = 0;
+        $width = $this->getMinCrosswordWidth();
+        for ($i = 0; $i < $width; $i++) {
+            $hasLetter = false;
+            foreach ($grid as $row) {
+                if ($row[$currentCol] !== '#') {
+                    $hasLetter = true;
+                    // Ha van betű az oszlopban, akkor továbblépünk a következő oszlopra
+                    $currentCol++;
+                    break;
+                }
+            }
+
+            if (!$hasLetter) {
+                // Levágjuk az oszlopot
+                foreach ($grid as &$row) {
+                    array_splice($row, $currentCol, 1);
+                }
+                // Visszalépünk egyet, mivel egyel rövidebbek lettek a sorok
+                $i--;
+            }
+
+            // Ha végigértünk az oszlopokon, akkor kilépünk a ciklusból
+            if ($currentCol >= count($grid[0])) {
+                break;
+            }
+        }
+        return $grid;
     }
 }

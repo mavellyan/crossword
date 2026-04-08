@@ -9,6 +9,10 @@ namespace App\Http\Controllers;
 use App\Services\ScandinavianCrosswordGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Models\CrosswordClue;
+use App\Models\Clue;
+use App\Models\SimpleCrossword;
+use Exception;
 
 class CrosswordController extends Controller
 {
@@ -36,7 +40,7 @@ class CrosswordController extends Controller
 
             return response()->json([
                 'success' => true,
-                'puzzle' => $puzzle,
+                'crossword' => $puzzle,
             ]);
 
         } catch (\RuntimeException $e) {
@@ -48,13 +52,60 @@ class CrosswordController extends Controller
     }
 
     public function getCrossword($id): JsonResponse {
-        
+        $test_words = [];
+
+        $testlist = [
+            'A Duna romániai mellékfolyója' => 'zsil',
+            'Feljáró' => 'rámpa',
+            'Tisztességtelen haszon' => 'sáp',
+            'Idős rokon' => 'dédi',
+            'Fr. író (Emile)' => 'zola',
+        ];
+
+        foreach ($testlist as $key => $word) {
+            $test_word = new Clue(
+                $key,
+                $word,
+            );
+
+            $test_words[] = $test_word;
+        }
+
+        $main_word = new CrosswordClue('main_solution', 'piros');
+        $crossword = new SimpleCrossword($main_word);
+        $grid = null;
+
+        try {
+            $crossword->setWords($test_words);
+
+            $grid = $crossword->generateGrid();
+        } catch (Exception $e) {
+            echo $e->getMessage();
+        }
+
+        if ($grid === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nem sikerült betölteni a rejtvényt.',
+            ], 500);
+        }
+
+        $gridDefinitions = [];
+        $gridSolutions = [];
+
+        foreach ($crossword->getWords() as $clue) {
+            $gridDefinitions[] = $clue->getDefinition();
+            $gridSolutions[] = $clue->getSolution();
+        }
 
         return response()->json([
             'success' => true,
-            'puzzle' => [
-                'id' => $id,
-                'main_solution' => 'idk',
+            'crossword' => [
+                'id' => 1,
+                'main_solution' => $main_word->getSolution(),
+                'grid' => $grid,
+                'definitions' => $gridDefinitions,
+                'solutions' => $gridSolutions,
             ],
         ]);
     }
