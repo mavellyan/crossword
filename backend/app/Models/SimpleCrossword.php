@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Crossword;
+use App\Enums\Direction;
 use Exception;
 
 class SimpleCrossword extends Crossword {
@@ -40,10 +41,11 @@ class SimpleCrossword extends Crossword {
         $crosswordClues = [];
         foreach ($words as $i => $word) {
             $crosswordClue = new CrosswordClue(
-                $word->getDefinition(),
-                $word->getSolution(),
-                $assignment->getHorizontalPositions()[$i],
-                $assignment->getVerticalPositions()[$i],
+                definition: $word->getDefinition(),
+                solution: $word->getSolution(),
+                direction: Direction::HORIZONTAL,
+                x_pos: $assignment->getHorizontalPositions()[$i],
+                y_pos: $assignment->getVerticalPositions()[$i],
             );
 
             $crosswordClues[] = $crosswordClue;
@@ -240,5 +242,27 @@ class SimpleCrossword extends Crossword {
             }
         }
         return $grid;
+    }
+
+    /**
+     * Előkészíti a szavakat az API válaszhoz, megadva a definíciójukat, megoldásukat, pozíciójukat, irányukat
+     * Valamint a benne szereplő betűk pozícióját a rejtvényen belül, hogy megkönnyítse a rácsban való elhelyezésüket
+     * 
+     * @return array
+     */
+    public function getWordsForApi(): array
+    {
+        $wordsForApi = [];
+        foreach ($this->getWords() as $word) {
+            $wordsForApi[] = [
+                'definition' => $word->getDefinition(),
+                'solution' => $word->getSolution(),
+                'x_pos' => $word->getXPos(),
+                'y_pos' => $word->getYPos(),
+                'direction' => $word->getDirection(),
+                'cells' => $word->getCells(),
+            ];
+        } 
+        return $wordsForApi;
     }
 }

@@ -65,6 +65,14 @@ export default {
   mounted() {
     axios.get(`/crossword/${this.id}`)
       .then(response => {
+        // TODO: ez már egyáltalán nem így jön vissza, át kell írni az egészet
+        // valamint a gridet kiszervezni egy külön komponensbe
+        // és talán (valószínűleg úgy lehet a legjobb? nem biztos még) a definíciók/cellák külön is külön komponenst kapnak a griden belül
+        // nyilakkal navigálás be van fosva ha lockolt a cella (??) de ezt talan meg lehet oldani az uj rendszerezessel??
+        // rejtvény generálás külön service fileba kiszervezni jó ötlet lehet (már van is file csak valamiert nem abban csinaltam meg???XD)
+        // id-ket hozzáadni a cluekhoz
+        // törölhető a crosswordapijs, crosswordjs, demosimplecrosswordservicephp, a scandinavian generator is valszeg
+        // KURVA NAGY REFAKT KELL XD ÄÄÄÄÄÄÄÄÄ
         console.log('Rejtvény adatai:', response.data)
         this.grid = response.data.crossword.grid
         this.main_solution = response.data.crossword.main_solution

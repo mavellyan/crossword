@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\Direction;
+
 class CrosswordClue extends Clue {
      /**
      * A megoldás vízszintes pozíciója, -1 esetén még nincs elhelyezve
@@ -25,8 +27,16 @@ class CrosswordClue extends Clue {
     private bool $is_main;
 
     /**
+     * A megoldás iránya, "horizontal" vagy "vertical"
+     * 
+     * @var Direction
+     */
+    private Direction $direction;
+
+    /**
     * @param string $definition
     * @param string $solution
+    * @param Direction $direction
     * @param int $x_pos
     * @param int $y_pos
     * @param bool $is_main
@@ -35,6 +45,7 @@ class CrosswordClue extends Clue {
     public function __construct(
         string $definition,
         string $solution,
+        Direction $direction,
         int $x_pos = -1,
         int $y_pos = -1,
         bool $is_main = false,
@@ -44,6 +55,7 @@ class CrosswordClue extends Clue {
         $this->x_pos = $x_pos;
         $this->y_pos = $y_pos;
         $this->is_main = $is_main;
+        $this->direction = $direction;
     }
 
     /**
@@ -92,15 +104,50 @@ class CrosswordClue extends Clue {
     }
 
     /**
+     * @return string
+     */
+    public function getDirection(): string {
+        return $this->direction->value;
+    }
+
+    /**
+     * @param Direction $direction
+     * @return void
+     */
+    public function setDirection(Direction $direction): void {
+        $this->direction = $direction;
+    }
+
+    /**
      * Debug segítség, minta:
-     * Tanulóidőszak: inasév (általános, 6) (x:1, y:1)
+     * Tanulóidőszak: inasév (általános, 6) (direction: horizontal, x:1, y:1)
      *
      * @return string
      */
     #[\Override]
     public function getDebug(): string {
-        return parent::getDebug() . " (x:" .
+        return parent::getDebug() . " (direction:" .
+            $this->direction->value . ", x:" .
             $this->x_pos . ", y:" .
             $this->y_pos . ")";
+    }
+
+    /**
+     * Visszaadja a megoldás betűit és pozícióit egy tömbben, hogy megkönnyítse a rácsban való elhelyezésüket
+     * 
+     * @return array
+     */
+    public function getCells(): array
+    {
+        $cells = [];
+        $solution = mb_strtoupper($this->getSolution());
+        for ($i = 0; $i < mb_strlen($solution); $i++) {
+            $cells[] = [
+                'letter' => mb_substr($solution, $i, 1),
+                'row' => $this->y_pos + ($this->direction->value === 'vertical' ? $i : 0),
+                'col' => $this->x_pos + ($this->direction->value === 'horizontal' ? $i : 0),
+            ];
+        }
+        return $cells;
     }
 }

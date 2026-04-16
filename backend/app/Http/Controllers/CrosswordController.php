@@ -6,6 +6,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Direction;
 use App\Services\ScandinavianCrosswordGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -71,7 +72,7 @@ class CrosswordController extends Controller
             $test_words[] = $test_word;
         }
 
-        $main_word = new CrosswordClue('main_solution', 'piros');
+        $main_word = new CrosswordClue('main_solution', 'piros', Direction::VERTICAL);
         $crossword = new SimpleCrossword($main_word);
         $grid = null;
 
@@ -90,22 +91,13 @@ class CrosswordController extends Controller
             ], 500);
         }
 
-        $gridDefinitions = [];
-        $gridSolutions = [];
-
-        foreach ($crossword->getWords() as $clue) {
-            $gridDefinitions[] = $clue->getDefinition();
-            $gridSolutions[] = $clue->getSolution();
-        }
-
         return response()->json([
             'success' => true,
             'crossword' => [
                 'id' => 1,
                 'main_solution' => $main_word->getSolution(),
                 'grid' => $grid,
-                'definitions' => $gridDefinitions,
-                'solutions' => $gridSolutions,
+                'words' => $crossword->getWordsForApi(),
             ],
         ]);
     }
