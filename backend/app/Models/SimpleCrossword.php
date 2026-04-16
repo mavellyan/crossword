@@ -135,9 +135,7 @@ class SimpleCrossword extends Crossword {
 
         foreach ($this->getWords() as $word) {
             $grid[] = $this->generateRow($word, $mainWordPos, $width);
-            $word->getDebug();
         }
-
 
         return $this->trimGrid($grid);
     }

@@ -10,18 +10,29 @@
             type="text"
             maxlength="1"
             class="input"
+            :class="{
+              'active-row': activeRow === rowIndex,
+              'correct': correctCells[rowIndex][cellIndex],
+              'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
+            }"
+            :disabled="correctCells[rowIndex][cellIndex]"
             name="cell"
             v-model="userGrid[rowIndex][cellIndex]"
             :ref="el => setInputRef(el, rowIndex, cellIndex)"
             @input="handleInput(rowIndex, cellIndex)"
             @keydown="handleKeydown($event, rowIndex, cellIndex)"
+            @click="setActiveRow(rowIndex)"
           >
         </div>
       </div>
     </div>
     <div v-if="definitions !== null" class="definitions">
       <h3>Definíciók</h3>
-      <div v-for="(definition, index) in definitions" :key="index">
+      <div v-for="(definition, index) in definitions" :key="index"
+        class="definition"
+        :class="{ 'active-row': activeRow === index}"
+        @click="setActiveRow(index, true)"
+      >
         <strong>{{ index+1 }}.</strong> {{ definition }}
       </div>
     </div>
@@ -44,9 +55,11 @@ export default {
       grid: null,
       main_solution: null,
       definitions: null,
-      solutions: null,
+      solutions: null,  
       userGrid: [],
+      correctCells: [],
       inputRefs: {},
+      activeRow: null,
     };
   },
   mounted() {
@@ -59,6 +72,7 @@ export default {
         this.solutions = response.data.crossword.solutions
 
         this.userGrid = this.grid.map(row => row.map(cell => cell === '#' ? '#' : ''))
+        this.correctCells = this.grid.map(row => row.map(cell => false))
       })
       .catch(error => {
         console.error('Hiba a rejtvény betöltésekor:', error)
@@ -94,6 +108,10 @@ export default {
       this.userGrid[rowIndex][cellIndex] = val
 
       this.focusNext(rowIndex, cellIndex)
+
+      if (!this.userGrid[rowIndex].includes('')) {
+        this.checkCompletion(rowIndex)
+      }
     },
     /**
      * Kezeli a billentyűleütéseket a cellákban, lehetővé téve a Backspace és a nyílbillentyűk használatát a navigációhoz
@@ -141,6 +159,7 @@ export default {
         while (nextRow < this.grid.length) {
           if (this.grid[nextRow][cellIndex] !== '#') {
             this.inputRefs[`${nextRow}-${cellIndex}`]?.focus()
+            this.setActiveRow(nextRow)
             return
           }
           nextRow++
@@ -173,6 +192,7 @@ export default {
         while (prevRow >= 0) {
           if (this.grid[prevRow][cellIndex] !== '#') {
             this.inputRefs[`${prevRow}-${cellIndex}`]?.focus()
+            this.setActiveRow(prevRow)
             return
           }
           prevRow--
@@ -191,49 +211,37 @@ export default {
         prevCol--
       }
     },
+    /**
+     * Beállítja az aktív sort, amelyre a definíciók vonatkoznak, így vizuálisan is kiemelve azt, amelyiken éppen dolgozunk
+     * 
+     * @param rowIndex 
+     */
+    setActiveRow(rowIndex, definitionClick = false) {
+      this.activeRow = rowIndex
+
+      if (definitionClick) {
+        // Ha a definícióra kattintottunk, akkor az első cellára helyezzük a fókuszt
+        for (let cellIndex = 0; cellIndex < this.grid[rowIndex].length; cellIndex++) {
+          if (this.grid[rowIndex][cellIndex] !== '#') {
+            this.inputRefs[`${rowIndex}-${cellIndex}`]?.focus()
+            break
+          }
+        }
+      }
+    },
+    checkCompletion(rowIndex) {
+      this.userGrid[rowIndex].map((cell, cellIndex) => {
+        if (cell !== '#' && cell === this.grid[rowIndex][cellIndex]) {
+          this.correctCells[rowIndex][cellIndex] = true
+        } else {
+          this.correctCells[rowIndex][cellIndex] = false
+        }
+      })
+    }
   },
 }
 </script>
 
 <style scoped>
-.layout {
-  display: flex;
-  gap: 100px;
-}
-
-.grid {
-  display: flex;
-  flex-direction: column;
-  border: 3px solid black;
-}
-
-.grid-row {
-  display: flex;
-}
-
-.cell {
-  width: 50px;
-  height: 50px;
-  border: 1px solid black;
-}
-
-.black {
-  width: 100%;
-  height: 100%;
-  background: black;
-}
-
-.input {
-  width: 100%;
-  height: 100%;
-  border: none;
-  text-align: center;
-  font-weight: bold;
-  font-size: 22px;
-  text-transform: uppercase;
-}
-
-.definitions {
-  min-width: 200px;
-}
+@import '../styles/crosswordPage.scss';
 </style>
