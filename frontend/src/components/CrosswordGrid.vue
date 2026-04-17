@@ -1,97 +1,81 @@
 <template>
-  <h1>Rejtvény</h1>
-  <div>
-    <CrosswordGrid
-      v-if="grid !== null"
-      :grid="grid"
-      :main_solution="main_solution"
-      :words="words"
-    />
-    <!--
+<div class="layout justify-content-center">
     <div v-if="grid !== null" class="grid">
-      <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="grid-row">
-        <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">
-          <div v-if="cell === '#'" class="black"></div>
-          <input
-            v-else
-            type="text"
-            maxlength="1"
-            class="input"
-            :class="{
-              'active-row': activeRow === rowIndex,
-              'correct': correctCells[rowIndex][cellIndex],
-              'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
-            }"
-            :disabled="correctCells[rowIndex][cellIndex]"
-            name="cell"
-            v-model="userGrid[rowIndex][cellIndex]"
-            :ref="el => setInputRef(el, rowIndex, cellIndex)"
-            @input="handleInput(rowIndex, cellIndex)"
-            @keydown="handleKeydown($event, rowIndex, cellIndex)"
-            @click="setActiveRow(rowIndex)"
-          >
+        <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="grid-row">
+            <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">
+                <div v-if="cell === '#'" class="black"></div>
+                <input
+                    v-else
+                    type="text"
+                    maxlength="1"
+                    class="input"
+                    :class="{
+                        'active-row': activeRow === rowIndex,
+                        'correct': correctCells[rowIndex][cellIndex],
+                        'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
+                    }"
+                    :disabled="correctCells[rowIndex][cellIndex]"
+                    name="cell"
+                    v-model="userGrid[rowIndex][cellIndex]"
+                    :ref="el => setInputRef(el, rowIndex, cellIndex)"
+                    @input="handleInput(rowIndex, cellIndex)"
+                    @keydown="handleKeydown($event, rowIndex, cellIndex)"
+                    @click="setActiveRow(rowIndex)"
+                />
+            </div>
         </div>
-      </div>
     </div>
     <div v-if="definitions !== null" class="definitions">
-      <h3>Definíciók</h3>
-      <div v-for="(definition, index) in definitions" :key="index"
-        class="definition"
-        :class="{ 'active-row': activeRow === index}"
-        @click="setActiveRow(index, true)"
-      >
+        <h3>Definíciók</h3>
+        <div v-for="(definition, index) in definitions" :key="index"
+            class="definition"
+            :class="{ 'active-row': activeRow === index}"
+            @click="setActiveRow(index, true)"
+        >
         <strong>{{ index+1 }}.</strong> {{ definition }}
-      </div>
+        </div>
     </div>
-    -->
-  </div>
+</div>
 </template>
 
 <script>
-import axios from 'axios';
-import CrosswordGrid from '../components/CrosswordGrid.vue';
-
 export default {
-  name: 'CrosswordPage',
-  components: {
-    CrosswordGrid,
-  },
-  props: {
-    id: {
-      type: String,
-      required: true
-    }
-  },
-  data() {
-    return {
-      grid: null,
-      main_solution: null,
-      definitions: [],
-      solutions: [],
-      words: null,
-    };
-  },
-  mounted() {
-    axios.get(`/crossword/${this.id}`)
-      .then(response => {
-        // TODO: ez már egyáltalán nem így jön vissza, át kell írni az egészet
-        // valamint a gridet kiszervezni egy külön komponensbe
-        // és talán (valószínűleg úgy lehet a legjobb? nem biztos még) a definíciók/cellák külön is külön komponenst kapnak a griden belül
-        // nyilakkal navigálás be van fosva ha lockolt a cella (??) de ezt talan meg lehet oldani az uj rendszerezessel??
-        // rejtvény generálás külön service fileba kiszervezni jó ötlet lehet (már van is file csak valamiert nem abban csinaltam meg???XD)
-        // id-ket hozzáadni a cluekhoz
-        // törölhető a crosswordapijs, crosswordjs, demosimplecrosswordservicephp, a scandinavian generator is valszeg
-        // KURVA NAGY REFAKT KELL XD ÄÄÄÄÄÄÄÄÄ
-        console.log('Rejtvény adatai:', response.data)
-        this.grid = response.data.crossword.grid
-        this.main_solution = response.data.crossword.main_solution
-        this.words = response.data.crossword.words
+    name: 'CrosswordGrid',
+    props: {
+      grid: {
+        type: Array,
+        required: true,
+      },
+      words: {
+        type: Object,
+        required: true,
+      },
+      main_solution: {
+        type: String,
+        required: true,
+      },
+    },
+    data() {
+      return {
+        userGrid: [],
+        correctCells: [],
+        inputRefs: {},
+        activeRow: null,
+        definitions: [],
+        solutions: [],
+      }
+    },
+    created() {
+      this.userGrid = this.grid.map(row => row.map(cell => cell === '#' ? '#' : ''))
+      this.correctCells = this.grid.map(row => row.map(() => false))
+
+      
+      this.words.forEach(word => {
+        this.definitions.push(word.definition)
+        this.solutions.push(word.solution)
       })
-      .catch(error => {
-        console.error('Hiba a rejtvény betöltésekor:', error)
-      });
-  },
-  methods: {
+    },
+    methods: {
     /**
      * Beállítja a cellák input elemeinek a referenciáit, így később könnyen hozzáférhetünk és fókuszálhatunk rájuk
      * 
