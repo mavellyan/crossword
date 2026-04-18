@@ -162,7 +162,7 @@ class CrosswordClue extends Clue {
      * 
      * @return array
      */
-    public function getCells(int $gridWidth): array
+    public function getCells(): array
     {
         $cells = [];
         $solution = mb_strtoupper($this->getSolution());

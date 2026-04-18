@@ -34,18 +34,38 @@ class SimpleCrossword extends Crossword {
         $main_letters = mb_str_split(mb_strtoupper($this->getMainSolution()->getSolution()));
 
         $assignment = $this->canAssignWordsToLetters($main_letters, $words);
+
         if (!$assignment->isValid()) {
             throw new Exception("A megadott szavakból nem állítható össze rejtvény!");
         }
 
+        // Kiszámoljuk a legnagyobb balra eső eltolást, hogy a főmegoldás betűi középre kerüljenek a rejtvényben
+        $maxLeftOffset = 0;
+        foreach ($assignment->getHorizontalPositions() as $intersectionIndex) {
+            if ($intersectionIndex > $maxLeftOffset) {
+                $maxLeftOffset = $intersectionIndex;
+            }
+        }
+
+        $mainWordXPos = $maxLeftOffset;
+        $this->getMainSolution()->setXPos($mainWordXPos);
+        $this->getMainSolution()->setYPos(0);
+
         $crosswordClues = [];
         foreach ($words as $i => $word) {
+            $intersectionPos = $assignment->getHorizontalPositions()[$i];
+            $yPos = $assignment->getVerticalPositions()[$i];
+
+            // Legalább 0 kell legyen, abban az esetben, ha a főmegoldás egy betűjéhez van hozzárendelve a szó első betűje
+            $startXPos = $mainWordXPos - $intersectionPos;
+
             $crosswordClue = new CrosswordClue(
                 definition: $word->getDefinition(),
                 solution: $word->getSolution(),
                 direction: Direction::HORIZONTAL,
-                y_pos: $assignment->getVerticalPositions()[$i],
-                intersection_pos: $assignment->getHorizontalPositions()[$i],
+                x_pos: $startXPos,
+                y_pos: $yPos,
+                intersection_pos: $intersectionPos,
             );
 
             $crosswordClues[] = $crosswordClue;
@@ -128,123 +148,34 @@ class SimpleCrossword extends Crossword {
      */
     public function generateGrid(): array
     {
-        $width = $this->getMinCrosswordWidth();
+        $words = $this->getWords();
+        $mainWord = $this->getMainSolution();
 
-        $grid = [];
-
-        $mainWordPos = $width / 2;
-
-
-        foreach ($this->getWords() as $word) {
-            $grid[] = $this->generateRow($word, $mainWordPos, $width);
-        }
-
-        return $this->trimGrid($grid);
-    }
-
-    /**
-     * Visszadja a rejtvény minimum szélességét (a legszélesebb szó kétszerese)
-     * Ha páros, akkor hozzáadunk egyet, hogy a közepére tehessük a főmegoldást
-     *
-     * @return int
-     */
-    public function getMinCrosswordWidth(): int
-    {
+        $height = $mainWord->getLength();
         $width = 0;
-        foreach ($this->getWords() as $word) {
-            if ($word->getLength() * 2 > $width) {
-                $width = $word->getLength() * 2;
+
+        // Kiszámoljuk a rács szélességét, hogy elférjenek benne a szavak
+        foreach ($words as $word) {
+            $wordEndX = $word->getXPos() + $word->getLength();
+            if ($wordEndX > $width) {
+                $width = $wordEndX;
             }
         }
 
-        if ($width % 2 === 0) {
-            $width++;
-        }
+        $this->setWidth($width);
+        $this->setHeight($height);
 
-        return $width;
-    }
+        $grid = array_fill(0, $height, array_fill(0, $width, '#'));
 
-    /**
-     * Feltölti a sorokat az adott szó betűivel
-     *
-     * @param CrosswordClue $word
-     * @param int $mainWordPos
-     * @param int $width
-     * @return array
-     */
-    public function generateRow(CrosswordClue $word, int $mainWordPos, int $width): array
-    {
-        $row = array_fill(0, $width, '#');
-        $letters = mb_str_split(mb_strtoupper($word->getSolution()));
-        $matchingPos = $word->getIntersectionPos();
-
-        // Különválasztjuk a metszet előtti betűket és a metszet utáni betűket,
-        // Hogy könnyebben megtaláljuk a pozíciójukat az adott sorban
-        $lettersBeforeIntersection = array_slice($letters, 0, $matchingPos);
-        $lettersAfterIntersection = array_slice($letters, $matchingPos);
-
-        // A sor elejétől elindulunk a közepéig
-        for ($i = 0; $i < $mainWordPos; $i++) {
-            // Ha az adott pozíciónktól a metszetig tartó betűk pont elérnék a főmegoldás pozícióit
-            // Akkor feltöltjük a főmegoldásig a szó előtte lévő betűivel
-            if ($i + count($lettersBeforeIntersection) === $mainWordPos) {
-                foreach ($lettersBeforeIntersection as $letter) {
-                    $row[$i] = $letter;
-                    $i++;
-                }
-                break;
+        foreach ($words as $word) {
+            foreach ($word->getCells() as $cell) {
+                $grid[$cell['row']][$cell['col']] = $cell['letter'];
             }
         }
 
-        // Utána csak végigmegyünk a szó maradék betűin a főmegoldás pozíciójától és beletesszük a sorba őket
-        foreach ($lettersAfterIntersection as $letterIndex => $letter) {
-            $row[$mainWordPos + $letterIndex] = $letter;
+        foreach ($mainWord->getCells() as $cell) {
+            $grid[$cell['row']][$cell['col']] = $cell['letter'];
         }
-
-        return $row;
-    }
-
-    /**
-     * Levágja a rácsnak a szélén lévő oszlopokat, hogyha azokban egyetlen betű sem szerepel
-     * 
-     * @param array $grid
-     * @return array
-     */
-    public function trimGrid(array $grid): array
-    {
-        // Végigmegyünk az oszlopokon, megnézve, hogy szerepel-e benne bármilyen betű
-        // Ha nincs egy sem, akkor levágjuk az egész oszlopot
-        $currentCol = 0;
-        $width = $this->getMinCrosswordWidth();
-        for ($i = 0; $i < $width; $i++) {
-            $hasLetter = false;
-            foreach ($grid as $row) {
-                if ($row[$currentCol] !== '#') {
-                    $hasLetter = true;
-                    // Ha van betű az oszlopban, akkor továbblépünk a következő oszlopra
-                    $currentCol++;
-                    break;
-                }
-            }
-
-            if (!$hasLetter) {
-                // Levágjuk az oszlopot
-                foreach ($grid as &$row) {
-                    array_splice($row, $currentCol, 1);
-                }
-                // Visszalépünk egyet, mivel egyel rövidebbek lettek a sorok
-                $i--;
-            }
-
-            // Ha végigértünk az oszlopokon, akkor kilépünk a ciklusból
-            if ($currentCol >= count($grid[0])) {
-                break;
-            }
-        }
-
-        // Beállítjuk a rács szélességét és magasságát a levágott rács alapján
-        $this->setHeight(count($grid));
-        $this->setWidth(count($grid[0]));
 
         return $grid;
     }
