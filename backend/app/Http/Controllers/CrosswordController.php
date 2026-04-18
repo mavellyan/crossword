@@ -7,6 +7,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Direction;
+use App\Http\Resources\CrosswordResource;
 use App\Services\ScandinavianCrosswordGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -93,12 +94,7 @@ class CrosswordController extends Controller
 
         return response()->json([
             'success' => true,
-            'crossword' => [
-                'id' => 1,
-                'main_solution' => $main_word->getSolution(),
-                'grid' => $grid,
-                'words' => $crossword->getWordsForApi(),
-            ],
+            'crossword' => new CrosswordResource($crossword),
         ]);
     }
 }

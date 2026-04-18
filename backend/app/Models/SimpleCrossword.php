@@ -10,7 +10,7 @@ class SimpleCrossword extends Crossword {
     /**
      * Beállítja a rejtvény szavait, levizsgálva, hogy lehetséges-e belőlük rejtvényt alkotni
      *
-     * @param array $words
+     * @param array<Clue> $words
      * @return void
      * @throws Exception
      */
@@ -25,23 +25,18 @@ class SimpleCrossword extends Crossword {
             throw new Exception("Nem egyezik a szavak száma és a főmegoldás hossza!");
         }
 
-        foreach ($words as $word) {
-            if (!$word instanceof Clue) {
-                throw new Exception("A tömbbe bekerült valami, ami nem Clue típusú?");
-            }
-        }
-
         $main_letters = mb_str_split(mb_strtoupper($this->getMainSolution()->getSolution()));
 
         $assignment = $this->canAssignWordsToLetters($main_letters, $words);
 
-        if (!$assignment->isValid()) {
+        if (!$assignment->valid) {
             throw new Exception("A megadott szavakból nem állítható össze rejtvény!");
         }
 
         // Kiszámoljuk a legnagyobb balra eső eltolást, hogy a főmegoldás betűi középre kerüljenek a rejtvényben
+        // Ez alapján állítjuk be a főmegoldás vízszintes pozícióját, a többi szó pozíciója pedig ehhez képest lesz meghatározva
         $maxLeftOffset = 0;
-        foreach ($assignment->getHorizontalPositions() as $intersectionIndex) {
+        foreach ($assignment->horizontal_positions as $intersectionIndex) {
             if ($intersectionIndex > $maxLeftOffset) {
                 $maxLeftOffset = $intersectionIndex;
             }
@@ -53,8 +48,8 @@ class SimpleCrossword extends Crossword {
 
         $crosswordClues = [];
         foreach ($words as $i => $word) {
-            $intersectionPos = $assignment->getHorizontalPositions()[$i];
-            $yPos = $assignment->getVerticalPositions()[$i];
+            $intersectionPos = $assignment->horizontal_positions[$i];
+            $yPos = $assignment->vertical_positions[$i];
 
             // Legalább 0 kell legyen, abban az esetben, ha a főmegoldás egy betűjéhez van hozzárendelve a szó első betűje
             $startXPos = $mainWordXPos - $intersectionPos;
@@ -84,7 +79,7 @@ class SimpleCrossword extends Crossword {
      * Azaz, minden főmegoldás betűhöz tartozik 1 megoldás, amik megfejtésével végül kijön majd a főmegoldás
      *
      * @param array $letters
-     * @param array $words
+     * @param array<Clue> $words
      * @param int $letterIndex
      * @param array $usedWordIndexes
      * @param array $verticalPositions
@@ -132,7 +127,7 @@ class SimpleCrossword extends Crossword {
 
                 $result = $this->canAssignWordsToLetters($letters, $words, $letterIndex + 1, $newUsed, $newVertical, $newHorizontal);
 
-                if ($result->isValid()) {
+                if ($result->valid) {
                     return $result;
                 }
             }
@@ -178,27 +173,5 @@ class SimpleCrossword extends Crossword {
         }
 
         return $grid;
-    }
-
-    /**
-     * Előkészíti a szavakat az API válaszhoz, megadva a definíciójukat, megoldásukat, pozíciójukat, irányukat
-     * Valamint a benne szereplő betűk pozícióját a rejtvényen belül, hogy megkönnyítse a rácsban való elhelyezésüket
-     * 
-     * @return array
-     */
-    public function getWordsForApi(): array
-    {
-        $wordsForApi = [];
-        foreach ($this->getWords() as $word) {
-            $wordsForApi[] = [
-                'definition' => $word->getDefinition(),
-                'solution' => $word->getSolution(),
-                'x_pos' => $word->getXPos(),
-                'y_pos' => $word->getYPos(),
-                'direction' => $word->getDirection(),
-                'cells' => $word->getCells(),
-            ];
-        } 
-        return $wordsForApi;
     }
 }

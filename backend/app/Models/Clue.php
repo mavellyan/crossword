@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-// TODO: Refaktorálni az egészet, átnevezni Clue-ra, alosztályt csinálni Crossword Clue néven
-// TODO: Pozíciókat pl. fixen ki kell innen szedni, is_main-t is, ezek mind crossword specifikus dolgok, nem generikus szó dolgok
 class Clue {
     /**
      * A megoldás hossza
