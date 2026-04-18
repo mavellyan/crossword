@@ -8,6 +8,7 @@ use App\Models\Clue;
 use Illuminate\Console\Command;
 use App\Services\CrosswordGenerator;
 use Exception;
+use App\Enums\Direction;
 
 class TestGenerator extends Command
 {
@@ -82,7 +83,7 @@ class TestGenerator extends Command
 
         //$main_word = new Word('main_solution', self::$main_solution);
 
-        $main_word = new CrosswordClue('main_solution', 'piros');
+        $main_word = new CrosswordClue('main_solution', 'piros', Direction::VERTICAL);
         $crossword = new SimpleCrossword($main_word);
 
         try {

@@ -36,6 +36,44 @@
         </div>
     </div>
 </div>
+<div style="text-align: center; margin: 100px;">Ideiglenes elválasztó</div>
+<div class="layout justify-content-center">
+    <div v-if="grid !== null" class="grid">
+        <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="grid-row">
+            <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">
+                <div v-if="cell === '#'" class="black"></div>
+                <input
+                    v-else
+                    type="text"
+                    maxlength="1"
+                    class="input"
+                    :class="{
+                        'active-row': activeRow === rowIndex,
+                        'correct': correctCells[rowIndex][cellIndex],
+                        'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
+                    }"
+                    :disabled="correctCells[rowIndex][cellIndex]"
+                    name="cell"
+                    v-model="userGrid[rowIndex][cellIndex]"
+                    :ref="el => setInputRef(el, rowIndex, cellIndex)"
+                    @input="handleInput(rowIndex, cellIndex)"
+                    @keydown="handleKeydown($event, rowIndex, cellIndex)"
+                    @click="setActiveRow(rowIndex)"
+                />
+            </div>
+        </div>
+    </div>
+    <div v-if="definitions !== null" class="definitions">
+        <h3>Definíciók</h3>
+        <div v-for="(definition, index) in definitions" :key="index"
+            class="definition"
+            :class="{ 'active-row': activeRow === index}"
+            @click="setActiveRow(index, true)"
+        >
+        <strong>{{ index+1 }}.</strong> {{ definition }}
+        </div>
+    </div>
+</div>
 </template>
 
 <script>

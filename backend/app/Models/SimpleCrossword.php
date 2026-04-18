@@ -44,8 +44,8 @@ class SimpleCrossword extends Crossword {
                 definition: $word->getDefinition(),
                 solution: $word->getSolution(),
                 direction: Direction::HORIZONTAL,
-                x_pos: $assignment->getHorizontalPositions()[$i],
                 y_pos: $assignment->getVerticalPositions()[$i],
+                intersection_pos: $assignment->getHorizontalPositions()[$i],
             );
 
             $crosswordClues[] = $crosswordClue;
@@ -176,7 +176,7 @@ class SimpleCrossword extends Crossword {
     {
         $row = array_fill(0, $width, '#');
         $letters = mb_str_split(mb_strtoupper($word->getSolution()));
-        $matchingPos = $word->getXPos();
+        $matchingPos = $word->getIntersectionPos();
 
         // Különválasztjuk a metszet előtti betűket és a metszet utáni betűket,
         // Hogy könnyebben megtaláljuk a pozíciójukat az adott sorban
@@ -241,6 +241,11 @@ class SimpleCrossword extends Crossword {
                 break;
             }
         }
+
+        // Beállítjuk a rács szélességét és magasságát a levágott rács alapján
+        $this->setHeight(count($grid));
+        $this->setWidth(count($grid[0]));
+
         return $grid;
     }
 

@@ -21,12 +21,24 @@ abstract class Crossword {
     private bool $is_solved;
 
     /**
+     * @var int
+     */
+    private int $width;
+
+    /**
+     * @var int
+     */
+    private int $height;
+
+    /**
      * @param CrosswordClue $main_solution
      */
     public function __construct(CrosswordClue $main_solution) {
         $this->main_solution = $main_solution;
         $this->words = [];
         $this->is_solved = false;
+        $this->width = 0;
+        $this->height = 0;
     }
 
     /**
@@ -73,6 +85,36 @@ abstract class Crossword {
      */
     public function setIsSolved(bool $is_solved): void {
         $this->is_solved = $is_solved;
+    }
+
+    /**
+     * @param int $width
+     * @return void
+     */
+    public function setWidth(int $width): void {
+        $this->width = $width;
+    }
+
+    /**
+     * @param int $height
+     * @return void
+     */
+    public function setHeight(int $height): void {
+        $this->height = $height;
+    }
+
+    /**
+     * @return int
+     */
+    public function getWidth(): int {
+        return $this->width;
+    }
+
+    /**
+     * @return int
+     */
+    public function getHeight(): int {
+        return $this->height;
     }
 
     public abstract function generateGrid();

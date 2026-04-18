@@ -20,6 +20,13 @@ class CrosswordClue extends Clue {
     private int $y_pos;
 
     /**
+     * A megoldásban való metszéspozíciója, -1 esetén nincs metszés
+     * 
+     * @var int
+     */
+    private int $intersection_pos;
+
+    /**
      * Főmegoldás-e az adott szó
      *
      * @var bool
@@ -39,6 +46,7 @@ class CrosswordClue extends Clue {
     * @param Direction $direction
     * @param int $x_pos
     * @param int $y_pos
+    * @param int $intersection_pos
     * @param bool $is_main
     * @param ?string $topic
     */
@@ -48,12 +56,14 @@ class CrosswordClue extends Clue {
         Direction $direction,
         int $x_pos = -1,
         int $y_pos = -1,
+        int $intersection_pos = -1,
         bool $is_main = false,
         ?string $topic = null,
     ) {
         parent::__construct($definition, $solution, $topic);
         $this->x_pos = $x_pos;
         $this->y_pos = $y_pos;
+        $this->intersection_pos = $intersection_pos;
         $this->is_main = $is_main;
         $this->direction = $direction;
     }
@@ -86,6 +96,21 @@ class CrosswordClue extends Clue {
      */
     public function setYPos(int $y_pos): void {
         $this->y_pos = $y_pos;
+    }
+
+    /**
+    * @return int
+    */
+    public function getIntersectionPos(): int {
+        return $this->intersection_pos;
+    }
+
+    /**
+     * @param int $intersection_pos
+     * @return void
+     */
+    public function setIntersectionPos(int $intersection_pos): void {
+        $this->intersection_pos = $intersection_pos;
     }
 
     /**
@@ -137,7 +162,7 @@ class CrosswordClue extends Clue {
      * 
      * @return array
      */
-    public function getCells(): array
+    public function getCells(int $gridWidth): array
     {
         $cells = [];
         $solution = mb_strtoupper($this->getSolution());
