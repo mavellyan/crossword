@@ -1,84 +1,73 @@
 <template>
 <div class="layout justify-content-center">
-    <div v-if="grid !== null" class="grid">
-        <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="grid-row">
-            <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">
-                <div v-if="cell === '#'" class="black"></div>
-                <input
-                    v-else
-                    type="text"
-                    maxlength="1"
-                    class="input"
-                    :class="{
-                        'active-row': activeRow === rowIndex,
-                        'correct': correctCells[rowIndex][cellIndex],
-                        'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
-                    }"
-                    :disabled="correctCells[rowIndex][cellIndex]"
-                    name="cell"
-                    v-model="userGrid[rowIndex][cellIndex]"
-                    :ref="el => setInputRef(el, rowIndex, cellIndex)"
-                    @input="handleInput(rowIndex, cellIndex)"
-                    @keydown="handleKeydown($event, rowIndex, cellIndex)"
-                    @click="setActiveRow(rowIndex)"
-                />
-            </div>
-        </div>
+  <div v-if="grid !== null" class="grid">
+    <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="grid-row">
+      <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">
+        <div v-if="cell === '#'" class="black" />
+        <input
+          v-else
+          type="text"
+          maxlength="1"
+          class="input"
+          :class="{
+            'active-row': activeRow === rowIndex,
+            'correct': correctCells[rowIndex][cellIndex],
+            'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
+          }"
+          :disabled="correctCells[rowIndex][cellIndex]"
+          name="cell"
+          v-model="userGrid[rowIndex][cellIndex]"
+          :ref="el => setInputRef(el, rowIndex, cellIndex)"
+          @input="handleInput(rowIndex, cellIndex)"
+          @keydown="handleKeydown($event, rowIndex, cellIndex)"
+          @click="setActiveRow(rowIndex)"
+        />
+      </div>
     </div>
-    <div v-if="definitions !== null" class="definitions">
-        <h3>Definíciók</h3>
-        <div v-for="(definition, index) in definitions" :key="index"
-            class="definition"
-            :class="{ 'active-row': activeRow === index}"
-            @click="setActiveRow(index, true)"
-        >
-        <strong>{{ index+1 }}.</strong> {{ definition }}
-        </div>
+  </div>
+  <div v-if="definitions !== null" class="definitions">
+    <h3>Definíciók</h3>
+    <div v-for="(definition, index) in definitions" :key="index"
+      class="definition"
+      :class="{ 'active-row': activeRow === index}"
+      @click="setActiveRow(index, true)"
+    >
+      <strong>{{ index+1 }}.</strong> {{ definition }}
     </div>
+  </div>
 </div>
+
 <div style="text-align: center; margin: 100px;">Ideiglenes elválasztó</div>
-<div class="layout justify-content-center">
-    <div v-if="grid !== null" class="grid">
-        <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="grid-row">
-            <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">
-                <div v-if="cell === '#'" class="black"></div>
-                <input
-                    v-else
-                    type="text"
-                    maxlength="1"
-                    class="input"
-                    :class="{
-                        'active-row': activeRow === rowIndex,
-                        'correct': correctCells[rowIndex][cellIndex],
-                        'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
-                    }"
-                    :disabled="correctCells[rowIndex][cellIndex]"
-                    name="cell"
-                    v-model="userGrid[rowIndex][cellIndex]"
-                    :ref="el => setInputRef(el, rowIndex, cellIndex)"
-                    @input="handleInput(rowIndex, cellIndex)"
-                    @keydown="handleKeydown($event, rowIndex, cellIndex)"
-                    @click="setActiveRow(rowIndex)"
-                />
-            </div>
-        </div>
+
+<div v-if="words !== null" class="layout justify-content-center">
+  <div class="grid">
+    <div v-for="(word, wordIndex) in words" :key="wordIndex" class="grid-row">
+      <div v-for="(cell, cellIndex) in getCellsForWord(word)" :key="cellIndex" class="cell">
+        <div v-if="cell === ''" class="black" />
+        <CrosswordCell
+          v-else
+          :letter="cell"
+          :is-correct="false"
+          :is-disabled="false"
+          class="input"
+          @input="handleCellInput($event)"
+        />
+      </div>
     </div>
-    <div v-if="definitions !== null" class="definitions">
-        <h3>Definíciók</h3>
-        <div v-for="(definition, index) in definitions" :key="index"
-            class="definition"
-            :class="{ 'active-row': activeRow === index}"
-            @click="setActiveRow(index, true)"
-        >
-        <strong>{{ index+1 }}.</strong> {{ definition }}
-        </div>
-    </div>
+  </div>
 </div>
 </template>
 
 <script>
+import CrosswordRow from './CrosswordRow.vue';
+import CrosswordCell from './CrosswordCell.vue';
+
 export default {
     name: 'CrosswordGrid',
+    components: {
+      CrosswordRow,
+      CrosswordCell,
+    },
     props: {
       grid: {
         type: Array,
@@ -90,6 +79,14 @@ export default {
       },
       main_solution: {
         type: String,
+        required: true,
+      },
+      width: {
+        type: Number,
+        required: true,
+      },
+      height: {
+        type: Number,
         required: true,
       },
     },
@@ -104,6 +101,7 @@ export default {
       }
     },
     created() {
+      console.log(this.grid)
       this.userGrid = this.grid.map(row => row.map(cell => cell === '#' ? '#' : ''))
       this.correctCells = this.grid.map(row => row.map(() => false))
 
@@ -112,6 +110,19 @@ export default {
         this.definitions.push(word.definition)
         this.solutions.push(word.solution)
       })
+    },
+    computed: {
+      getCellsForWord() {
+        return (word) => {
+          const cells = Array(this.width).fill('')
+
+          word.cells.forEach(cell => {
+            cells[cell.col] = cell.letter
+          })
+
+          return cells
+        }
+      }
     },
     methods: {
     /**
@@ -272,7 +283,10 @@ export default {
           this.correctCells[rowIndex][cellIndex] = false
         }
       })
-    }
+    },
+    handleCellInput($event) {
+      console.log('Cell input:', $event.target.value)
+    },
   },
 }
 </script>

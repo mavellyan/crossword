@@ -73,7 +73,7 @@ class CrosswordController extends Controller
             $test_words[] = $test_word;
         }
 
-        $main_word = new CrosswordClue('main_solution', 'piros', Direction::VERTICAL);
+        $main_word = new CrosswordClue('main_solution', 'piros', Direction::VERTICAL, true);
         $crossword = new SimpleCrossword($main_word);
         $grid = null;
 

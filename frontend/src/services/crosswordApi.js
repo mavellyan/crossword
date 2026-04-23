@@ -5,7 +5,7 @@ export async function fetchCrosswordById(id) {
 
   const crossword = response?.data?.crossword
 
-  if (!crossword || !Array.isArray(crossword.grid) || !Array.isArray(crossword.definitions)) {
+  if (!crossword || !Array.isArray(crossword.grid)) {
     throw new Error('Invalid crossword payload from API')
   }
 

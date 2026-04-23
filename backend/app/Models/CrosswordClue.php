@@ -54,10 +54,10 @@ class CrosswordClue extends Clue {
         string $definition,
         string $solution,
         Direction $direction,
+        bool $is_main = false,
         int $x_pos = -1,
         int $y_pos = -1,
         int $intersection_pos = -1,
-        bool $is_main = false,
         ?string $topic = null,
     ) {
         parent::__construct($definition, $solution, $topic);
