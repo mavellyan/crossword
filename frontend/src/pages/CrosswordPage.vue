@@ -28,12 +28,28 @@ export default {
     }
   },
   computed: {
+    /**
+     * Elérhetővé teszi a crossword Pinia store-t az oldal számára.
+     *
+     * @returns {import('../stores/crossword').useCrosswordStore}
+     */
     store() {
       return useCrosswordStore()
     }
   },
-  mounted() {
-    this.store.loadCrossword(this.id)
+  watch: {
+    id: {
+      immediate: true,
+      /**
+       * Újratölti a rejtvény adatait, amikor változik a route id.
+       *
+       * @param {string} newId Az új route paraméter érték.
+       * @returns {void}
+       */
+      handler(newId) {
+        this.store.loadCrossword(newId)
+      },
+    },
   },
 }
 </script>

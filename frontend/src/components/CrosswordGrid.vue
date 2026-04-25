@@ -1,291 +1,351 @@
 <template>
-<div class="layout justify-content-center">
-  <div v-if="grid !== null" class="grid">
-    <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="grid-row">
-      <div v-for="(cell, cellIndex) in row" :key="cellIndex" class="cell">
-        <div v-if="cell === '#'" class="black" />
-        <input
-          v-else
-          type="text"
-          maxlength="1"
-          class="input"
-          :class="{
-            'active-row': activeRow === rowIndex,
-            'correct': correctCells[rowIndex][cellIndex],
-            'incorrect': !correctCells[rowIndex][cellIndex] && !userGrid[rowIndex].includes('')
-          }"
-          :disabled="correctCells[rowIndex][cellIndex]"
-          name="cell"
-          v-model="userGrid[rowIndex][cellIndex]"
-          :ref="el => setInputRef(el, rowIndex, cellIndex)"
-          @input="handleInput(rowIndex, cellIndex)"
-          @keydown="handleKeydown($event, rowIndex, cellIndex)"
-          @click="setActiveRow(rowIndex)"
-        />
+  <div v-if="words !== null" class="layout justify-content-center">
+    <div class="grid">
+      <div
+        v-for="(word, wordIndex) in words"
+        :key="wordIndex"
+        class="grid-row"
+        :class="{ 'active-row': store.activeWordIndex === wordIndex }"
+      >
+        <div
+          v-for="(cell, visibleCellIndex) in getCellsForWord(word)"
+          :key="visibleCellIndex"
+          class="cell"
+        >
+          <div v-if="cell.type === 'black'" class="black" />
+          <CrosswordCell
+            v-else
+            class="input"
+            :model-value="getCellValue(wordIndex, cell.cellIndex)"
+            :is-correct="isWordCorrect(wordIndex)"
+            :is-row-filled="isWordFilled(wordIndex)"
+            :ref="(el) => setInputRef(el, wordIndex, cell.cellIndex)"
+            @update:modelValue="(value) => handleCellInput(wordIndex, cell.cellIndex, value)"
+            @keydown="(event) => handleKeydown(event, wordIndex, cell.cellIndex)"
+            @click="setActiveWordAndCell(wordIndex, cell.cellIndex)"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="definitions">
+      <h3>Definiciok</h3>
+      <div
+        v-for="(word, index) in words"
+        :key="index"
+        class="definition"
+        :class="{ 'active-row': store.activeWordIndex === index }"
+        @click="handleDefinitionClick(index)"
+      >
+        <strong>{{ index + 1 }}.</strong> {{ word.definition }}
       </div>
     </div>
   </div>
-  <div v-if="definitions !== null" class="definitions">
-    <h3>Definíciók</h3>
-    <div v-for="(definition, index) in definitions" :key="index"
-      class="definition"
-      :class="{ 'active-row': activeRow === index}"
-      @click="setActiveRow(index, true)"
-    >
-      <strong>{{ index+1 }}.</strong> {{ definition }}
-    </div>
-  </div>
-</div>
-
-<div style="text-align: center; margin: 100px;">Ideiglenes elválasztó</div>
-
-<div v-if="words !== null" class="layout justify-content-center">
-  <div class="grid">
-    <div v-for="(word, wordIndex) in words" :key="wordIndex" class="grid-row">
-      <div v-for="(cell, cellIndex) in getCellsForWord(word)" :key="cellIndex" class="cell">
-        <div v-if="cell === ''" class="black" />
-        <CrosswordCell
-          v-else
-          :letter="cell"
-          :is-correct="false"
-          :is-disabled="false"
-          class="input"
-          @input="handleCellInput($event)"
-        />
-      </div>
-    </div>
-  </div>
-</div>
 </template>
 
 <script>
-import CrosswordRow from './CrosswordRow.vue';
-import CrosswordCell from './CrosswordCell.vue';
+import { useCrosswordStore } from '../stores/crossword'
+import CrosswordCell from './CrosswordCell.vue'
 
 export default {
-    name: 'CrosswordGrid',
-    components: {
-      CrosswordRow,
-      CrosswordCell,
+  name: 'CrosswordGrid',
+  components: {
+    CrosswordCell,
+  },
+  props: {
+    grid: {
+      type: Array,
+      required: true,
     },
-    props: {
-      grid: {
-        type: Array,
-        required: true,
-      },
-      words: {
-        type: Object,
-        required: true,
-      },
-      main_solution: {
-        type: String,
-        required: true,
-      },
-      width: {
-        type: Number,
-        required: true,
-      },
-      height: {
-        type: Number,
-        required: true,
-      },
+    words: {
+      type: Array,
+      required: true,
     },
-    data() {
-      return {
-        userGrid: [],
-        correctCells: [],
-        inputRefs: {},
-        activeRow: null,
-        definitions: [],
-        solutions: [],
-      }
+    main_solution: {
+      type: String,
+      required: false,
+      default: '',
     },
-    created() {
-      console.log(this.grid)
-      this.userGrid = this.grid.map(row => row.map(cell => cell === '#' ? '#' : ''))
-      this.correctCells = this.grid.map(row => row.map(() => false))
+    width: {
+      type: Number,
+      required: true,
+    },
+    height: {
+      type: Number,
+      required: true,
+    },
+  },
+  data() {
+    return {
+      inputRefs: {},
+    }
+  },
+  computed: {
+    /**
+     * Központi rejtvény játékállapotot ad a komponensnek.
+     *
+     * @returns {import('../stores/crossword').useCrosswordStore}
+     */
+    store() {
+      return useCrosswordStore()
+    },
+  },
+  methods: {
+    /**
+     * Egy szóhoz vizuális sort épít a teljes grid szélesség használatával.
+     * A nem használt oszlopok fekete cellaként jelennek meg.
+     *
+     * @param {{ cells: Array<{ col: number }> }} word API-ból érkező szó payload.
+     * @returns {Array<{ type: 'black'|'input', cellIndex: number|null }>} Cella leírók a rendereléshez.
+     */
+    getCellsForWord(word) {
+      const cells = Array.from({ length: this.width }, () => ({ type: 'black', cellIndex: null }))
 
-      
-      this.words.forEach(word => {
-        this.definitions.push(word.definition)
-        this.solutions.push(word.solution)
+      word.cells.forEach((cell, cellIndex) => {
+        cells[cell.col] = {
+          type: 'input',
+          cellIndex,
+        }
       })
-    },
-    computed: {
-      getCellsForWord() {
-        return (word) => {
-          const cells = Array(this.width).fill('')
 
-          word.cells.forEach(cell => {
-            cells[cell.col] = cell.letter
-          })
-
-          return cells
-        }
-      }
-    },
-    methods: {
-    /**
-     * Beállítja a cellák input elemeinek a referenciáit, így később könnyen hozzáférhetünk és fókuszálhatunk rájuk
-     * 
-     * @param el 
-     * @param rowIndex 
-     * @param cellIndex 
-     */
-    setInputRef(el, rowIndex, cellIndex) {
-      if (!el) return
-
-      this.inputRefs[`${rowIndex}-${cellIndex}`] = el
+      return cells
     },
     /**
-     * Kezeli a cellákba való beírást, nagybetűssé alakítja a karaktereket, és automatikusan a következő cellára helyezi a fókuszt
-     * 
-     * @param rowIndex 
-     * @param cellIndex 
+     * Kiolvassa egy szó adott cellájának aktuális felhasználói értékét.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @param {number} cellIndex A cella indexe a szóban.
+     * @returns {string} Az aktuális cella értéke.
      */
-    handleInput(rowIndex, cellIndex) {
-      let val = this.userGrid[rowIndex][cellIndex]
-
-      if (!val) {
+    getCellValue(wordIndex, cellIndex) {
+      return this.store.wordInputs[wordIndex]?.[cellIndex] ?? ''
+    },
+    /**
+     * Visszaadja, hogy egy szó minden cellája ki van-e töltve.
+     * A Boolean wrapper akkor is szigorúan boolean értéket ad, ha hiányzik a state.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @returns {boolean} True, ha a szó teljesen ki van töltve.
+     */
+    isWordFilled(wordIndex) {
+      return Boolean(this.store.wordStatus[wordIndex]?.filled)
+    },
+    /**
+     * Visszaadja, hogy az adott szó jelenleg helyesre van-e validálva.
+     * A Boolean wrapper akkor is szigorúan boolean értéket ad, ha hiányzik a state.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @returns {boolean} True, ha a szó helyes.
+     */
+    isWordCorrect(wordIndex) {
+      return Boolean(this.store.wordStatus[wordIndex]?.correct)
+    },
+    /**
+     * Visszaadja a szó karakterszámú cellahosszát.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @returns {number} A szerkeszthető cellák száma a szóban.
+     */
+    getWordLength(wordIndex) {
+      return this.words?.[wordIndex]?.cells?.length ?? 0
+    },
+    /**
+     * Eltárolja a komponens refeket, hogy később konkret szó/cella párra lehessen fókuszálni.
+     *
+     * @param {unknown} el Komponens példány vagy DOM elem.
+     * @param {number} wordIndex A szó indexe.
+     * @param {number} cellIndex A cella indexe.
+     * @returns {void}
+     */
+    setInputRef(el, wordIndex, cellIndex) {
+      if (!el) {
         return
       }
 
-      val = val.slice(0, 1).toUpperCase()
-      this.userGrid[rowIndex][cellIndex] = val
-
-      this.focusNext(rowIndex, cellIndex)
-
-      if (!this.userGrid[rowIndex].includes('')) {
-        this.checkCompletion(rowIndex)
-      }
+      this.inputRefs[`${wordIndex}-${cellIndex}`] = el
     },
     /**
-     * Kezeli a billentyűleütéseket a cellákban, lehetővé téve a Backspace és a nyílbillentyűk használatát a navigációhoz
-     * 
-     * @param event 
-     * @param rowIndex 
-     * @param cellIndex 
+     * Egyszerre frissíti az aktív szót es az aktív cellát a store állapotban.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @param {number} cellIndex A cella indexe.
+     * @returns {void}
      */
-    handleKeydown(event, rowIndex, cellIndex) {
-      if (event.key === 'Backspace' && !this.userGrid[rowIndex][cellIndex]) {
-        this.focusPrev(rowIndex, cellIndex)
-      }
-
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        this.focusNext(rowIndex, cellIndex)
-      }
-
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        this.focusPrev(rowIndex, cellIndex)
-      }
-
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        this.focusNext(rowIndex, cellIndex, 'down')
-      }
-
-      if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        this.focusPrev(rowIndex, cellIndex, 'up')
-      }
+    setActiveWordAndCell(wordIndex, cellIndex) {
+      this.store.setActiveWord(wordIndex)
+      this.store.setActiveCellInWord(wordIndex, cellIndex)
     },
     /**
-     * Lefelé vagy jobbra helyezi a fókuszt a következő cellára, kihagyva a fekete cellákat
-     * 
-     * @param rowIndex 
-     * @param cellIndex 
-     * @param direction 
+     * Ref alapján fókuszál egy konkrét input cellára.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @param {number} cellIndex A cella indexe.
+     * @returns {void}
      */
-    focusNext(rowIndex, cellIndex, direction = 'right') {
-      if (direction === 'down') {
-        let nextRow = rowIndex + 1
+    focusCell(wordIndex, cellIndex) {
+      this.setActiveWordAndCell(wordIndex, cellIndex)
 
-        while (nextRow < this.grid.length) {
-          if (this.grid[nextRow][cellIndex] !== '#') {
-            this.inputRefs[`${nextRow}-${cellIndex}`]?.focus()
-            this.setActiveRow(nextRow)
-            return
-          }
-          nextRow++
-        }
-
-        return
-      } 
-
-      let nextCol = cellIndex + 1
-
-        while (nextCol < this.grid[rowIndex].length) {
-          if (this.grid[rowIndex][nextCol] !== '#') {
-            this.inputRefs[`${rowIndex}-${nextCol}`]?.focus()
-            return
-          }
-          nextCol++
-        }
-    },
-    /**
-     * Felfelé vagy balra helyezi a fókuszt az előző cellára, kihagyva a fekete cellákat
-     * 
-     * @param rowIndex 
-     * @param cellIndex 
-     * @param direction 
-     */
-    focusPrev(rowIndex, cellIndex, direction = 'left') {
-      if (direction === 'up') {
-        let prevRow = rowIndex - 1
-
-        while (prevRow >= 0) {
-          if (this.grid[prevRow][cellIndex] !== '#') {
-            this.inputRefs[`${prevRow}-${cellIndex}`]?.focus()
-            this.setActiveRow(prevRow)
-            return
-          }
-          prevRow--
-        }
-
+      const ref = this.inputRefs[`${wordIndex}-${cellIndex}`]
+      if (!ref) {
         return
       }
 
-      let prevCol = cellIndex - 1
+      if (typeof ref.focus === 'function') {
+        ref.focus()
+        return
+      }
 
-      while (prevCol >= 0) {
-        if (this.grid[rowIndex][prevCol] !== '#') {
-          this.inputRefs[`${rowIndex}-${prevCol}`]?.focus()
+      if (typeof ref?.$el?.focus === 'function') {
+        ref.$el.focus()
+      }
+    },
+    /**
+     * Kiszámolja, melyik cellára kell fókuszálni definícióra kattintás után.
+     * Az első üres cellát választja, különben az elsőt, és kihagyja a már teljesen megoldott szavakat.
+     *
+     * @param {number} wordIndex A kattintott szó indexe.
+     * @returns {number|null} Cella index célpont, vagy null, ha nem kell fókusz.
+     */
+    getDefinitionFocusTarget(wordIndex) {
+      if (this.isWordCorrect(wordIndex)) {
+        return null
+      }
+
+      const inputs = this.store.wordInputs[wordIndex] ?? []
+      const firstEmptyIndex = inputs.findIndex((value) => value === '')
+
+      if (firstEmptyIndex !== -1) {
+        return firstEmptyIndex
+      }
+
+      return 0
+    },
+    /**
+     * Definíció kattintást kezel: aktiválja a szót es hasznos cellára viszi a fókuszt.
+     *
+     * @param {number} wordIndex A kattintott definíció indexe.
+     * @returns {void}
+     */
+    handleDefinitionClick(wordIndex) {
+      this.store.setActiveWord(wordIndex)
+      const targetCellIndex = this.getDefinitionFocusTarget(wordIndex)
+
+      if (targetCellIndex !== null) {
+        this.focusCell(wordIndex, targetCellIndex)
+      }
+    },
+    /**
+     * A fókuszt a következő cellára mozgatja ugyanabban a szóban.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @param {number} cellIndex Aktuális cella index.
+     * @returns {void}
+     */
+    focusNextInWord(wordIndex, cellIndex) {
+      const wordLength = this.getWordLength(wordIndex)
+      if (cellIndex >= wordLength - 1) {
+        return
+      }
+
+      this.focusCell(wordIndex, cellIndex + 1)
+    },
+    /**
+     * A fókuszt az előző cellára mozgatja ugyanabban a szóban.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @param {number} cellIndex Aktuális cella index.
+     * @returns {void}
+     */
+    focusPrevInWord(wordIndex, cellIndex) {
+      if (cellIndex <= 0) {
+        return
+      }
+
+      this.focusCell(wordIndex, cellIndex - 1)
+    },
+    /**
+     * A fókuszt relatív eltolással egy szomszédos szóra mozgatja.
+     *
+     * @param {number} wordIndex Aktuális szó index.
+     * @param {number} offset Relatív mozgás (-1 fel, +1 le).
+     * @returns {void}
+     */
+    focusWordByOffset(wordIndex, offset) {
+      const nextWordIndex = wordIndex + offset
+      if (nextWordIndex < 0 || nextWordIndex >= this.words.length) {
+        return
+      }
+
+      const targetCellIndex = this.getDefinitionFocusTarget(nextWordIndex)
+      if (targetCellIndex === null) {
+        this.store.setActiveWord(nextWordIndex)
+        return
+      }
+
+      this.focusCell(nextWordIndex, targetCellIndex)
+    },
+    /**
+     * Bemeneti értéket ír a store-ba, és ha kell, továbblépteti a fókuszt.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @param {number} cellIndex A cella indexe.
+     * @param {string} value Normalizált input érték.
+     * @returns {void}
+     */
+    handleCellInput(wordIndex, cellIndex, value) {
+      this.setActiveWordAndCell(wordIndex, cellIndex)
+      this.store.updateWordCell(wordIndex, cellIndex, value)
+
+      if (value && !this.isWordCorrect(wordIndex)) {
+        this.focusNextInWord(wordIndex, cellIndex)
+      }
+    },
+    /**
+     * Kezeli a billentyűzetes navigációt és a törlés viselkedést.
+     *
+     * @param {KeyboardEvent} event Cella billentyűzet esemény.
+     * @param {number} wordIndex Az aktív szó indexe.
+     * @param {number} cellIndex Az aktív cella indexe.
+     * @returns {void}
+     */
+    handleKeydown(event, wordIndex, cellIndex) {
+      const key = event.key
+
+      if (key === 'ArrowRight') {
+        event.preventDefault()
+        this.focusNextInWord(wordIndex, cellIndex)
+        return
+      }
+
+      if (key === 'ArrowLeft') {
+        event.preventDefault()
+        this.focusPrevInWord(wordIndex, cellIndex)
+        return
+      }
+
+      if (key === 'ArrowDown') {
+        event.preventDefault()
+        this.focusWordByOffset(wordIndex, 1)
+        return
+      }
+
+      if (key === 'ArrowUp') {
+        event.preventDefault()
+        this.focusWordByOffset(wordIndex, -1)
+        return
+      }
+
+      if (key === 'Backspace') {
+        event.preventDefault()
+
+        const currentValue = this.getCellValue(wordIndex, cellIndex)
+        if (currentValue) {
+          this.store.deleteWordCell(wordIndex, cellIndex)
           return
         }
-        prevCol--
-      }
-    },
-    /**
-     * Beállítja az aktív sort, amelyre a definíciók vonatkoznak, így vizuálisan is kiemelve azt, amelyiken éppen dolgozunk
-     * 
-     * @param rowIndex 
-     */
-    setActiveRow(rowIndex, definitionClick = false) {
-      this.activeRow = rowIndex
 
-      if (definitionClick) {
-        // Ha a definícióra kattintottunk, akkor az első cellára helyezzük a fókuszt
-        for (let cellIndex = 0; cellIndex < this.grid[rowIndex].length; cellIndex++) {
-          if (this.grid[rowIndex][cellIndex] !== '#') {
-            this.inputRefs[`${rowIndex}-${cellIndex}`]?.focus()
-            break
-          }
-        }
+        this.focusPrevInWord(wordIndex, cellIndex)
       }
-    },
-    checkCompletion(rowIndex) {
-      this.userGrid[rowIndex].map((cell, cellIndex) => {
-        if (cell !== '#' && cell === this.grid[rowIndex][cellIndex]) {
-          this.correctCells[rowIndex][cellIndex] = true
-        } else {
-          this.correctCells[rowIndex][cellIndex] = false
-        }
-      })
-    },
-    handleCellInput($event) {
-      console.log('Cell input:', $event.target.value)
     },
   },
 }
