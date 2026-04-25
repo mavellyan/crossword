@@ -2,35 +2,372 @@
   <div>
     <h1 class="text-center pb-5">Hozz létre saját rejtvényt!</h1>
     <div class="d-flex align-items-center justify-content-center">
-        <label>Mi legyen a rejtvényed főmegoldása?</label>
-        <input v-model="mainSolution" class="form-control w-auto mx-3 border border-primary border-2" maxlength="20" />
+        <label class="h3">Mi legyen a rejtvényed főmegoldása?</label>
+        <input
+            v-model="mainSolution"
+            class="form-control w-auto mx-3 border border-primary border-2 text-uppercase"
+            maxlength="20"
+            placeholder="pl: piros"
+            @input="mainSolution = mainSolution.toUpperCase()"
+          />
     </div>
-    <div v-if="hasMainSolution">
-
+    <p
+      v-if="hasMainSolution && !isMainSolutionValid"
+      class="text-muted mb-0 alert alert-danger w-75 mx-auto mt-3 text-center"
+    >
+      A főmegoldás csak a magyar ábécé betűit tartalmazhatja, számok, szóköz és egyéb speciális karakterek nélkül.
+    </p>
+    <div v-if="hasMainSolution && isMainSolutionValid" class="mt-5 d-flex align-items-start">
+      <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background align-items-center">
+        <h4 class="text-center mb-4">Így fog kinézni a rejtvényed:</h4>
+        <div v-for="(row, rowIndex) in previewRows"
+          :key="rowIndex"
+          class="d-flex justify-content-center"
+        >
+          <div v-for="(cell, cellIndex) in row"
+            :key="cellIndex"
+            class="preview-cell"
+            :class="{
+              'preview-cell-main': cell.type === 'main',
+              'preview-cell-black': cell.type === 'black',
+              'preview-cell-normal': cell.type === 'normal',
+            }"
+          >
+            {{ cell.letter }}
+          </div>
+        </div>
+      </div>
+      <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background">
+        <h4 class="text-center mb-4">Válaszd ki hozzá a szavakat:</h4>
+        <div v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex mb-2 align-items-center">
+          <select
+            v-model="selectedWords[charIndex]"
+            name="clue-select"
+            class="form-select w-auto border border-primary"
+            :disabled="!isMainSolutionValid"
+          >
+            <option :value="null">Válassz egy szót</option>
+            <option v-for="word in getWordsForCurrentLetter(char)" :value="word" :key="word.id">
+              {{ word.solution }}
+            </option>
+          </select>
+          <span
+            v-if="!wordExistsForLetter(char)"
+            class="text-muted mx-2"
+          >
+            Nem található szó ilyen betűvel.
+          </span>
+          <span
+            v-else
+            class="text-muted mx-2"
+          >
+            {{ getDefinitionForSelectedWord(selectedWords[charIndex]) }}
+          </span>
+        </div>
+      </div>
     </div>
+    <button
+      v-if="hasMainSolution && isMainSolutionValid"
+      type="button"
+      class="btn btn-primary d-block mx-auto mt-4"
+      :disabled="selectedWords.some(word => word === null)"
+      @click="console.log(selectedWords)"
+    >
+      Rejtvény létrehozása
+    </button>
   </div>
 </template>
 
 <script>
+import { getAllMockWords, getWordsForLetter } from '../services/creatorWords';
+
 export default {
   name: 'CrosswordCreator',
+  data() {
+    return {
+      mainSolution: '',
+      selectedWords: [],
+    }
+  },
   computed: {
+    /**
+     * Ellenőrzi, hogy ki van-e töltve a főmegoldás.
+     * 
+     * @returns {boolean} True, ha a főmegoldás nem üres és nem csak whitespace.
+     */
     hasMainSolution() {
       return this.mainSolution.trim().length > 0
     },
     /**
-     * A főmegoldás karaktereit egy tömbbé alakítja, hogy a CrosswordGrid komponens használni tudja.
+     * Normalizálja a főmegoldást nagybetűssé, hogy egységesen kezelhető legyen a validáció és a megjelenítés során.
+     * 
+     * @return {string} A normalizált főmegoldás nagybetűkkel.
+     */
+    normalizeMainSolution() {
+      return this.mainSolution.toUpperCase()
+    },
+    /**
+     * Ellenőrzi, hogy a főmegoldás csak érvényes karaktereket tartalmaz-e.
+     * Érvényesnek számít, ha csak a magyar ábécé betűit tartalmazza, számok, szóköz és egyéb speciális karakterek nélkül.
+     * 
+     * @return {boolean} True, ha a főmegoldás érvényes, false egyébként.
+     */
+    isMainSolutionValid() {
+      return /^[A-ZÁÉÍÓÖŐÚÜŰ]+$/.test(this.normalizeMainSolution)
+    },
+    /**
+     * A főmegoldás karaktereit egy tömbbé alakítja.
      *
      * @returns {string[]} A főmegoldás karakterei tömbben.
      */
-    mainSolutionArray() {
-      return this.mainSolution.split('')
+    mainSolutionChars() {
+      return this.normalizeMainSolution.split('')
+    },
+    /**
+     * Előnézetet készít a rejtvényről a főmegoldás és a kiválasztott szavak alapján.
+     * Kiszámolja, hogy a főmegoldás karaktereihez tartozó szavak hogyan helyezkednek el a rejtvényben
+     * Visszaad egy olyan struktúrát, ami megmutatja, hogy melyik cella milyen típusú (fő, normál vagy fekete) és milyen betűt tartalmaz.
+     * 
+     * @returns {Array<Array<{ letter: string, type: 'main' | 'normal' | 'black' }>>} A rejtvény előnézete cellákra bontva.
+     */
+    previewRows() {
+      // Végigmegyünk a főmegoldás összes betűjén és ezekből alkotunk sorokat
+      const rows = this.mainSolutionChars.map((mainLetter, rowIndex) => {
+        // Megnézzük, hogy van-e kiválasztott szó a jelenlegi betűhöz
+        const selectedWord = this.selectedWords[rowIndex]
+
+        // Ha nincs, akkor csak a főbetűt jelenítjük meg a sor közepén, a többi cella fekete lesz
+        if (!selectedWord) {
+          return {
+            mainLetter,
+            word: null,
+            mainLetterIndexInWord: 0,
+            lettersBeforeMain: 0,
+            lettersAfterMain: 0,
+          }
+        }
+
+        // Ha van kiválasztott szó, akkor megkeressük benne a főbetű helyét (a biztonság kedvéért nagybetűsítjük a megoldást)
+        const solution = selectedWord.solution.toUpperCase()
+        const mainLetterIndexInWord = solution.indexOf(mainLetter)
+
+        // Ha nincs benne a szóban a főbetű, akkor ugyanúgy jelenítjük meg, mintha nem lenne kiválasztott szó
+        // de érdemes lehet jelezni a felhasználónak, hogy ez egy érvénytelen választás lenne
+        // Elvileg nem lehetséges ilyet választani, de a biztonság kedvéért
+        if (mainLetterIndexInWord === -1) {
+          return {
+            mainLetter,
+            word: null,
+            mainLetterIndexInWord: 0,
+            lettersBeforeMain: 0,
+            lettersAfterMain: 0,
+          }
+        }
+
+        // Ha minden rendben van, akkor visszaadjuk a szükséges információkat a sor megjelenítéséhez
+        // Tartalmazza a főbetűt, a szót, a főbetű helyét a szóban, valamint hogy hány betű van a főbetű előtt és után, hogy ennek megfelelően tudjuk elhelyezni a cellákat
+        return {
+            mainLetter,
+            word: solution,
+            mainLetterIndexInWord,
+            lettersBeforeMain: mainLetterIndexInWord,
+            lettersAfterMain: solution.length - mainLetterIndexInWord - 1,
+          }
+      })
+
+      // Megnézzük a max betűszámot a főbetű előtt és után
+      const maxLettersBeforeMain = Math.max(0, ...rows.map(r => r.lettersBeforeMain))
+      const maxLettersAfterMain = Math.max(0, ...rows.map(r => r.lettersAfterMain))
+
+      // Majd ezek alapján kiszámoljuk a teljes szélességet és a főbetű oszlopindexét (kell +1 a főbetűnek, mivel az nincs se önmaga előtt, se önmaga után)
+      // A főmegoldás pedig ott helyezkedik el, ahol az előtte lévő szükséges hely véget ér
+      const totalWidth = maxLettersBeforeMain + 1 + maxLettersAfterMain
+      const mainColumnIndex = maxLettersBeforeMain
+
+      // A sorokat felbontjuk cellákra
+      return rows.map(r => {
+        const cells = []
+
+        for (let colIndex = 0; colIndex < totalWidth; colIndex++) {
+          // Ha az adott sorban nem szerepel szó, akkor csak a főmegoldás betűjét helyezzük el a megfelelő oszlopban, a többi cella fekete lesz
+          if (!r.word) {
+            cells.push({
+              letter: colIndex === mainColumnIndex ? r.mainLetter : '',
+              type: colIndex === mainColumnIndex ? 'main' : 'black',
+            })
+
+            continue
+          }
+
+          // Ha van szó, akkor kiszámoljuk, hogy melyik oszlopban kezdődjön ahhoz, hogy a főmegoldás a megfelelő oszlopba kerüljön
+          const wordStartColumn = mainColumnIndex - r.mainLetterIndexInWord
+          // Aztán megkeressük, hogy a jelenlegi oszlop a szó melyik betűjéhez tartozik
+          const wordLetterIndex = colIndex - wordStartColumn
+
+          // Ha az aktuális cella a szó határain kívül esik, akkor fekete cella lesz
+          // Például, ha a rács szélesebb, mint a szó, akkor a szó eleje vagy vége után fekete cellák következnek
+          if (wordLetterIndex < 0 || wordLetterIndex >= r.word.length) {
+            cells.push({
+              letter: '',
+              type: 'black'
+            })
+
+            continue
+          }
+
+          // Ha az aktuális cella a szó határain belül esik, akkor megjelenítjük a szó megfelelő betűjét
+          // és beállítjuk a cella típusát attól függően, hogy az főbetű-e vagy sem
+          cells.push({
+            letter: r.word[wordLetterIndex],
+            type: colIndex === mainColumnIndex ? 'main' : 'normal',
+          })
+        }
+
+        return cells
+      })
     },
   },
-  data() {
-    return {
-      mainSolution: ''
-    }
-  }
+  watch: {
+    /**
+     * Figyeli a főmegoldás változásait és frissíti a kiválasztott szavakat, hogy azok illeszkedjenek az új főmegoldáshoz.
+     * 
+     * @param newVal Az új főmegoldás
+     * @param oldVal A korábbi főmegoldás
+     */
+    mainSolution(newVal, oldVal) {
+      if (!this.isMainSolutionValid) {
+        // Ha a főmegoldás érvénytelen, töröljük a kiválasztott szavakat
+        this.selectedWords = []
+        return
+      }
+
+      const oldChars = oldVal.split('')
+      const newChars = newVal.split('')
+
+      this.selectedWords = this.matchSelectedWordsToMainSolution(oldChars, newChars, this.selectedWords)
+    },
+  },
+  methods: {
+    /**
+     * Visszaadja az adott betűhöz tartozó szavakat.
+     * 
+     * @param letter A főmegoldás adott betűje
+     * @return {Array<{ id: number, solution: string, definition: string }>} Az adott betűhöz tartozó szavak listája.
+     */
+    getWordsForCurrentLetter(letter) {
+      return getWordsForLetter(letter)
+    },
+    /**
+     * Visszaadja az összes szót, ami a rejtvénykészítőben elérhető.
+     * Ez jelenleg egy mock függvény, de később kicserélhető egy API hívásra, ha a backend támogatja majd a szavak lekérését.
+     * 
+     * @return {Array<{ id: number, solution: string, definition: string }>} Az összes elérhető szó listája.
+     */
+    getAllWords() {
+      return getAllMockWords()
+    },
+    /**
+     * Frissíti a kiválasztott szavakat, hogy azok illeszkedjenek az új főmegoldáshoz, miközben megőrzi a lehető legtöbb érvényes kiválasztást.
+     * Összehasonlítja a régi és új főmegoldás karaktereit, és ahol csak lehetséges, megtartja a korábban kiválasztott szavakat, amennyiben azok még mindig érvényesek az új karakterhez.
+     * 
+     * @param oldChars A korábbi főmegoldás betűi
+     * @param newChars Az új főmegoldás betűi
+     * @param oldSelectedWords A korábbi főmegoldáshoz kiválasztott szavak
+     * @return {Array<{ id: number, solution: string, definition: string } | null>} Az új főmegoldáshoz illeszkedő kiválasztott szavak listája, ahol a nem érvényes vagy új karakterhez tartozó szavak null értékűek.
+     */
+    matchSelectedWordsToMainSolution(oldChars, newChars, oldSelectedWords) {
+      const newSelectedWords = new Array(newChars.length).fill(null)
+
+      // Végigmegyünk a előlről és hátulról is, hogy megtaláljuk a közös prefixet és suffixet
+      // a régi és új főmegoldás között, és megőrizzük a kiválasztott szavakat ezeken a pozíciókon, amennyiben azok még mindig érvényesek.
+      let start = 0
+      while (start < oldChars.length && start < newChars.length && oldChars[start] === newChars[start]) {
+        newSelectedWords[start] = this.keepSelectedWordIfValid(oldSelectedWords[start], newChars[start])
+        start++
+      }
+
+      let oldEnd = oldChars.length - 1
+      let newEnd = newChars.length - 1
+
+      while (oldEnd >= start && newEnd >= start && oldChars[oldEnd] === newChars[newEnd]) {
+        newSelectedWords[newEnd] = this.keepSelectedWordIfValid(oldSelectedWords[oldEnd], newChars[newEnd])
+        oldEnd--
+        newEnd--
+      }
+
+      return newSelectedWords
+    },
+    /**
+     * Megállapítja, hogy a kiválasztott szó érvényes-e az új karakterhez.
+     * Egy szó érvényesnek számít, ha nem null és a megoldása tartalmazza a karaktert.
+     * 
+     * @param selectedWord A vizsgált kiválasztott szó
+     * @param letter A betű amihez próbáljuk egyeztetni a szót
+     * @return { { id: number, solution: string, definition: string } | null } Visszaadja a kiválasztott szót, ha az érvényes az új karakterhez, vagy null értéket, ha nem érvényes.
+     */
+    keepSelectedWordIfValid(selectedWord, letter) {
+      if (!selectedWord) {
+        return null
+      }
+
+      if (!selectedWord.solution.includes(letter)) {
+        return null
+      }
+
+      return selectedWord
+    },
+    /**
+     * Megállapítja, hogy létezik-e szó a megadott betűhöz.
+     * 
+     * @param letter A betű amihez vizsgáljuk, hogy tartozik-e szó
+     * @return {boolean} True, ha létezik szó a megadott betűhöz, false egyébként.
+     */
+    wordExistsForLetter(letter) {
+      return getWordsForLetter(letter).length > 0
+    },
+    /**
+     * Visszaadja a kiválasztott szó definícióját.
+     * 
+     * @param word A szó aminek a definícióját keressük
+     * @return {string} A szó definíciója, vagy üres string, ha nem található.
+     */
+    getDefinitionForSelectedWord(word) {
+      return word?.definition || ''
+    },
+  },
 }
 </script>
+
+<style scoped>
+@import '../styles/crosswordPage.scss';
+.box-background {
+  /* Ez a color very light blue a variablesből */
+  background-color: #E7F1F6;
+}
+
+.preview-cell {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.preview-cell-main {
+  background-color: #3B82F6; /* Color info a variablesből */
+  color: white;
+}
+
+.preview-cell-normal {
+  background-color: white;
+  color: #111;
+}
+
+.preview-cell-black {
+  background-color: #111;
+  color: transparent;
+}
+</style>
