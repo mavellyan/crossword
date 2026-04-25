@@ -3,6 +3,7 @@
     <div class="navbar-nav">
       <RouterLink class="nav-link" to="/">Főoldal</RouterLink>
       <RouterLink class="nav-link" to="/crosswordlist">Rejtvények</RouterLink>
+      <RouterLink class="nav-link" to="/create">Rejtvény létrehozása</RouterLink>
     </div>
     <div class="navbar-nav ms-auto">
       <template v-if="auth.isLoggedIn">

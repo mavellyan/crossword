@@ -6,6 +6,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue'
 import HomePage from '@/pages/HomePage.vue'
 import CrosswordListPage from '@/pages/CrosswordListPage.vue'
 import CrosswordPage from '@/pages/CrosswordPage.vue'
+import CrosswordCreator from '@/pages/CrosswordCreator.vue'
 
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
@@ -20,6 +21,7 @@ const routes = [
       { path: '', name: 'home', component: HomePage },
       { path: 'crosswordlist', name: 'crosswordlist', component: CrosswordListPage },
       { path: 'crossword/:id', name: 'crossword', component: CrosswordPage, props: true },
+      { path: 'create', name: 'crosswordcreator', component: CrosswordCreator },
     ],
   },
   {
