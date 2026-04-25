@@ -1,15 +1,15 @@
 <template>
   <h1>Rejtvény</h1>
-  <div>
-    <CrosswordGrid
-      v-if="store.grid !== null"
-      :grid="store.grid"
-      :main_solution="store.mainSolution"
-      :words="store.words"
-      :width="store.width"
-      :height="store.height"
-    />
-  </div>
+  <p v-if="store.loading">Betöltés...</p>
+  <p v-else-if="store.error">Hiba történt!</p>
+  <CrosswordGrid
+    v-if="store.grid !== null"
+    :grid="store.grid"
+    :main-solution="store.mainSolution"
+    :words="store.words"
+    :width="store.width"
+    :height="store.height"
+  />
 </template>
 
 <script>

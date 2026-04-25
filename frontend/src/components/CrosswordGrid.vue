@@ -61,7 +61,7 @@ export default {
       type: Array,
       required: true,
     },
-    main_solution: {
+    mainSolution: {
       type: String,
       required: false,
       default: '',
