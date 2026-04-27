@@ -1,6 +1,22 @@
 <template>
   <div>
     <h1 class="text-center pb-5">Hozz létre saját rejtvényt!</h1>
+    <div class="d-flex align-items-center justify-content-center mb-3">
+        <label class="h3 w-auto">Mi legyen a rejtvényed címe?</label>
+        <input
+            v-model="title"
+            class="form-control w-50 mx-3 border border-primary border-2 text-uppercase"
+            minlength="5"
+            maxlength="255"
+            placeholder="pl: A világ legnehezebb rejtvénye"
+          />
+    </div>
+    <p
+      v-if="hasTitle && !isTitleValid"
+      class="text-muted mb-3 alert alert-danger w-50 mx-auto mt-3 text-center pb-2 pt-2"
+    >
+      A címnek legalább 5 és legfeljebb 255 karakterből kell állnia.
+    </p>
     <div class="d-flex align-items-center justify-content-center">
         <label class="h3">Mi legyen a rejtvényed főmegoldása?</label>
         <input
@@ -13,11 +29,11 @@
     </div>
     <p
       v-if="hasMainSolution && !isMainSolutionValid"
-      class="text-muted mb-0 alert alert-danger w-75 mx-auto mt-3 text-center"
+      class="text-muted mb-0 alert alert-danger w-75 mx-auto mt-3 text-center pb-2 pt-2"
     >
       A főmegoldás csak a magyar ábécé betűit tartalmazhatja, számok, szóköz és egyéb speciális karakterek nélkül.
     </p>
-    <div v-if="hasMainSolution && isMainSolutionValid" class="mt-5 d-flex align-items-start">
+    <div v-if="isCrosswordVisible" class="mt-5 d-flex align-items-start">
       <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background align-items-center">
         <h4 class="text-center mb-4">Így fog kinézni a rejtvényed:</h4>
         <div v-for="(row, rowIndex) in previewRows"
@@ -67,7 +83,7 @@
       </div>
     </div>
     <button
-      v-if="hasMainSolution && isMainSolutionValid"
+      v-if="isCrosswordVisible"
       type="button"
       class="btn btn-primary d-block mx-auto mt-4"
       :disabled="selectedWords.some(word => word === null)"
@@ -87,6 +103,7 @@ export default {
     return {
       mainSolution: '',
       selectedWords: [],
+      title: '',
     }
   },
   computed: {
@@ -114,6 +131,30 @@ export default {
      */
     isMainSolutionValid() {
       return /^[A-ZÁÉÍÓÖŐÚÜŰ]+$/.test(this.normalizeMainSolution)
+    },
+    /**
+     * Ellenőrzi, hogy ki van-e töltve a cím.
+     * 
+     * @returns {boolean} True, ha a cím nem üres és nem csak whitespace, false egyébként.
+     */
+    hasTitle() {
+      return this.title.trim().length > 0
+    },
+    /**
+     * Ellenőrzi, hogy a cím érvényes-e.
+     * 
+     * @returns {boolean} True, ha a cím érvényes, azaz 5 és 255 karakter közötti hosszúságú, false egyébként.
+     */
+    isTitleValid() {
+      return this.title.trim().length >= 5 && this.title.trim().length <= 255
+    },
+    /**
+     * Ellenőrzi, hogy a rejtvény előnézetét meg lehet-e jeleníteni, amihez szükséges, hogy legyen érvényes főmegoldás és cím is.
+     * 
+     * @returns {boolean} True, ha a rejtvény előnézete megjeleníthető, false egyébként.
+     */
+    isCrosswordVisible() {
+      return this.hasMainSolution && this.isMainSolutionValid && this.hasTitle && this.isTitleValid
     },
     /**
      * A főmegoldás karaktereit egy tömbbé alakítja.
@@ -353,7 +394,6 @@ export default {
 </script>
 
 <style scoped>
-@import '../styles/crosswordPage.scss';
 .box-background {
   /* Ez a color very light blue a variablesből */
   background-color: #E7F1F6;

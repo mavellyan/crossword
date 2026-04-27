@@ -6,6 +6,14 @@ use Exception;
 
 abstract class Crossword {
     /**
+     * @var string
+     */
+    private string $title;
+    /**
+     * @var string
+     */
+    private string $author;
+    /**
      * @var CrosswordClue
      */
     private CrosswordClue $main_solution;
@@ -34,6 +42,8 @@ abstract class Crossword {
      * @param CrosswordClue $main_solution
      */
     public function __construct(CrosswordClue $main_solution) {
+        $this->title = "";
+        $this->author = "";
         $this->main_solution = $main_solution;
         $this->words = [];
         $this->is_solved = false;
@@ -115,6 +125,28 @@ abstract class Crossword {
      */
     public function getHeight(): int {
         return $this->height;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTitle(): string {
+        return $this->title;
+    }
+
+    /**
+     * @param string $title
+     * @return void
+     */
+    public function setTitle(string $title): void {
+        $this->title = $title;
+    }
+
+    /**
+     * @return string
+     */
+    public function getAuthor(): string {
+        return $this->author;
     }
 
     public abstract function generateGrid();
