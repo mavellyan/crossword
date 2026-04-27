@@ -47,7 +47,7 @@
             :disabled="!isMainSolutionValid"
           >
             <option :value="null">Válassz egy szót</option>
-            <option v-for="word in getWordsForCurrentLetter(char)" :value="word" :key="word.id">
+            <option v-for="word in getWordsForCurrentLetter(char, charIndex)" :value="word" :key="word.id">
               {{ word.solution }}
             </option>
           </select>
@@ -226,6 +226,17 @@ export default {
         return cells
       })
     },
+    /**
+     * Visszaadja a jelenleg kiválasztott szavak ID-jait, hogy meg tudjuk akadályozni, hogy ugyanazt a szót több helyen is kiválasszák a főmegoldás különböző betűihez.
+     * Ez egy segédszámítás a getWordsForCurrentLetter metódushoz, ahol kiszűrjük azokat a szavakat, amik már ki vannak választva egy másik betűhöz, kivéve ha éppen az adott betűhöz vannak kiválasztva.
+     * 
+     * @return {number[]} A jelenleg kiválasztott szavak ID-jainak listája.
+     */
+    usedWordIds() {
+      return this.selectedWords
+        .filter(word => word !== null)
+        .map(word => word.id)
+    }
   },
   watch: {
     /**
@@ -252,10 +263,13 @@ export default {
      * Visszaadja az adott betűhöz tartozó szavakat.
      * 
      * @param letter A főmegoldás adott betűje
+     * @param currentIndex A főmegoldás adott betűjének indexe, hogy ki tudjuk szűrni a már kiválasztott szavakat
      * @return {Array<{ id: number, solution: string, definition: string }>} Az adott betűhöz tartozó szavak listája.
      */
-    getWordsForCurrentLetter(letter) {
-      return getWordsForLetter(letter)
+    getWordsForCurrentLetter(letter, currentIndex) {
+      const currentWordId = this.selectedWords[currentIndex]?.id
+
+      return getWordsForLetter(letter).filter(word => !this.usedWordIds.includes(word.id) || word.id === currentWordId)
     },
     /**
      * Visszaadja az összes szót, ami a rejtvénykészítőben elérhető.
