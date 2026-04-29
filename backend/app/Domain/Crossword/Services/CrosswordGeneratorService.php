@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Services;
+namespace App\Domain\Crossword\Services;
 
-use App\Models\Clue;
-use App\Models\CrosswordClue;
-use App\Models\SimpleCrossword;
+use App\Domain\Crossword\Entities\Clue;
+use App\Domain\Crossword\Entities\CrosswordClue;
+use App\Domain\Crossword\Entities\SimpleCrossword;
 use RuntimeException;
 
-class DemoSimpleCrosswordService
+class CrosswordGeneratorService
 {
     /**
      * Builds a demo simple crossword payload compatible with the current frontend.
@@ -30,7 +30,7 @@ class DemoSimpleCrosswordService
             $words[] = new Clue($definition, $solution);
         }
 
-        $mainWord = new CrosswordClue('main_solution', 'piros');
+        $mainWord = new CrosswordClue('main_solution', 'piros', \App\Enums\Direction::HORIZONTAL, true);
         $crossword = new SimpleCrossword($mainWord);
 
         try {

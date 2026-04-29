@@ -5,7 +5,7 @@
         <label class="h3 w-auto">Mi legyen a rejtvényed címe?</label>
         <input
             v-model="title"
-            class="form-control w-50 mx-3 border border-primary border-2 text-uppercase"
+            class="form-control w-50 mx-3 border border-primary border-2"
             minlength="5"
             maxlength="255"
             placeholder="pl: A világ legnehezebb rejtvénye"

@@ -11,9 +11,9 @@ use App\Http\Resources\CrosswordResource;
 use App\Services\ScandinavianCrosswordGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use App\Models\CrosswordClue;
-use App\Models\Clue;
-use App\Models\SimpleCrossword;
+use App\Domain\Crossword\Entities\Clue;
+use App\Domain\Crossword\Entities\CrosswordClue;
+use App\Domain\Crossword\Entities\SimpleCrossword;
 use Exception;
 
 class CrosswordController extends Controller

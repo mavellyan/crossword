@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Models\SimpleCrossword;
-use App\Models\CrosswordClue;
-use App\Models\Clue;
+use App\Domain\Crossword\Entities\SimpleCrossword;
+use App\Domain\Crossword\Entities\CrosswordClue;
+use App\Domain\Crossword\Entities\Clue;
 use Illuminate\Console\Command;
-use App\Services\CrosswordGenerator;
+use App\Domain\Crossword\Services\CrosswordGeneratorService;
 use Exception;
 use App\Enums\Direction;
 

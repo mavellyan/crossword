@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Domain\Crossword\DTO;
 
 readonly class AssignmentResult {
     /**

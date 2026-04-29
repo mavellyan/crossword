@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('clues', function (Blueprint $table) {
             $table->id();
-            $table->text('definition');
+            $table->string('definition');
             $table->string('solution');
             $table->timestamps();
         });

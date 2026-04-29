@@ -1,8 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace App\Domain\Crossword\Entities;
 
-use App\Models\Crossword;
+use App\Domain\Crossword\Entities\Crossword;
+use App\Domain\Crossword\Entities\CrosswordClue;
+use App\Domain\Crossword\DTO\AssignmentResult;
 use App\Enums\Direction;
 use Exception;
 
