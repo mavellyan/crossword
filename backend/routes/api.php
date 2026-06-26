@@ -21,3 +21,5 @@ Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login']);
 Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 Route::get('/crossword/{id}', [\App\Http\Controllers\CrosswordController::class, 'getCrossword']);
+
+Route::get('/creator-words', [\App\Http\Controllers\ClueController::class, 'index']);

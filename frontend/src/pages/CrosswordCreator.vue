@@ -55,12 +55,19 @@
       </div>
       <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background">
         <h4 class="text-center mb-4">Válaszd ki hozzá a szavakat:</h4>
+        <p v-if="wordsLoading" class="text-muted text-center">
+          Szavak betöltése...
+        </p>
+
+        <p v-if="wordsError" class="alert alert-danger text-center">
+          {{ wordsError }}
+        </p>
         <div v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex mb-2 align-items-center">
           <select
             v-model="selectedWords[charIndex]"
             name="clue-select"
             class="form-select w-auto border border-primary"
-            :disabled="!isMainSolutionValid"
+            :disabled="!isMainSolutionValid || wordsLoading || !!wordsError"
           >
             <option :value="null">Válassz egy szót</option>
             <option v-for="word in getWordsForCurrentLetter(char, charIndex)" :value="word" :key="word.id">
@@ -86,7 +93,7 @@
       v-if="isCrosswordVisible"
       type="button"
       class="btn btn-primary d-block mx-auto mt-4"
-      :disabled="selectedWords.some(word => word === null)"
+      :disabled="selectedWords.some(word => word === null) || wordsLoading || !!wordsError"
       @click="console.log(selectedWords)"
     >
       Rejtvény létrehozása
@@ -95,7 +102,7 @@
 </template>
 
 <script>
-import { getAllMockWords, getWordsForLetter } from '../services/creatorWords';
+import { fetchCreatorWords, getWordsForLetterFromList } from '../services/creatorWords'
 
 export default {
   name: 'CrosswordCreator',
@@ -104,7 +111,13 @@ export default {
       mainSolution: '',
       selectedWords: [],
       title: '',
+      availableWords: [],
+      wordsLoading: false,
+      wordsError: null,
     }
+  },
+  async mounted() {
+    await this.loadCreatorWords()
   },
   computed: {
     /**
@@ -300,6 +313,20 @@ export default {
     },
   },
   methods: {
+    async loadCreatorWords() {
+      this.wordsLoading = true
+      this.wordsError = null
+
+      try {
+        this.availableWords = await fetchCreatorWords()
+      } catch (error) {
+        console.log('creator words error:', error)
+        this.wordsError = error?.message ?? 'Nem sikerült betölteni a választható szavakat.'
+        this.availableWords = []
+      } finally {
+        this.wordsLoading = false
+      }
+    },
     /**
      * Visszaadja az adott betűhöz tartozó szavakat.
      * 
@@ -310,7 +337,8 @@ export default {
     getWordsForCurrentLetter(letter, currentIndex) {
       const currentWordId = this.selectedWords[currentIndex]?.id
 
-      return getWordsForLetter(letter).filter(word => !this.usedWordIds.includes(word.id) || word.id === currentWordId)
+      return getWordsForLetterFromList(this.availableWords, letter)
+        .filter(word => !this.usedWordIds.includes(word.id) || word.id === currentWordId)
     },
     /**
      * Visszaadja az összes szót, ami a rejtvénykészítőben elérhető.
@@ -319,7 +347,7 @@ export default {
      * @return {Array<{ id: number, solution: string, definition: string }>} Az összes elérhető szó listája.
      */
     getAllWords() {
-      return getAllMockWords()
+      return this.availableWords
     },
     /**
      * Frissíti a kiválasztott szavakat, hogy azok illeszkedjenek az új főmegoldáshoz, miközben megőrzi a lehető legtöbb érvényes kiválasztást.
@@ -378,7 +406,7 @@ export default {
      * @return {boolean} True, ha létezik szó a megadott betűhöz, false egyébként.
      */
     wordExistsForLetter(letter) {
-      return getWordsForLetter(letter).length > 0
+      return getWordsForLetterFromList(this.availableWords, letter).length > 0
     },
     /**
      * Visszaadja a kiválasztott szó definícióját.
