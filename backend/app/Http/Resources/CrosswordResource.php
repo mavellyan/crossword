@@ -4,26 +4,26 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\CrosswordClueResource;
 
 class CrosswordResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
+     * Visszaadja a rejtvény adatait egy tömb formátumban a frontendnek.
      *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        // $allWords = array_merge([$this->getMainSolution()], $this->getWords());
+        $crossword = $this->resource['crossword'];
 
         return [
-            'id' => 1, // Ez majd egy adatbázisban tárolt rejtvény esetén egyedi azonosító lesz
-            'main_solution' => $this->getMainSolution()->getSolution(),
-            'grid' => $this->generateGrid(),
-            // 'words' => CrosswordClueResource::collection($allWords),
-            'words' => CrosswordClueResource::collection($this->getWords()),
-            'width' => $this->getWidth(),
-            'height' => $this->getHeight(),
+            'id' => $crossword->id,
+            'main_solution' => $this->resource['main_solution'],
+            'grid' => $this->resource['grid'],
+            'words' => CrosswordClueResource::collection($crossword->getWords()),
+            'width' => $this->resource['width'],
+            'height' => $this->resource['height'],
         ];
     }
 }

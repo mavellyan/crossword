@@ -1,201 +1,68 @@
 <?php
 
-// ============================================================
-// PÉLDA HASZNÁLAT – Laravel Controller
-// ============================================================
-
 namespace App\Http\Controllers;
 
-use App\Enums\Direction;
+use App\Services\CrosswordService;
 use App\Http\Resources\CrosswordResource;
-use App\Services\ScandinavianCrosswordGenerator;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use App\Domain\Crossword\Entities\Clue;
-use App\Domain\Crossword\Entities\CrosswordClue;
-use App\Domain\Crossword\Entities\SimpleCrossword;
-use Exception;
+use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
 class CrosswordController extends Controller
 {
+    public function __construct(
+        private readonly CrosswordService $crosswordService,
+    ) {
+    }
+
     public function generate(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
+            'title' => 'required|string|min:3|max:255',
             'main_solution' => 'required|string|min:3|max:20',
+            'difficulty' => 'nullable|string',
+            'is_public' => 'nullable|boolean',
+
             'word_pairs' => 'required|array|min:3',
-            'word_pairs.*.definition' => 'required|string',
-            'word_pairs.*.solution' => 'required|string|min:2',
+            'word_pairs.*.definition' => 'required|string|max:255',
+            'word_pairs.*.solution' => 'required|string|min:2|max:50',
         ]);
 
-        // A frontend [{definition: "...", solution: "..."}, ...] formátumban küldhet
-        $pairs = [];
-        foreach ($request->input('word_pairs') as $pair) {
-            $pairs[$pair['definition']] = $pair['solution'];
-        }
+        $validated['creator_user_id'] = $request->user()->id;
 
         try {
-            $generator = new ScandinavianCrosswordGenerator();
-            $puzzle = $generator->generate(
-                $request->input('main_solution'),
-                $pairs
-            );
+            $result = $this->crosswordService->create($validated);
 
             return response()->json([
                 'success' => true,
-                'crossword' => $puzzle,
-            ]);
-
-        } catch (\RuntimeException $e) {
+                'crossword' => $result['crossword'],
+                'grid' => $result['grid'],
+                'width' => $result['width'],
+                'height' => $result['height'],
+                'solution_col' => $result['solution_col'],
+                'main_solution' => $result['main_solution'],
+            ], 201);
+        } catch (RuntimeException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 
-    public function getCrossword($id): JsonResponse {
-        $test_words = [];
-
-        $testlist = [
-            'A Duna romániai mellékfolyója' => 'zsil',
-            'Feljáró' => 'rámpa',
-            'Tisztességtelen haszon' => 'sáp',
-            'Idős rokon' => 'dédi',
-            'Fr. író (Emile)' => 'zola',
-        ];
-
-        foreach ($testlist as $key => $word) {
-            $test_word = new Clue(
-                $key,
-                $word,
-            );
-
-            $test_words[] = $test_word;
-        }
-
-        $main_word = new CrosswordClue('main_solution', 'piros', Direction::VERTICAL, true);
-        $crossword = new SimpleCrossword($main_word);
-        $grid = null;
-
-        try {
-            $crossword->setWords($test_words);
-
-            $grid = $crossword->generateGrid();
-        } catch (Exception $e) {
-            echo $e->getMessage();
-        }
-
-        if ($grid === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Nem sikerült betölteni a rejtvényt.',
-            ], 500);
-        }
+    public function getCrossword(int $id): JsonResponse
+    {
+        $result = $this->crosswordService->getById($id);
 
         return response()->json([
             'success' => true,
-            'crossword' => new CrosswordResource($crossword),
+            'crossword' => new CrosswordResource($result),
         ]);
     }
 }
-
-
-// ============================================================
-// PÉLDA BEMENETI ADATOK ÉS VÁRHATÓ KIMENET
-// ============================================================
-//
-// Főmegoldás: "BUDAPEST"
-//
-// Szópárok:
-// [
-//   "Édes ital"           => "BORSODA"       // B betű (index 0) → BUDAPEST[0] = B
-//   "Magyar folyó"        => "DUNA"           // U betű → BUDAPEST[1] = U
-//   "Téli sport"          => "BOBSLED"        // B betű → BUDAPEST[2] = D... stb.
-//   ...
-// ]
-//
-// A generátor megkeresi, hogy az egyes kulcsszavak melyik betűje adja
-// a főmegoldás aktuális betűjét, majd úgy helyezi el vízszintesen,
-// hogy az a betű pontosan a "megoldásoszlopba" essen.
-//
-// KIMENET STRUKTÚRA:
-// {
-//   "grid": [
-//     [
-//       {"type": "empty"},
-//       {"type": "clue", "clue": "Magyar folyó", "direction": "H"},
-//       {"type": "letter", "letter": "D"},
-//       {"type": "solution", "letter": "U", "solution_index": 1},   ← KIEMELVE
-//       {"type": "letter", "letter": "N"},
-//       {"type": "letter", "letter": "A"},
-//       ...
-//     ],
-//     ...
-//   ],
-//   "width": 22,
-//   "height": 19,
-//   "main_solution": "BUDAPEST",
-//   "solution_col": 11,         ← ebben az oszlopban vannak a kiemelt cellák
-//   "placed_words": [
-//     {
-//       "word": "DUNA",
-//       "row": 2,
-//       "col": 8,
-//       "direction": "H",
-//       "definition": "Magyar folyó",
-//       "is_key_word": true,
-//       "solution_offset": 3    ← a 4. betű (0-alapú: index 3) az "U"
-//     },
-//     ...
-//   ]
-// }
-
-
-// ============================================================
-// GYORS TESZT (php artisan tinker -ban futtatható)
-// ============================================================
-
-/*
-$generator = new \App\Services\ScandinavianCrosswordGenerator();
-
-$puzzle = $generator->generate(
-    mainSolution: 'ALMA',
-    wordPairs: [
-        'Fővárosunk'              => 'BUDAPEST',
-        'Kedvenc háziállat'       => 'MACSKA',
-        'Téli sport'              => 'LESIKLÁS',
-        'Édes gyümölcs'           => 'MANGÓ',
-        'Magyar zenész'           => 'LISZT',
-        'Naprendszerünk csillaga' => 'NAP',
-        'Egyik évszak'            => 'TAVASZ',
-        'Irodalmi műfaj'          => 'REGÉNY',
-    ]
-);
-
-// Főmegoldás betűi: A, L, M, A
-// Az algoritmus olyan szavakat keres, amelyek tartalmazzák ezeket:
-//  A → BUDAPEST (3. betű), MACSKA (1. betű), MANGÓ (1. betű)...
-//  L → LESIKLÁS (3. betű), LISZT (0. betű)...
-//  M → MACSKA (0. betű), MANGÓ (0. betű)...
-//  A → (már felhasználtakat nem veszi újra)
-
-// A megoldásoszlopban felülről lefelé olvasva: A, L, M, A
-
-echo "Rács mérete: {$puzzle['width']} x {$puzzle['height']}\n";
-echo "Megoldásoszlop indexe: {$puzzle['solution_col']}\n";
-echo "Elhelyezett szavak száma: " . count($puzzle['placed_words']) . "\n";
-echo "Főmegoldás: {$puzzle['main_solution']}\n";
-
-// Ellenőrzés: megoldás cellák sorba rendezve helyes betűket adnak-e
-$solutionCells = [];
-foreach ($puzzle['grid'] as $row) {
-    foreach ($row as $cell) {
-        if ($cell['type'] === 'solution') {
-            $solutionCells[$cell['solution_index']] = $cell['letter'];
-        }
-    }
-}
-ksort($solutionCells);
-$reconstructed = implode('', $solutionCells);
-echo "Rekonstruált főmegoldás: $reconstructed\n"; // → ALMA
-*/
