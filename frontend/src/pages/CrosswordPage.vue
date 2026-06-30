@@ -1,15 +1,23 @@
 <template>
-  <h1>Rejtvény</h1>
-  <p v-if="store.loading">Betöltés...</p>
-  <p v-else-if="store.error">Hiba történt!</p>
+  <h1 class="text-center mb-5">
+    Rejtvény
+  </h1>
   <CrosswordGrid
-    v-if="store.grid !== null"
+    v-if="isCrosswordVisible"
     :grid="store.grid"
     :main-solution="store.mainSolution"
     :words="store.words"
     :width="store.width"
     :height="store.height"
   />
+  <div v-else class="text-center">
+    <p v-if="store.loading">
+      Betöltés...
+    </p>
+    <p v-else-if="store.error" class="alert alert-danger">
+      Hiba történt!
+    </p>
+  </div>
 </template>
 
 <script>
@@ -35,7 +43,10 @@ export default {
      */
     store() {
       return useCrosswordStore()
-    }
+    },
+    isCrosswordVisible() {
+      return this.store.grid !== null && !this.store.loading && !this.store.error
+    },
   },
   watch: {
     id: {

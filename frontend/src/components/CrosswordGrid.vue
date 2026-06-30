@@ -29,7 +29,7 @@
     </div>
 
     <div class="definitions">
-      <h3>Definiciok</h3>
+      <h3>Definíciók</h3>
       <div
         v-for="(word, index) in words"
         :key="index"

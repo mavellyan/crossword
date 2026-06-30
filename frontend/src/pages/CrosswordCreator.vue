@@ -93,16 +93,21 @@
       v-if="isCrosswordVisible"
       type="button"
       class="btn btn-primary d-block mx-auto mt-4"
-      :disabled="selectedWords.some(word => word === null) || wordsLoading || !!wordsError"
-      @click="console.log(selectedWords)"
+      :disabled="!canCreateCrossword || wordsLoading || !!wordsError"
+      @click="submitCrossword"
     >
-      Rejtvény létrehozása
+      {{  creating ? 'Létrehozás...' : 'Rejtvény létrehozása' }}
     </button>
+
+    <p v-if="createError" class="alert alert-danger text-center w-75 mx-auto mt-3">
+      {{ createError }}
+    </p>
   </div>
 </template>
 
 <script>
 import { fetchCreatorWords, getWordsForLetterFromList } from '../services/creatorWords'
+import { createCrossword } from '../services/crosswordCreatorApi'
 
 export default {
   name: 'CrosswordCreator',
@@ -114,6 +119,8 @@ export default {
       availableWords: [],
       wordsLoading: false,
       wordsError: null,
+      creating: false,
+      createError: null,
     }
   },
   async mounted() {
@@ -290,7 +297,19 @@ export default {
       return this.selectedWords
         .filter(word => word !== null)
         .map(word => word.id)
-    }
+    },
+    /**
+     * Leellenőrzi, hogy a rejtvény létrehozható-e.
+     * Ehhez szükséges, hogy a rejtvény előnézete látható legyen, ne legyen már folyamatban létrehozás,
+     * minden betűhöz legyen kiválasztott szó, és a cím is érvényes legyen.
+     * 
+     * @return {boolean}
+     */
+    canCreateCrossword() {
+      return this.isCrosswordVisible && !this.creating &&
+        this.selectedWords.length === this.mainSolutionChars.length &&
+        this.selectedWords.every(word => word !== null) && this.isTitleValid
+    },
   },
   watch: {
     /**
@@ -313,6 +332,9 @@ export default {
     },
   },
   methods: {
+    /**
+     * Betölti a backendről a rejtvénykészítőben elérhető szavakat.
+     */
     async loadCreatorWords() {
       this.wordsLoading = true
       this.wordsError = null
@@ -325,6 +347,34 @@ export default {
         this.availableWords = []
       } finally {
         this.wordsLoading = false
+      }
+    },
+    /**
+     * User által létrehozott keresztrejtvény elküldése a backendnek, hogy elmentse az adatbázisba.
+     * Ha sikeres, átirányítja a felhasználót a létrehozott rejtvény oldalára.
+     * Kézi elhelyezést használ, a backend az itt megadott sorrendet tartja.
+     */
+    async submitCrossword() {
+      this.creating = true
+      this.createError = null
+
+      try {
+        const crossword = await createCrossword({
+          title: this.title.trim(),
+          main_solution: this.normalizeMainSolution,
+          clue_ids: this.selectedWords.map(word => word.id),
+          difficulty: 'easy',
+          is_public: true,
+        })
+
+        this.$router.push(`/crossword/${crossword.id}`)
+      } catch (error) {
+        console.log('create crossword error:', error)
+        this.createError = error?.response?.data?.message
+          ?? error?.message
+          ?? 'Nem sikerült létrehozni a rejtvényt.'
+      } finally {
+        this.creating = false
       }
     },
     /**

@@ -16,3 +16,16 @@ export async function fetchCrosswordById(id) {
 
   return crossword
 }
+
+export async function fetchCrosswords(params = {}) {
+  const response = await axios.get('/list-crosswords', {
+    params,
+  })
+
+  if (!response.data.success || !Array.isArray(response.data.crosswords)) {
+    console.log('Hibás API válasz:', response.data)
+    throw new Error('Hibás API válasz a rejtvénylista betöltésekor.')
+  }
+
+  return response.data.crosswords
+}
