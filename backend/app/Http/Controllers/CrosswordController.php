@@ -19,14 +19,25 @@ class CrosswordController extends Controller
 
     public function getCrossword(Request $request): JsonResponse
     {
-        $id = $request->input('id');
-        $user_id = $request->input('user_id');
+        $validated = $request->validate([
+            'id' => 'required|integer|exists:crosswords,id',
+        ]);
 
-        $result = $this->crosswordService->getById($id, $user_id);
-        
+        $user = $request->user('sanctum');
+
+        $result = $this->crosswordService->getById($validated['id'], $user?->id);
+
+        $attempt = $result['attempt'];
+
         return response()->json([
             'success' => true,
             'crossword' => new CrosswordResource($result),
+            'attempt' => $user == null ? null : [
+                'id' => $attempt->id,
+                'status' => $attempt->status,
+                'state_version' => $attempt->state_version,
+                'word_inputs' => data_get($attempt->grid_state, 'word_inputs', []),
+            ],
         ]);
     }
 
@@ -64,11 +75,9 @@ class CrosswordController extends Controller
             'search' => $request->input('search'),
         ]);
 
-        $user_id = $request->input('user_id');
-
         return response()->json([
             'success' => true,
-            'crosswords' => $crosswords->map(function ($crossword) use ($user_id) {
+            'crosswords' => $crosswords->map(function ($crossword) {
                 return [
                     'id' => $crossword->id,
                     'title' => $crossword->title,
@@ -90,51 +99,95 @@ class CrosswordController extends Controller
     public function saveProgress(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'crossword_id' => 'required|integer|exists:crosswords,id',
-            'user_id' => 'required|integer|exists:users,id',
-            'words' => 'required|array',
-            'grid' => 'required|array',
+            'attempt_id' => 'required|integer|exists:crossword_attempts,id',
+            'state_version' => 'required|integer',
+            'word_inputs' => 'required|array',
+            'word_inputs.*' => 'required|array',
+            'word_inputs.*.*' => 'nullable|string|max:1',
         ]);
 
-        $attempt = CrosswordAttempt::query()
-            ->where('user_id', $validated['user_id'])
-            ->where('crossword_id', $validated['crossword_id'])
-            ->where('status', 'in_progress')
-            ->latest('id')
-            ->first();
+        $user = $request->user();
 
-        if (!$attempt) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Nincs folyamatban rejtvény próbálkozás, de menteni próbálunk?',
-            ], 404);
+                'message' => 'A felhasználó nincs bejelentkezve.',
+            ], 401);
         }
 
-        $attempt->grid_state = [
-            'cells' => $validated['grid'],
-        ];
+        $attempt = CrosswordAttempt::query()
+            ->whereKey($validated['attempt_id'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
-        $correctWords = 0;
-        $solutions = $attempt->crossword->getWords()->pluck('solution')->toArray();
-        foreach ($validated['words'] as $word) {
-            if (in_array(mb_strtolower($word), $solutions)) {
-                $correctWords++;
+        if ($attempt->status !== 'in_progress') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ez a próbálkozás már be van fejezve, nem lehet menteni a folyamatot.',
+            ], 409);
+        }
+
+        if ((int) $attempt->state_version !== (int) $validated['state_version']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A próbálkozás állapota megváltozott, frissítsd az oldalt és próbáld újra.',
+            ], 409);
+        }
+
+        $placements = $attempt->crossword->getWords()->values();
+
+        $submittedInputs = $validated['word_inputs'];
+        $normalizedInputs = [];
+        $isCompleted = true;
+
+        foreach ($placements as $placement) {
+            $placementId = $placement->id;
+
+            $expectedSolution = mb_strtoupper($placement->getSolution());
+            $expectedLength = mb_strlen($expectedSolution);
+
+            $submittedCells = array_values($submittedInputs[$placementId] ?? []);
+            $normalizedCells = [];
+
+            for ($index = 0; $index < $expectedLength; $index++) {
+                $cellValue = $submittedCells[$index] ?? '';
+
+                if ($cellValue === null || $cellValue === '') {
+                    $normalizedCells[] = '';
+                    continue;
+                }
+
+                $normalizedCells[] = mb_substr(mb_strtoupper((string) $cellValue), 0, 1);
+            }
+
+            $normalizedInputs[$placementId] = $normalizedCells;
+
+            if (implode('', $normalizedCells) !== $expectedSolution) {
+                $isCompleted = false;
             }
         }
 
-        if ($correctWords === count($attempt->crossword->getWords())) {
+        $attempt->grid_state = [
+            'word_inputs' => $normalizedInputs,
+        ];
+
+        $attempt->state_version++;
+
+        if ($isCompleted) {
             $attempt->status = 'completed';
             $attempt->completed_at = now();
         }
-
-        $attempt->state_version = $attempt->state_version + 1;
 
         $attempt->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Mentés sikeres!',
-            'status' => $attempt->status,
+            'attempt' => [
+                'id' => $attempt->id,
+                'status' => $attempt->status,
+                'state_version' => $attempt->state_version,
+            ],
         ]);
     }
 }

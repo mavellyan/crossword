@@ -16,6 +16,7 @@ class CrosswordClueResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'placement_id' => (int) $this->id,
             'definition' => $this->clue?->definition,
             'solution' => $this->clue?->solution,
             'x_pos' => (int) $this->start_col,
@@ -44,7 +45,6 @@ class CrosswordClueResource extends JsonResource
 
         for ($i = 0; $i < mb_strlen($solution); $i++) {
             $cells[] = [
-                'letter' => mb_substr($solution, $i, 1),
                 'row' => (int) $this->start_row + ($direction === Direction::VERTICAL->value ? $i : 0),
                 'col' => (int) $this->start_col + ($direction === Direction::HORIZONTAL->value ? $i : 0),
             ];

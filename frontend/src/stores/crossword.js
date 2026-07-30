@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { fetchCrosswordById, saveCrosswordProgress } from '@/services/crosswordApi'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * Egy nyers cella inputot egyetlen nagybetűs karakterre normalizál.
@@ -9,22 +10,33 @@ import { fetchCrosswordById, saveCrosswordProgress } from '@/services/crosswordA
  * @returns {string} Normalizált egykarakteres érték vagy üres string.
  */
 function normalizeLetter(value) {
-  if (!value) {
+  if (value === null || value === undefined) {
     return ''
   }
 
-  return String(value).replace(/\s/g, '').slice(0, 1).toUpperCase()
+  const normalized = String(value).normalize().replace(/\s/g, '').toLocaleUpperCase('hu-HU')
+
+  return Array.from(normalized)[0] ?? ''
 }
 
 /**
- * Létrehozza a futásidejű input mátrixot az összes szóhoz.
+ * Létrehozza az input mátrixot az összes szóhoz.
  * Minden szó kap egy tömböt, ami a cellaszámával egyezik.
  *
  * @param {Array<{ cells: Array<unknown> }>|null|undefined} words Rejtvény szavak.
- * @returns {string[][]} Szavankénti üres felhasználói input tömbök.
+ * @param {Object<string, string[]>} savedWordInputs Mentett szóinputok, hogyha van korábbi próbálkozás.
+ * @returns {string[][]} Szavankénti felhasználói input tömbök. Lehetnek üres stringek, ha a felhasználó még nem írt be karaktert.
  */
-function createWordInputs(words) {
-  return (words ?? []).map((word) => Array(word.cells.length).fill(''))
+function createWordInputs(words, savedWordInputs = {}) {
+  return (words ?? []).map((word) => {
+    const placementId = String(word.placement_id)
+
+    const savedCells = Array.isArray(savedWordInputs[placementId]) ? savedWordInputs[placementId] : []
+
+    return Array.from({ length: word.cells.length }, (_, index) => {
+      return normalizeLetter(savedCells[index] ?? '')
+    })
+  })
 }
 
 /**
@@ -43,16 +55,24 @@ export const useCrosswordStore = defineStore('crossword', {
     grid: null,
     title: null,
     creator: null,
-    status: null,
     mainSolution: null,
     words: null,
     width: null,
     height: null,
+
+    attemptId: null,
+    status: null,
+    stateVersion: null,
+
     wordInputs: [],
     wordStatus: [],
+
     activeWordIndex: null,
     activeCellByWord: [],
+
     loading: false,
+    saving: false,
+    modified: false,
     error: null,
   }),
 
@@ -67,39 +87,54 @@ export const useCrosswordStore = defineStore('crossword', {
       this.grid = null
       this.title = null
       this.creator = null
-      this.status = null
       this.mainSolution = null
       this.words = null
       this.width = null
       this.height = null
+
+      this.attemptId = null
+      this.status = null
+      this.stateVersion = null
+
       this.wordInputs = []
       this.wordStatus = []
+
       this.activeWordIndex = null
       this.activeCellByWord = []
+
       this.loading = false
+      this.saving = false
+      this.modified = false
       this.error = null
     },
 
     /**
      * A betöltött rejtvény adatokból inicializálja a futásidejű játékállapot tömböket.
      *
-     * @param {{ grid: Array<Array<string>>, main_solution?: string|null, words?: Array<{ cells: Array<unknown> }>, width?: number|null, height?: number|null }|null} [crossword=null] Opcionális crossword payload.
+     * @param {object} crossword Betöltött rejtvény objektum.
+     * @param {object|null} attempt Felhasználói próbálkozás objektum, ha van. Amennyiben nincs regisztrálva a felhasználó, null.
      * @returns {void}
      */
-    initializePlayState(crossword = null) {
-      if (crossword) {
-        this.grid = crossword.grid
-        this.title = crossword.title
-        this.creator = crossword.creator
-        this.status = crossword.status
-        this.mainSolution = crossword.main_solution ?? null
-        this.words = crossword.words ?? []
-        this.width = crossword.width ?? null
-        this.height = crossword.height ?? null
-      }
+    initializePlayState(crossword, attempt) {
+      this.id = crossword.id
+      this.grid = crossword.grid ?? null
+      this.title = crossword.title
+      this.creator = crossword.creator
+      this.mainSolution = crossword.main_solution ?? null
+      this.words = crossword.words ?? []
+      this.width = crossword.width ?? null
+      this.height = crossword.height ?? null
 
-      this.wordInputs = createWordInputs(this.words)
+      this.attemptId = attempt?.id ?? null
+      this.status = attempt?.status ?? null
+      this.stateVersion = attempt?.state_version ?? null
+
+      this.wordInputs = createWordInputs(this.words, attempt?.word_inputs ?? {})
       this.wordStatus = createWordStatus(this.words)
+
+      // Validálni kell, mivel lehet, hogy volt korábbi próbálkozás már
+      this.words.forEach((_, index) => this.validateWord(index))
+
       this.activeWordIndex = this.words?.length ? 0 : null
       this.activeCellByWord = this.wordInputs.map(() => 0)
     },
@@ -124,6 +159,7 @@ export const useCrosswordStore = defineStore('crossword', {
 
       this.wordInputs[wordIndex][cellIndex] = normalizeLetter(value)
       this.validateWord(wordIndex)
+      this.modified = true
     },
 
     /**
@@ -145,6 +181,7 @@ export const useCrosswordStore = defineStore('crossword', {
 
       this.wordInputs[wordIndex][cellIndex] = ''
       this.validateWord(wordIndex)
+      this.modified = true
     },
 
     /**
@@ -223,14 +260,13 @@ export const useCrosswordStore = defineStore('crossword', {
      * @returns {Promise<void>}
      */
     async loadCrossword(id) {
+      this.resetState()
       this.loading = true
-      this.error = null
 
       try {
-        const crossword = await fetchCrosswordById(id)
+        const { crossword, attempt } = await fetchCrosswordById(id)
 
-        this.id = id
-        this.initializePlayState(crossword)
+        this.initializePlayState(crossword, attempt)
       } catch (error) {
         console.log('error: ', error)
         this.error = error?.message ?? 'Hiba a rejtvény betöltése közben.'
@@ -240,25 +276,74 @@ export const useCrosswordStore = defineStore('crossword', {
     },
 
     /**
-     * Elmenti a rejtvény aktuális állapotát. Ha a rejtvény már be van fejezve, nem történik mentés.
-     * 2 másodpercenként fut
+     * Elkészíti a mentési payloadot a backendnek a szóinputokból. Csak akkor van jelentősége, ha a user be van jelentkezve.
+     * 
+     * @returns {Object<string, string[]>} Mentési payload a backendnek
+     */
+    createProgressPayload() {
+      return Object.fromEntries(
+        (this.words ?? []).map((word, index) => [
+          String(word.placement_id),
+          [...(this.wordInputs[index] ?? [])],
+        ]),
+      )
+    },
+
+    /**
+     * Elmenti a rejtvény aktuális állapotát, 2 másodpercenként fut.
+     * Ha nincs bejelentkezett felhasználó, nincs attemptId, vagy a rejtvény már be van fejezve,
+     * nem történt módosítás, vagy van jelenleg futó mentés, akkor nem történik semmi.
      * 
      * @returns {Promise<void>}
      */
     async saveProgress() {
+      if (!useAuthStore().isLoggedIn) {
+        console.log('A felhasználó nincs bejelentkezve, nem lehet menteni a folyamatot.')
+        return
+      }
+
+      if (!this.attemptId) {
+        console.log('Nincs attemptId, nem lehet menteni a folyamatot.')
+        return
+      }
+      
       if (this.status === 'completed') {
         console.log('A rejtvény már be van fejezve, nem lehet menteni a folyamatot.')
         return
       }
 
-      const words = this.wordInputs.map((cells) => cells.join(''))
+      if (!this.modified) {
+        console.log('Nincs módosítás, nem kell menteni a folyamatot.')
+        return
+      }
 
-      const response = await saveCrosswordProgress(this.id, words, this.grid)
+      if (this.saving) {
+        console.log('Már folyamatban van egy mentés, várni kell a befejezésére.')
+        return
+      }
 
-      this.status = response.status
+      this.saving = true
 
-      console.log('resp: ', response) // Szavakat backendre, majd visszaadjuk h tartozik-e attempt, ha igen visszaadjuk szavakat,
-      // betöltésnél spliteljük, berakjuk wordinputsba, nyomunk egy checket SHABAMM
+      try {
+        const snapshot = this.createProgressPayload()
+        
+        const response = await saveCrosswordProgress(this.attemptId, snapshot, this.stateVersion)
+
+        // Itt biztosan lennie kell már attemptnek, mivel a backend csak akkor engedi a mentést, ha van attemptId és login
+        this.status = response.attempt.status
+        this.stateVersion = response.attempt.state_version
+
+        // Előfordulhat, hogy mentés közben a felhasználó újabb betűt írt be,
+        // ezért a mentés után újra ellenőrizni kell, hogy van-e módosítás
+        const currentSnapshot = this.createProgressPayload()
+
+        this.modified = JSON.stringify(snapshot) !== JSON.stringify(currentSnapshot)
+      } catch (error) {
+        console.log('Hiba a rejtvény mentése közben:', error)
+        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény mentése közben.'
+      } finally {
+        this.saving = false
+      }
     },
   },
 })

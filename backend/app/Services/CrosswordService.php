@@ -16,7 +16,7 @@ class CrosswordService
     ) {
     }
 
-    public function getById(int $id, ?int $user_id = null): array
+    public function getById(int $id, ?int $userId = null): array
     {
         $crossword = Crossword::with([
             'crosswordClues.clue',
@@ -24,23 +24,28 @@ class CrosswordService
             'topics',
         ])->findOrFail($id);
 
-        $attempt = CrosswordAttempt::query()
-            ->where('user_id', $user_id)
-            ->where('crossword_id', $id)
-            ->where('status', 'in_progress')
-            ->latest('id')
-            ->first();
+        $attempt = null;
+
+        if ($userId !== null) {
+            $attempt = CrosswordAttempt::query()
+                ->where('user_id', $userId)
+                ->where('crossword_id', $id)
+                ->where('status', 'in_progress')
+                ->latest('id')
+                ->first();
 
         
-        if (!$attempt && $user_id) {
-            $attempt = CrosswordAttempt::create([
-                'user_id' => $user_id,
-                'crossword_id' => $id,
-                'status' => 'in_progress',
-                'grid_state' => [
-                    'cells' => [],
-                ],
-            ]);
+            if (!$attempt) {
+                $attempt = CrosswordAttempt::create([
+                    'user_id' => $userId,
+                    'crossword_id' => $id,
+                    'status' => 'in_progress',
+                    'grid_state' => [
+                        'word_inputs' => [],
+                    ],
+                    'state_version' => 0,
+                ]);
+            }
         }
 
         $gridData = $this->generator->generateGrid(
@@ -50,12 +55,12 @@ class CrosswordService
 
         return [
             'crossword' => $crossword,
-            'grid' => $attempt->grid_state['cells'] !== [] ? $attempt->grid_state['cells'] : $gridData['grid'],
+            'grid' => $gridData['grid'],
             'width' => $gridData['width'],
             'height' => $gridData['height'],
             'solution_col' => $gridData['solution_col'],
             'main_solution' => $gridData['main_solution'],
-            'status' => $attempt->status,
+            'attempt' => $attempt,
         ];
     }
 

@@ -1,35 +1,31 @@
 import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
 
 export async function fetchCrosswordById(id) {
   const response = await axios.get('/crossword', {
     params: {
       id: id,
-      user_id: useAuthStore().userId,
     }
   })
-
-  console.log('user_id:', useAuthStore().userId)
 
   if (!response.data.success) {
     throw new Error(response.data.message ?? 'Hiba a rejtvény betöltése közben.')
   }
 
   const crossword = response.data.crossword
+  const attempt = response.data.attempt
 
   if (!crossword || !Array.isArray(crossword.grid)) {
     console.log('Hibás API válasz:', response.data)
     throw new Error('Hibás API válasz a rejtvény betöltésekor.')
   }
 
-  return crossword
+  return { crossword, attempt }
 }
 
 export async function fetchCrosswords(params = {}) {
   const response = await axios.get('/listCrosswords', {
     params: {
       ...params,
-      user_id: useAuthStore().userId,
     },
   })
 
@@ -41,12 +37,11 @@ export async function fetchCrosswords(params = {}) {
   return response.data.crosswords
 }
 
-export async function saveCrosswordProgress(crosswordId, words, grid) {
+export async function saveCrosswordProgress(attemptId, wordInputs, stateVersion) {
   const response = await axios.post('/saveProgress', {
-    crossword_id: crosswordId,
-    user_id: useAuthStore().userId,
-    words: words,
-    grid: grid,
+    attempt_id: attemptId,
+    word_inputs: wordInputs,
+    state_version: stateVersion,
   })
 
   if (!response.data.success) {

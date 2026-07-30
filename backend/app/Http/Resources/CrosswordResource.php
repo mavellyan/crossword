@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\CrosswordClueResource;
-use App\Models\User;
 
 class CrosswordResource extends JsonResource
 {
@@ -21,7 +20,7 @@ class CrosswordResource extends JsonResource
         return [
             'id' => $crossword->id,
             'title' => $crossword->title,
-            'creator' => User::where('id', $crossword->creator_user_id)->first()?->username ?? 'Rendszer',
+            'creator' => $crossword->creator?->username ?? 'Rendszer',
             'main_solution' => $this->resource['main_solution'],
             'grid' => $this->resource['grid'],
             'words' => CrosswordClueResource::collection($crossword->getWords()),

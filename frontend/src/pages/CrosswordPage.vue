@@ -7,11 +7,8 @@
       Készítette: {{ store.creator }}
     </h5>
     <CrosswordGrid
-      :grid="store.grid"
-      :main-solution="store.mainSolution"
       :words="store.words"
       :width="store.width"
-      :height="store.height"
     />
   </div>
   <div v-else class="text-center">
@@ -19,7 +16,7 @@
       Betöltés...
     </p>
     <p v-else-if="store.error" class="alert alert-danger">
-      Hiba történt!
+      {{ store.error }}
     </p>
   </div>
 </template>
@@ -39,6 +36,11 @@ export default {
       required: true
     }
   },
+  data() {
+    return {
+      saveInterval: null,
+    }
+  },
   computed: {
     /**
      * Elérhetővé teszi a crossword Pinia store-t az oldal számára.
@@ -48,24 +50,74 @@ export default {
     store() {
       return useCrosswordStore()
     },
+    /**
+     * Ellenőrzi, hogy a rejtvény adatai betöltődtek-e.
+     * 
+     * @returns {boolean} Igaz, ha a rejtvény adatai betöltődtek, hamis egyébként.
+     */
     isCrosswordLoaded() {
-      return this.store.grid !== null && !this.store.loading && !this.store.error
+      return (this.store.id !== null &&
+        Array.isArray(this.store.words) &&
+        !this.store.loading &&
+        !this.store.error
+      )
     },
   },
   watch: {
     id: {
       immediate: true,
       /**
-       * Újratölti a rejtvény adatait, amikor változik a route id.
-       *
-       * @param {string} newId Az új route paraméter érték.
-       * @returns {void}
+       * Ha a route id változik, először elmentjük a jelenlegi rejtvény állapotát, majd betöltjük az új rejtvényt.
+       * 
+       * @param newId - Az új rejtvény id-je amit a route paraméterből kapunk.
+       * @param oldId - A régi rejtvény id-je amit a route paraméterből kaptunk.
+       * @returns {Promise<void>}
        */
-      handler(newId) {
-        this.store.loadCrossword(newId)
-      },
+      async handler(newId, oldId) {
+        if (oldId && oldId !== newId) {
+          await this.store.saveProgress()
+        }
+
+        await this.store.loadCrossword(newId)
+      }
     },
   },
+  mounted() {
+    this.startAutoSave()
+  },
+  beforeUnmount() {
+    this.stopAutoSave()
+  },
+  async beforeRouteLeave() {
+    this.stopAutoSave()
+    await this.store.saveProgress()
+  },
+  methods: {
+    /**
+     * Elindítja az automatikus mentést, ami 2 másodpercenként elmenti a rejtvény aktuális állapotát.
+     * Ha már fut az automatikus mentés, nem történik semmi.
+     */
+    startAutoSave() {
+      if (this.saveInterval !== null) {
+        return
+      }
+
+      this.saveInterval = setInterval(() => {
+        this.store.saveProgress()
+      }, 2000)
+    },
+    /**
+     * Leállítja az automatikus mentést. Ha nincs futó automatikus mentés, nem történik semmi.
+     */
+    stopAutoSave() {
+      if (this.saveInterval === null) {
+        return
+      }
+
+      clearInterval(this.saveInterval)
+      this.saveInterval = null
+    }
+  }
 }
 </script>
 
