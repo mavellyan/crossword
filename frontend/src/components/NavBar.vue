@@ -3,10 +3,11 @@
     <div class="navbar-nav">
       <RouterLink class="nav-link" to="/">Főoldal</RouterLink>
       <RouterLink class="nav-link" to="/crosswordlist">Rejtvények</RouterLink>
-      <RouterLink class="nav-link" to="/create">Rejtvény létrehozása</RouterLink>
+      <RouterLink v-if="auth.isLoggedIn" class="nav-link" to="/create">Rejtvény létrehozása</RouterLink>
     </div>
     <div class="navbar-nav ms-auto">
       <template v-if="auth.isLoggedIn">
+          <RouterLink class="nav-link mx-3" to="/profile">Profil</RouterLink>
           <button class="btn btn-outline-light" @click="logout">Kijelentkezés</button>
       </template>
       <template v-else>

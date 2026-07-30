@@ -80,6 +80,20 @@ export default {
       inputRefs: {},
     }
   },
+  mounted() {
+    // 2 másodpercenként menti a rejtvény állapotát a store-ba, hogy a felhasználó előrehaladása ne vesszen el.
+    this.saveInterval = setInterval(() => {
+      this.store.saveProgress()
+    }, 2000)
+  },
+  beforeUnmount() {
+    // Töröljük az időzítőt, hogy ne próbáljon meg menteni a komponens eltávolítása után.
+    clearInterval(this.saveInterval)
+    this.saveInterval = null
+
+    // Komponens eltávolításakor is menti a rejtvény állapotát a store-ba.
+    this.store.saveProgress()
+  },
   computed: {
     /**
      * Központi rejtvény játékállapotot ad a komponensnek.

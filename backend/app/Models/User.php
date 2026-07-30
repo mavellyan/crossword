@@ -48,4 +48,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * A user által megkezdett rejtvény próbálkozások lekérése.
+     */
+    public function attempts()
+    {
+        return $this->hasMany(CrosswordAttempt::class);
+    }
 }

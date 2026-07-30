@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchCrosswordById } from '@/services/crosswordApi'
+import { fetchCrosswordById, saveCrosswordProgress } from '@/services/crosswordApi'
 
 /**
  * Egy nyers cella inputot egyetlen nagybetűs karakterre normalizál.
@@ -41,6 +41,9 @@ export const useCrosswordStore = defineStore('crossword', {
   state: () => ({
     id: null,
     grid: null,
+    title: null,
+    creator: null,
+    status: null,
     mainSolution: null,
     words: null,
     width: null,
@@ -62,6 +65,9 @@ export const useCrosswordStore = defineStore('crossword', {
     resetState() {
       this.id = null
       this.grid = null
+      this.title = null
+      this.creator = null
+      this.status = null
       this.mainSolution = null
       this.words = null
       this.width = null
@@ -76,7 +82,6 @@ export const useCrosswordStore = defineStore('crossword', {
 
     /**
      * A betöltött rejtvény adatokból inicializálja a futásidejű játékállapot tömböket.
-     * Ha kap crossword payloadot, először a bázis metadata frissül.
      *
      * @param {{ grid: Array<Array<string>>, main_solution?: string|null, words?: Array<{ cells: Array<unknown> }>, width?: number|null, height?: number|null }|null} [crossword=null] Opcionális crossword payload.
      * @returns {void}
@@ -84,6 +89,9 @@ export const useCrosswordStore = defineStore('crossword', {
     initializePlayState(crossword = null) {
       if (crossword) {
         this.grid = crossword.grid
+        this.title = crossword.title
+        this.creator = crossword.creator
+        this.status = crossword.status
         this.mainSolution = crossword.main_solution ?? null
         this.words = crossword.words ?? []
         this.width = crossword.width ?? null
@@ -229,6 +237,28 @@ export const useCrosswordStore = defineStore('crossword', {
       } finally {
         this.loading = false
       }
+    },
+
+    /**
+     * Elmenti a rejtvény aktuális állapotát. Ha a rejtvény már be van fejezve, nem történik mentés.
+     * 2 másodpercenként fut
+     * 
+     * @returns {Promise<void>}
+     */
+    async saveProgress() {
+      if (this.status === 'completed') {
+        console.log('A rejtvény már be van fejezve, nem lehet menteni a folyamatot.')
+        return
+      }
+
+      const words = this.wordInputs.map((cells) => cells.join(''))
+
+      const response = await saveCrosswordProgress(this.id, words, this.grid)
+
+      this.status = response.status
+
+      console.log('resp: ', response) // Szavakat backendre, majd visszaadjuk h tartozik-e attempt, ha igen visszaadjuk szavakat,
+      // betöltésnél spliteljük, berakjuk wordinputsba, nyomunk egy checket SHABAMM
     },
   },
 })

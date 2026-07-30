@@ -9,7 +9,7 @@
         v-model="search"
         type="text"
         class="form-control w-75 mx-auto mb-3"
-        placeholder="Keresés cím vagy főmegoldás alapján..."
+        placeholder="Keresés cím alapján..."
         @input="loadCrosswords"
       />
     </div>
@@ -27,10 +27,6 @@
               {{ crossword.title }}
             </h5>
 
-            <p class="mb-1 text-muted">
-              Főmegoldás: {{ crossword.main_solution }}
-            </p>
-
             <small>
               Szavak száma: {{ crossword.words_count }}
               <span v-if="crossword.creator">
@@ -39,9 +35,19 @@
             </small>
           </div>
 
-          <small class="text-muted">
-            {{ crossword.created_at }}
-          </small>
+          <div class="d-flex flex-column gap-2 align-items-end">
+            <small class="text-muted">
+              {{ crossword.created_at }}
+            </small>
+            <small>
+              <span v-if="crossword.status === 'in_progress'" class="badge bg-warning">
+                Megkezdve
+              </span>
+              <span v-else-if="crossword.status === 'completed'" class="badge bg-success">
+                Befejezve
+              </span>
+            </small>
+          </div>
         </div>
       </RouterLink>
     </div>

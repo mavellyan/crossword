@@ -330,4 +330,12 @@ class Crossword extends Model
             'height' => $this->getHeight(),
         ];
     }
+
+    /**
+     * A rejtvényhez tartozó próbálkozások lekérése.
+     */    
+    public function attempts()
+    {
+        return $this->hasMany(CrosswordAttempt::class);
+    }
 }

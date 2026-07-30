@@ -7,6 +7,7 @@ import HomePage from '@/pages/HomePage.vue'
 import CrosswordListPage from '@/pages/CrosswordListPage.vue'
 import CrosswordPage from '@/pages/CrosswordPage.vue'
 import CrosswordCreator from '@/pages/CrosswordCreator.vue'
+import ProfilePage from '@/pages/ProfilePage.vue'
 
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
@@ -21,7 +22,8 @@ const routes = [
       { path: '', name: 'home', component: HomePage },
       { path: 'crosswordlist', name: 'crosswordlist', component: CrosswordListPage },
       { path: 'crossword/:id', name: 'crossword', component: CrosswordPage, props: true },
-      { path: 'create', name: 'crosswordcreator', component: CrosswordCreator },
+      { path: 'create', name: 'crosswordcreator', component: CrosswordCreator, meta: { requiresAuth: true } },
+      { path: 'profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } }
     ],
   },
   {
@@ -44,18 +46,25 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('auth_token')
+router.beforeEach((to) => {
+  const token = localStorage.getItem('token')
 
-  if (to.name === 'login' && token) {
-    next({ name: 'home' })
+  // Bejelentkezést igénylő oldalak esetén, ha nincs token, a bejelentkezési oldalra irányítjuk a felhasználót
+  if (to.meta.requiresAuth && !token) {
+    return {
+      name: 'login',
+      query: {
+        redirect: to.fullPath,
+      },
+    }
   }
 
-  if (to.matched.some(record => record.meta.requiresAuth) && !token) {
-    next({ name: 'login' })
-  } else {
-    next()
+  // Bejelentkezett felhasználót a főoldalra navigáljuk, ha a bejelentkezési vagy regisztrációs oldalra próbál navigálni
+  if (token && (to.name === 'login' || to.name === 'register')) {
+    return { name: 'home' }
   }
+
+  // Ha nem adunk vissza semmit, a navigáció folytatódik az eredeti céloldalra
 })
 
 export default router
