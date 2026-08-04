@@ -75,9 +75,11 @@ class CrosswordController extends Controller
             'search' => $request->input('search'),
         ]);
 
+        $user = $request->user('sanctum');
+
         return response()->json([
             'success' => true,
-            'crosswords' => $crosswords->map(function ($crossword) {
+            'crosswords' => $crosswords->map(function ($crossword) use ($user) {
                 return [
                     'id' => $crossword->id,
                     'title' => $crossword->title,
@@ -90,7 +92,8 @@ class CrosswordController extends Controller
                         'username' => $crossword->creator->username,
                     ] : null,
                     'created_at' => $crossword->created_at?->toDateTimeString(),
-                    'status' => $crossword->attempts()->latest('id')->first()?->status,
+                    'status' => $user === null ? null :
+                        $crossword->attempts()->where('user_id', $user->id)->latest('id')->first()?->status,
                 ];
             })->values(),
         ]);

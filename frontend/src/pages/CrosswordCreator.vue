@@ -62,30 +62,51 @@
         <p v-if="wordsError" class="alert alert-danger text-center">
           {{ wordsError }}
         </p>
-        <div v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex mb-2 align-items-center">
-          <select
-            v-model="selectedWords[charIndex]"
-            name="clue-select"
-            class="form-select w-auto border border-primary"
-            :disabled="!isMainSolutionValid || wordsLoading || !!wordsError"
+        <div v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex">
+          <div class="d-flex mb-2 align-items-center w-100">
+            <v-select
+              v-model="selectedWords[charIndex]"
+              name="clue-v-select"
+              class="w-auto border border-primary rounded clue-select"
+              label="solution"
+              :placeholder="'Válassz egy szót'"
+              :options="getWordsForCurrentLetter(char, charIndex)"
+              :disabled="!isMainSolutionValid || wordsLoading || !!wordsError"
+            >
+              <template #no-options="{ search, searching }">
+                <template v-if="searching">
+                  Sajnos a(z) "<strong>{{ search }}</strong>" keresésre nincs találat. <br>
+                  Add hozzá a <strong>+</strong> jelre kattintva!
+                </template>
+                <template v-else>
+                  A lista jelenleg üres. <br> 
+                  Adj hozzá új szavakat a <strong>+</strong> jelre kattintva!
+                </template>
+              </template>
+            </v-select>
+            <span
+              v-if="!wordExistsForLetter(char)"
+              class="text-muted mx-2"
+            >
+              Nem található szó ilyen betűvel.
+            </span>
+            <span
+              v-else
+              class="text-muted mx-2"
+            >
+              {{ getDefinitionForSelectedWord(selectedWords[charIndex]) }}
+            </span>
+          </div>
+          <div
+            class="d-flex align-items-center justify-content-center mb-2 pointer"
+            v-tooltip.hover="'Új szó hozzáadása a listához'"
           >
-            <option :value="null">Válassz egy szót</option>
-            <option v-for="word in getWordsForCurrentLetter(char, charIndex)" :value="word" :key="word.id">
-              {{ word.solution }}
-            </option>
-          </select>
-          <span
-            v-if="!wordExistsForLetter(char)"
-            class="text-muted mx-2"
-          >
-            Nem található szó ilyen betűvel.
-          </span>
-          <span
-            v-else
-            class="text-muted mx-2"
-          >
-            {{ getDefinitionForSelectedWord(selectedWords[charIndex]) }}
-          </span>
+            <font-awesome-icon
+              icon="fa-solid fa-plus"
+              class="border border-primary rounded p-1 pointer"
+              @click="showClueCreatorModal()"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -103,24 +124,78 @@
       {{ createError }}
     </p>
   </div>
+  <ClueCreatorModal
+    ref="clueCreatorModal"
+    @closed="hideClueCreatorModal"
+  />
 </template>
 
 <script>
 import { fetchCreatorWords, getWordsForLetterFromList } from '../services/creatorWords'
 import { createCrossword } from '../services/crosswordCreatorApi'
+import ClueCreatorModal from '../components/ClueCreatorModal.vue'
 
 export default {
   name: 'CrosswordCreator',
+  components: {
+    ClueCreatorModal,
+  },
   data() {
     return {
+      /**
+       * A rejtvény főmegoldása
+       * 
+       * @type {string}
+       */
       mainSolution: '',
+      /**
+       * A főmegoldás minden betűjéhez kiválasztott szavak listája.
+       * 
+       * @type {Array<{ id: number, solution: string, definition: string }>}
+       */
       selectedWords: [],
+      /**
+       * A rejtvény címe
+       * 
+       * @type {string}
+       */
       title: '',
+      /**
+       * Az elérhető szavak listája, amikből a felhasználó kiválaszthatja a főmegoldás betűihez tartozó szavakat.
+       * 
+       * @type {Array<{ id: number, solution: string, definition: string, length: number }>}
+       */
       availableWords: [],
+      /**
+       * Szavak betöltése folyamatban van-e
+       * 
+       * @type {boolean}
+       */
       wordsLoading: false,
+      /**
+       * Hiba történt a szavak betöltése során, ezt a hibaüzenetet jelenítjük meg a felhasználónak.
+       * 
+       * @type {string|null}
+       */
       wordsError: null,
+      /**
+       * A rejtvény létrehozása folyamatban van-e
+       * 
+       * @type {boolean}
+       */
       creating: false,
+      /**
+       * Hiba történt a rejtvény létrehozása során, ezt a hibaüzenetet jelenítjük meg a felhasználónak.
+       * 
+       * @type {string|null}
+       */
       createError: null,
+      /**
+       * A felugró ablak nyitva van-e, ahol a felhasználó új szót adhat hozzá a listához.
+       * 
+       * @type {boolean}
+       */
+      isClueCreatorModalOpen: false,
     }
   },
   async mounted() {
@@ -467,6 +542,18 @@ export default {
     getDefinitionForSelectedWord(word) {
       return word?.definition || ''
     },
+    /**
+     * Megjeleníti a szó hozzáadó ablakot.
+     */
+    showClueCreatorModal() {
+      this.$refs.clueCreatorModal.showModal()
+    },
+    /**
+     * Elrejti a szó hozzáadó ablakot.
+     */
+    hideClueCreatorModal() {
+      this.$refs.clueCreatorModal.closeModal()
+    },
   },
 }
 </script>
@@ -501,5 +588,30 @@ export default {
 .preview-cell-black {
   background-color: #111;
   color: transparent;
+}
+
+:deep(.vs__dropdown-toggle) {
+  border: none !important;
+  padding: 0.375rem 0.75rem;
+  background-color: #fff;
+  border-radius: inherit;
+}
+
+:deep(.vs--searchable .vs__dropdown-toggle) {
+  cursor: pointer;
+}
+
+:deep(.vs--open) {
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  border-radius: 0.375rem;
+}
+
+.clue-select {
+  min-width: 33%;
+  margin-right: 10px;
+}
+
+.pointer {
+  cursor: pointer;
 }
 </style>
