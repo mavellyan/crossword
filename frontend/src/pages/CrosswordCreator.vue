@@ -1,38 +1,52 @@
 <template>
-  <div>
+  <div
+    :class="{'blur-background': isClueCreatorModalOpen}"
+  >
     <h1 class="text-center pb-5">Hozz létre saját rejtvényt!</h1>
     <div class="d-flex align-items-center justify-content-center mb-3">
-        <label class="h3 w-auto">Mi legyen a rejtvényed címe?</label>
-        <input
-            v-model="title"
-            class="form-control w-50 mx-3 border border-primary border-2"
-            minlength="5"
-            maxlength="255"
-            placeholder="pl: A világ legnehezebb rejtvénye"
-          />
+      <label class="h4 w-auto">Mi legyen a rejtvényed címe?</label>
+      <input
+        v-model="title"
+        class="form-control w-25 mx-3 border border-primary border-2"
+        minlength="5"
+        maxlength="255"
+        placeholder="pl: A világ legnehezebb rejtvénye"
+      />
     </div>
     <p
       v-if="hasTitle && !isTitleValid"
-      class="text-muted mb-3 alert alert-danger w-50 mx-auto mt-3 text-center pb-2 pt-2"
+      class="text-muted mb-3 alert alert-danger w-25 mx-auto mt-3 text-center pb-2 pt-2"
     >
       A címnek legalább 5 és legfeljebb 255 karakterből kell állnia.
     </p>
-    <div class="d-flex align-items-center justify-content-center">
-        <label class="h3">Mi legyen a rejtvényed főmegoldása?</label>
-        <input
-            v-model="mainSolution"
-            class="form-control w-auto mx-3 border border-primary border-2 text-uppercase"
-            maxlength="20"
-            placeholder="pl: piros"
-            @input="mainSolution = mainSolution.toUpperCase()"
-          />
+    <div class="d-flex align-items-center justify-content-center mb-3">
+      <label class="h4 w-auto">Mi legyen a rejtvényed főmegoldása?</label>
+      <input
+        v-model="mainSolution"
+        class="form-control w-25 mx-3 border border-primary border-2 text-uppercase"
+        maxlength="20"
+        placeholder="pl: piros"
+        @input="mainSolution = mainSolution.toUpperCase()"
+      />
     </div>
     <p
       v-if="hasMainSolution && !isMainSolutionValid"
-      class="text-muted mb-0 alert alert-danger w-75 mx-auto mt-3 text-center pb-2 pt-2"
+      class="text-muted mb-3 alert alert-danger w-25 mx-auto mt-3 text-center pb-2 pt-2"
     >
       A főmegoldás csak a magyar ábécé betűit tartalmazhatja, számok, szóköz és egyéb speciális karakterek nélkül.
     </p>
+    <div class="d-flex align-items-center justify-content-center mb-3">
+      <label class="h4 w-auto">Mi legyen a rejtvényed témája?</label>
+      <v-select
+        v-model="selectedTopic"
+        name="topic-v-select"
+        class="w-25 mx-3 border border-primary border-2 rounded"
+        label="name"
+        :placeholder="'Válassz egy témát'"
+        :options="topics"
+        >
+      </v-select>
+    </div>
     <div v-if="isCrosswordVisible" class="mt-5 d-flex align-items-start">
       <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background align-items-center">
         <h4 class="text-center mb-4">Így fog kinézni a rejtvényed:</h4>
@@ -98,6 +112,7 @@
             </span>
           </div>
           <div
+            v-if="selectedWords[charIndex] == null"
             class="d-flex align-items-center justify-content-center mb-2 pointer"
             v-tooltip.hover="'Új szó hozzáadása a listához'"
           >
@@ -126,13 +141,15 @@
   </div>
   <ClueCreatorModal
     ref="clueCreatorModal"
+    :topics="topics"
+    :selected-topic="selectedTopic"
     @closed="hideClueCreatorModal"
   />
 </template>
 
 <script>
 import { fetchCreatorWords, getWordsForLetterFromList } from '../services/creatorWords'
-import { createCrossword } from '../services/crosswordCreatorApi'
+import { createCrossword, loadTopics } from '../services/crosswordCreatorApi'
 import ClueCreatorModal from '../components/ClueCreatorModal.vue'
 
 export default {
@@ -196,10 +213,23 @@ export default {
        * @type {boolean}
        */
       isClueCreatorModalOpen: false,
+      /**
+       * A felhasználó által kiválasztott téma a rejtvényhez.
+       * 
+       * @type {{ id: number, name: string } | null}
+       */
+      selectedTopic: null,
+      /**
+       * A backendről betöltött témák listája, amikből a felhasználó választhat.
+       * 
+       * @type {Array<{ id: number, name: string }>}
+       */
+      topics: [],
     }
   },
   async mounted() {
     await this.loadCreatorWords()
+    await this.loadTopics()
   },
   computed: {
     /**
@@ -425,6 +455,24 @@ export default {
       }
     },
     /**
+     * Betölti a backendről a témákat
+     */
+    async loadTopics() {
+      try {
+        this.topics = await loadTopics()
+      } catch (error) {
+        console.log('load topics error:', error)
+
+        this.$notify({
+          type: 'error',
+          title: 'Hiba',
+          text: 'Nem sikerült betölteni a témákat.',
+        })
+
+        this.topics = []
+      }
+    },
+    /**
      * User által létrehozott keresztrejtvény elküldése a backendnek, hogy elmentse az adatbázisba.
      * Ha sikeres, átirányítja a felhasználót a létrehozott rejtvény oldalára.
      * Kézi elhelyezést használ, a backend az itt megadott sorrendet tartja.
@@ -438,6 +486,7 @@ export default {
           title: this.title.trim(),
           main_solution: this.normalizeMainSolution,
           clue_ids: this.selectedWords.map(word => word.id),
+          topic_id: this.selectedTopic?.id ?? null,
           difficulty: 'easy',
           is_public: true,
         })
@@ -546,12 +595,14 @@ export default {
      * Megjeleníti a szó hozzáadó ablakot.
      */
     showClueCreatorModal() {
+      this.isClueCreatorModalOpen = true
       this.$refs.clueCreatorModal.showModal()
     },
     /**
      * Elrejti a szó hozzáadó ablakot.
      */
     hideClueCreatorModal() {
+      this.isClueCreatorModalOpen = false
       this.$refs.clueCreatorModal.closeModal()
     },
   },
@@ -613,5 +664,12 @@ export default {
 
 .pointer {
   cursor: pointer;
+}
+
+.blur-background {
+  filter: blur(4px);
+  position: absolute;
+  width: 100%;
+  height: 100%;
 }
 </style>

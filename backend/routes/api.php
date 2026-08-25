@@ -29,3 +29,7 @@ Route::get('/listCrosswords', [\App\Http\Controllers\CrosswordController::class,
 Route::get('/creator-words', [\App\Http\Controllers\ClueController::class, 'index']);
 
 Route::post('/saveProgress', [\App\Http\Controllers\CrosswordController::class, 'saveProgress'])->middleware('auth:sanctum');
+
+Route::post('/createClue', [\App\Http\Controllers\ClueController::class, 'create'])->middleware('auth:sanctum');
+
+Route::get('/topics', [\App\Http\Controllers\TopicController::class, 'index']);

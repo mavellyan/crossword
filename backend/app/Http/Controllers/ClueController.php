@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Clue;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ClueController extends Controller
 {
@@ -49,6 +50,39 @@ class ClueController extends Controller
         return response()->json([
             'success' => true,
             'words' => $words,
+        ]);
+    }
+
+    public function create(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'solution' => 'required|string|min:1|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
+            'definition' => 'required|string|min:5|max:50',
+            'topic_id' => 'nullable|integer|exists:topics,id',
+        ]);
+
+        // Tranzakcióba rakjuk, hogy esetleges hibánál ne legyen félkész adat
+        $clue = DB::transaction(function () use ($validated) {
+            $clue = Clue::create([
+                'solution' => mb_strtoupper($validated['solution']),
+                'definition' => $validated['definition'],
+            ]);
+
+            if (!empty($validated['topic_id'])) {
+                $clue->topics()->attach($validated['topic_id']);
+            }
+
+            return $clue;
+        });
+
+        return response()->json([
+            'success' => true,
+            'clue' => [
+                'id' => $clue->id,
+                'solution' => mb_strtoupper($clue->solution),
+                'definition' => $clue->definition,
+                'length' => mb_strlen($clue->solution),
+            ],
         ]);
     }
 }

@@ -29,9 +29,4 @@ export default {
 main {
   z-index: 1;
 }
-
-:deep(.vue-notification) {
-  z-index: 9999 !important;
-  font-size: 18px !important;
-}
 </style>

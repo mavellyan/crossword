@@ -157,6 +157,10 @@ class CrosswordService
                 'is_public' => $data['is_public'] ?? false,
             ]);
 
+            if (!empty($data['topic_id'])) {
+                $crossword->topics()->attach($data['topic_id']);
+            }
+
             $placements = $this->generator->generatePlacementsFixedOrder(
                 $crossword->main_solution,
                 $clues,

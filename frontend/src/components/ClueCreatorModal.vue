@@ -21,11 +21,18 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label mb-1">Megfejtés:</label>
-                            <input type="text" class="form-control" v-model="solution" />
+                            <input type="text" class="form-control text-uppercase" v-model="solution" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label mb-1">Téma (opcionális):</label>
-                            <input type="text" class="form-control" v-model="theme" />
+                            <v-select
+                                v-model="topic"
+                                name="topic-v-select"
+                                class="rounded"
+                                label="name"
+                                :placeholder="'Válassz egy témát'"
+                                :options="topics"
+                            ></v-select>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -40,18 +47,29 @@
 
 <script>
 import { Modal } from 'bootstrap';
+import { createClue } from '../services/crosswordCreatorApi'
 
 export default {
     name: 'ClueCreatorModal',
+    props: {
+        topics: {
+            type: Array,
+            required: true
+        },
+        selectedTopic: {
+            type: Object,
+            default: null
+        }
+    },
     data() {
         return {
             definition: '',
             solution: '',
-            theme: '',
+            topic: null,
             modalInstance: null,
         };
     },
-    emits: ['closed'],
+    emits: ['closed', 'clue-created'],
     mounted() {
         if (this.$refs.modalRef) {
             this.modalInstance = new Modal(this.$refs.modalRef)
@@ -61,6 +79,14 @@ export default {
                 this.resetModal()
                 this.$emit('closed')
             });
+        }
+    },
+    watch: {
+        selectedTopic: {
+            immediate: true,
+            handler(newTopic) {
+                this.topic = newTopic
+            }
         }
     },
     methods: {
@@ -87,7 +113,7 @@ export default {
         resetModal() {
             this.definition = ''
             this.solution = ''
-            this.theme = ''
+            this.topic = this.selectedTopic || null
         },
         /**
          * Leellenőrzi, hogy a meghatározás és a megfejtés mezők érvényesek-e a megadott szabályok szerint.
@@ -95,6 +121,16 @@ export default {
          * @return {boolean} - true, ha érvényesek, false, ha nem
          */
         isClueValid() {
+            if (this.definition.trim() === '' || this.solution.trim() === '') {
+                this.$notify({
+                    type: 'error',
+                    title: 'Hiba',
+                    text: 'A meghatározás és/vagy a megfejtés mezőt nem hagyhatod üresen.',
+                })
+
+                return false
+            }
+
             // Regex a megfejtéshez: csak a magyar ábécé betűi, szóközök, számok és speciális karakterek nélkül
             const solutionRegex = /^[a-zA-ZáÁéÉíÍóÓöÖőŐúÚüÜűŰ]+$/
 
@@ -121,21 +157,31 @@ export default {
                 return false
             }
 
-            if (this.definition.trim() === '' || this.solution.trim() === '') {
+            if (this.definition.length > 50) {
                 this.$notify({
                     type: 'error',
                     title: 'Hiba',
-                    text: 'A meghatározás és/vagy a megfejtés mezőt nem hagyhatod üresen.',
+                    text: 'A meghatározás nem lehet hosszabb 50 karakternél.',
                 })
 
                 return false
             }
 
-            if (this.definition.length > 50 || this.solution.length > 50) {
+            if (this.solution.length > 20) {
                 this.$notify({
                     type: 'error',
                     title: 'Hiba',
-                    text: 'A meghatározás és/vagy a megfejtés mezők nem lehetnek hosszabbak 50 karakternél.',
+                    text: 'A megfejtés nem lehet hosszabb 20 karakternél.',
+                })
+
+                return false
+            }
+
+            if (this.definition.length < 5) {
+                this.$notify({
+                    type: 'error',
+                    title: 'Hiba',
+                    text: 'A meghatározás nem lehet rövidebb 5 karakternél.',
                 })
 
                 return false
@@ -150,21 +196,37 @@ export default {
          * @emits closed - A modal bezáródik a mentés után
          */
         async save() {
+            console.log('topic: ', this.topic)
             if (!this.isClueValid()) {
                 return
             }
             
             const newClue = {
                 definition: this.definition,
-                solution: this.solution,
-                theme: this.theme,
+                solution: this.solution.toUpperCase(),
+                topic_id: this.topic?.id,
             }
 
             this.$notify({
                 type: 'success',
-                title: 'Sikeres mentés',
-                text: 'A szó sikeresen hozzáadva.',
+                title: 'Mentés...',
+                text: 'A szó mentése folyamatban van.',
             })
+
+            try {
+                const createdClue = await createClue(newClue)
+                this.$emit('clue-created', createdClue)
+                this.closeModal()
+
+            } catch (error) {
+                console.error('Hiba a szó mentésekor:', error)
+
+                this.$notify({
+                    type: 'error',
+                    title: 'Hiba',
+                    text: 'Hiba történt a szó mentésekor.',
+                })
+            }
         },
     }
 }

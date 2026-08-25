@@ -7,7 +7,6 @@ use App\Models\CrosswordAttempt;
 use App\Http\Resources\CrosswordResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use SebastianBergmann\Type\TrueType;
 use Throwable;
 
 class CrosswordController extends Controller
@@ -48,6 +47,7 @@ class CrosswordController extends Controller
             'main_solution' => 'required|string|min:3|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
             'clue_ids' => 'required|array|min:1',
             'clue_ids.*' => 'required|integer|exists:clues,id',
+            'topic_id' => 'nullable|integer|exists:topics,id',
             'difficulty' => 'nullable|string',
             'is_public' => 'nullable|boolean',
         ]);
