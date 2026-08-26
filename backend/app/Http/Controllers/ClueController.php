@@ -11,7 +11,14 @@ class ClueController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $topicId = $request->input('topic_id');
         $query = Clue::query();
+
+        if ($topicId !== null) {
+            $query->whereHas('topics', function ($q) use ($topicId) {
+                $q->where('topics.id', $topicId);
+            });
+        }
 
         if ($request->filled('letter')) {
             $letter = mb_strtoupper($request->input('letter'));

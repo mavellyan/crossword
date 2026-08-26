@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             TestCrosswordSeeder::class,
             TestWordsSeeder::class,
             TopicSeeder::class,
+            ClueTopicSeeder::class,
         ]);
     }
 }

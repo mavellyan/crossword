@@ -26,7 +26,7 @@ Route::post('/crossword', [\App\Http\Controllers\CrosswordController::class, 'cr
 
 Route::get('/listCrosswords', [\App\Http\Controllers\CrosswordController::class, 'listCrosswords']);
 
-Route::get('/creator-words', [\App\Http\Controllers\ClueController::class, 'index']);
+Route::get('/creatorWords', [\App\Http\Controllers\ClueController::class, 'index']);
 
 Route::post('/saveProgress', [\App\Http\Controllers\CrosswordController::class, 'saveProgress'])->middleware('auth:sanctum');
 

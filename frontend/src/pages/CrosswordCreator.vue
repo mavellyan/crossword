@@ -73,10 +73,10 @@
           Szavak betöltése...
         </p>
 
-        <p v-if="wordsError" class="alert alert-danger text-center">
+        <p v-else-if="wordsError" class="alert alert-danger text-center">
           {{ wordsError }}
         </p>
-        <div v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex">
+        <div v-else v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex">
           <div class="d-flex mb-2 align-items-center w-100">
             <v-select
               v-model="selectedWords[charIndex]"
@@ -435,17 +435,31 @@ export default {
 
       this.selectedWords = this.matchSelectedWordsToMainSolution(oldChars, newChars, this.selectedWords)
     },
+    /**
+     * Ha a felhasználó új témát választott, akkor frissítjük a szavak listáját, hogy azok a kiválasztott témához illeszkedjenek.
+     * 
+     * @param newVal Új témakör
+     * @param oldVal Régi témakör
+     */
+    selectedTopic(newVal, oldVal) {
+      this.loadCreatorWords()
+    },
   },
   methods: {
     /**
      * Betölti a backendről a rejtvénykészítőben elérhető szavakat.
+     * 
+     * @param {number|null} topicId Opcionális paraméter, ami a kiválasztott témakör ID-ját adja meg.
+     *                              Ha nincs megadva, akkor a jelenleg kiválasztott témakör alapján töltjük be a szavakat.
+     *                              Lehet null is, ekkor az összes szót betöltjük.
+     * @return {Promise<void>}
      */
-    async loadCreatorWords() {
+    async loadCreatorWords(topicId = this.selectedTopic?.id ?? null) {
       this.wordsLoading = true
       this.wordsError = null
 
       try {
-        this.availableWords = await fetchCreatorWords()
+        this.availableWords = await fetchCreatorWords(topicId)
       } catch (error) {
         console.log('creator words error:', error)
         this.wordsError = error?.message ?? 'Nem sikerült betölteni a választható szavakat.'

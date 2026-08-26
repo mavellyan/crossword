@@ -1,7 +1,11 @@
 import axios from 'axios'
 
-export async function fetchCreatorWords() {
-  const response = await axios.get('/creator-words')
+export async function fetchCreatorWords(topicId = null) {
+  const response = await axios.get('/creatorWords', {
+    params: {
+      topic_id: topicId
+    }
+  })
 
   if (!response.data.success || !Array.isArray(response.data.words)) {
     console.log('Érvénytelen válasz:', response.data)
