@@ -56,4 +56,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(CrosswordAttempt::class);
     }
+
+    /**
+     * A user által létrehozott rejtvények lekérése.
+     */
+    public function crosswords()
+    {
+        return $this->hasMany(Crossword::class);
+    }
 }

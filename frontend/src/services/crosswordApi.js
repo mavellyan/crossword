@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-export async function fetchCrosswordById(id) {
+export async function loadCrosswordById(id) {
   const response = await axios.get('/crossword', {
     params: {
       id: id,
@@ -22,7 +22,7 @@ export async function fetchCrosswordById(id) {
   return { crossword, attempt }
 }
 
-export async function fetchCrosswords(params = {}) {
+export async function listCrosswords(params = {}) {
   const response = await axios.get('/listCrosswords', {
     params: {
       ...params,
@@ -35,6 +35,18 @@ export async function fetchCrosswords(params = {}) {
   }
 
   return response.data.crosswords
+}
+
+
+export async function listTopics() {
+  const response = await axios.get('/topics')
+
+  if (!response.data.success || !Array.isArray(response.data.topics)) {
+    console.log('Érvénytelen API válasz:', response.data)
+    throw new Error(response.data.message ?? 'Nem sikerült betölteni a témákat.')
+  }
+
+  return response.data.topics
 }
 
 export async function saveCrosswordProgress(attemptId, wordInputs, stateVersion) {

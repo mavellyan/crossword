@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchCrosswordById, saveCrosswordProgress } from '@/services/crosswordApi'
+import { loadCrosswordById, saveCrosswordProgress } from '@/services/crosswordApi'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -264,7 +264,7 @@ export const useCrosswordStore = defineStore('crossword', {
       this.loading = true
 
       try {
-        const { crossword, attempt } = await fetchCrosswordById(id)
+        const { crossword, attempt } = await loadCrosswordById(id)
 
         this.initializePlayState(crossword, attempt)
       } catch (error) {

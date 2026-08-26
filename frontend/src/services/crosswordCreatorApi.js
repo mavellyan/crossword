@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 export async function createCrossword(payload) {
-  const response = await axios.post('/crossword', payload)
+  const response = await axios.post('/createCrossword', payload)
 
   if (!response.data.success || !response.data.crossword) {
     console.log('Érvénytelen API válasz:', response.data)
@@ -22,13 +22,34 @@ export async function createClue(payload) {
   return response.data.clue
 }
 
-export async function loadTopics() {
-  const response = await axios.get('/topics')
+export async function listCreatorWords(topicIds = null) {
+  const response = await axios.get('/clues', {
+    params: {
+      topic_ids: topicIds
+    }
+  })
 
-  if (!response.data.success || !Array.isArray(response.data.topics)) {
-    console.log('Érvénytelen API válasz:', response.data)
-    throw new Error(response.data.message ?? 'Nem sikerült betölteni a témákat.')
+  if (!response.data.success || !Array.isArray(response.data.words)) {
+    console.log('Érvénytelen válasz:', response.data)
+    throw new Error('Nem sikerült betölteni a választható szavakat.')
   }
 
-  return response.data.topics
+  return response.data.words.map((word) => ({
+    id: word.id,
+    solution: String(word.solution ?? '').toUpperCase(),
+    definition: word.definition ?? '',
+    length: word.length ?? String(word.solution ?? '').length,
+  }))
+}
+
+export function getWordsForLetterFromList(words, letter) {
+  if (!letter) {
+    return []
+  }
+
+  const normalizedLetter = letter.toUpperCase()
+
+  return words.filter((word) =>
+    String(word.solution ?? '').toUpperCase().includes(normalizedLetter)
+  )
 }

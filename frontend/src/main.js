@@ -10,10 +10,10 @@ import axios from 'axios'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import * as bootstrap from 'bootstrap'
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus } from '@fortawesome/free-solid-svg-icons'
+import { faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-library.add(faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus)
+library.add(faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan)
 
 axios.defaults.baseURL = 'http://localhost:8000/api'
 

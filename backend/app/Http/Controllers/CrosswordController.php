@@ -53,7 +53,7 @@ class CrosswordController extends Controller
             'is_public' => 'nullable|boolean',
         ]);
 
-        $validated['creator_user_id'] = $request->user()?->id;
+        $validated['user_id'] = $request->user()?->id;
 
         try {
             $result = $this->crosswordService->createFromClueIds($validated);
@@ -72,37 +72,43 @@ class CrosswordController extends Controller
 
     public function listCrosswords(Request $request): JsonResponse
     {
-        $crosswords = $this->crosswordService->getAllForList([
+        $list = $this->crosswordService->getAllForList([
             'search' => $request->input('search'),
+            'topics' => $request->input('topics'),
+            'difficulties' => $request->input('difficulties'),
+            'creators' => $request->input('creators'),
+            'sortOrder' => $request->input('sortOrder', 'dateDesc'),
         ]);
 
         $user = $request->user('sanctum');
 
+        $crosswords = $list->map(function ($crossword) use ($user) {
+            $crossword->load('creator', 'topics');
+            return [
+                'id' => $crossword->id,
+                'title' => $crossword->title,
+                'main_solution' => $crossword->main_solution,
+                'difficulty' => $crossword->difficulty?->value ?? $crossword->difficulty,
+                'is_public' => (bool) $crossword->is_public,
+                'words_count' => $crossword->words_count,
+                'creator' => $crossword->creator ? [
+                    'id' => $crossword->creator->id,
+                    'username' => $crossword->creator->username,
+                ] : null,
+                'created_at' => $crossword->created_at?->toDateTimeString(),
+                'status' => $user === null ? null : $crossword->attempts()->where('user_id', $user->id)->latest('id')->first()?->status,
+                'topics' => $crossword->topics->map(function ($topic) {
+                    return [
+                        'id' => $topic->id,
+                        'name' => $topic->name,
+                    ];
+                }),
+            ];
+        })->values();
+
         return response()->json([
             'success' => true,
-            'crosswords' => $crosswords->map(function ($crossword) use ($user) {
-                $crossword->load('creator', 'topics');
-                return [
-                    'id' => $crossword->id,
-                    'title' => $crossword->title,
-                    'main_solution' => $crossword->main_solution,
-                    'difficulty' => $crossword->difficulty?->value ?? $crossword->difficulty,
-                    'is_public' => (bool) $crossword->is_public,
-                    'words_count' => $crossword->words_count,
-                    'creator' => $crossword->creator ? [
-                        'id' => $crossword->creator->id,
-                        'username' => $crossword->creator->username,
-                    ] : null,
-                    'created_at' => $crossword->created_at?->toDateTimeString(),
-                    'status' => $user === null ? null : $crossword->attempts()->where('user_id', $user->id)->latest('id')->first()?->status,
-                    'topics' => $crossword->topics->map(function ($topic) {
-                        return [
-                            'id' => $topic->id,
-                            'name' => $topic->name,
-                        ];
-                    }),
-                ];
-            })->values(),
+            'crosswords' => $crosswords,
         ]);
     }
 

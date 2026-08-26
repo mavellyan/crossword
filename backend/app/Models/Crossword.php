@@ -16,7 +16,7 @@ class Crossword extends Model
 {
     protected $fillable = [
         'title',
-        'creator_user_id',
+        'user_id',
         'main_solution',
         'difficulty',
         'is_public',
@@ -42,7 +42,7 @@ class Crossword extends Model
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'creator_user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function getMainSolution(): string
@@ -319,7 +319,7 @@ class Crossword extends Model
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'creator_user_id' => $this->creator_user_id,
+            'user_id' => $this->user_id,
             'main_solution' => $this->main_solution,
             'difficulty' => $this->difficulty?->value ?? $this->difficulty,
             'is_public' => (bool) $this->is_public,

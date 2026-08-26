@@ -70,7 +70,7 @@ class CrosswordService
             $crossword = Crossword::create([
                 'title' => $data['title'],
                 'main_solution' => mb_strtoupper($data['main_solution']),
-                'creator_user_id' => $data['creator_user_id'] ?? null,
+                'user_id' => $data['user_id'] ?? null,
                 'difficulty' => $data['difficulty'] ?? 'easy',
                 'is_public' => $data['is_public'] ?? false,
             ]);
@@ -152,7 +152,7 @@ class CrosswordService
             $crossword = Crossword::create([
                 'title' => $data['title'],
                 'main_solution' => $mainSolution,
-                'creator_user_id' => $data['creator_user_id'] ?? null,
+                'user_id' => $data['user_id'] ?? null,
                 'difficulty' => $data['difficulty'] ?? 'easy',
                 'is_public' => $data['is_public'] ?? false,
             ]);
@@ -219,8 +219,44 @@ class CrosswordService
             });
         }
 
-        return $query
-            ->orderByDesc('created_at')
-            ->get();
+        if (!empty($filters['topics'])) {
+            $query->whereHas('topics', function ($q) use ($filters) {
+                $q->whereIn('topics.id', $filters['topics']);
+            });
+        }
+
+        if (!empty($filters['difficulties'])) {
+            $query->whereIn('difficulty', $filters['difficulties']);
+        }
+
+        if (!empty($filters['creators'])) {
+            $query->whereIn('user_id', $filters['creators']);
+        }
+
+        if (!empty($filters['sortOrder'])) {
+            switch ($filters['sortOrder']) {
+                case 'dateAsc':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'dateDesc':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'titleAsc':
+                    $query->orderBy('title', 'asc');
+                    break;
+                case 'titleDesc':
+                    $query->orderBy('title', 'desc');
+                    break;
+                default:
+                    // Alapértelmezett rendezés: legújabb előre
+                    $query->orderBy('created_at', 'desc');
+                    break;
+            }
+        } else {
+            // Alapértelmezett rendezés: legújabb előre
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query->get();
     }
 }

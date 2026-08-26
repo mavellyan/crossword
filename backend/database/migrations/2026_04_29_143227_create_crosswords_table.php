@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('crosswords', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->foreignId('creator_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('main_solution');
             $table->enum('difficulty', ['easy', 'medium', 'hard'])->default('easy');
             $table->boolean('is_public')->default(false);

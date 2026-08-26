@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use App\Models\Topic;
+
 class TopicController extends Controller
 {
-    public function index()
+    public function index(Request $request) : JsonResponse
     {
-        $topics = \App\Models\Topic::all();
+        $topics = Topic::all();
 
         $topics = $topics->map(function ($topic) {
             return [

@@ -150,8 +150,8 @@
 </template>
 
 <script>
-import { fetchCreatorWords, getWordsForLetterFromList } from '../services/creatorWords'
-import { createCrossword, loadTopics } from '../services/crosswordCreatorApi'
+import { createCrossword, listCreatorWords, getWordsForLetterFromList  } from '../services/crosswordCreatorApi'
+import { listTopics } from '../services/crosswordApi'
 import ClueCreatorModal from '../components/ClueCreatorModal.vue'
 
 export default {
@@ -460,7 +460,7 @@ export default {
       this.wordsError = null
 
       try {
-        this.availableWords = await fetchCreatorWords(topicIds)
+        this.availableWords = await listCreatorWords(topicIds)
       } catch (error) {
         console.log('creator words error:', error)
         this.wordsError = error?.message ?? 'Nem sikerült betölteni a választható szavakat.'
@@ -474,7 +474,7 @@ export default {
      */
     async loadTopics() {
       try {
-        this.topics = await loadTopics()
+        this.topics = await listTopics()
       } catch (error) {
         console.log('load topics error:', error)
 
