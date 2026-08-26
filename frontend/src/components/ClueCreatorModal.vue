@@ -196,7 +196,6 @@ export default {
          * @emits closed - A modal bezáródik a mentés után
          */
         async save() {
-            console.log('topic: ', this.topic)
             if (!this.isClueValid()) {
                 return
             }
@@ -215,7 +214,14 @@ export default {
 
             try {
                 const createdClue = await createClue(newClue)
-                this.$emit('clue-created', createdClue)
+
+                this.$notify({
+                    type: 'success',
+                    title: 'Sikeres mentés',
+                    text: 'A szó sikeresen elmentve.',
+                })
+
+                this.$emit('clue-created')
                 this.closeModal()
 
             } catch (error) {

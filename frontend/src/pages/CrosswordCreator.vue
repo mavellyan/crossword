@@ -144,6 +144,7 @@
     :topics="topics"
     :selected-topic="selectedTopic"
     @closed="hideClueCreatorModal"
+    @clue-created="loadCreatorWords"
   />
 </template>
 
@@ -437,11 +438,13 @@ export default {
     },
     /**
      * Ha a felhasználó új témát választott, akkor frissítjük a szavak listáját, hogy azok a kiválasztott témához illeszkedjenek.
+     * A kiválasztott szavakat is töröljük, mivel azok már nem biztos, hogy érvényesek az új témához.
      * 
      * @param newVal Új témakör
      * @param oldVal Régi témakör
      */
     selectedTopic(newVal, oldVal) {
+      this.selectedWords = []
       this.loadCreatorWords()
     },
   },
