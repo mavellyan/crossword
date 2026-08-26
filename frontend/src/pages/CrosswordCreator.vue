@@ -38,12 +38,13 @@
     <div class="d-flex align-items-center justify-content-center mb-3">
       <label class="h4 w-auto">Mi legyen a rejtvényed témája?</label>
       <v-select
-        v-model="selectedTopic"
+        v-model="selectedTopics"
         name="topic-v-select"
         class="w-25 mx-3 border border-primary border-2 rounded"
         label="name"
         :placeholder="'Válassz egy témát'"
         :options="topics"
+        multiple
         >
       </v-select>
     </div>
@@ -141,8 +142,8 @@
   </div>
   <ClueCreatorModal
     ref="clueCreatorModal"
-    :topics="topics"
-    :selected-topic="selectedTopic"
+    :topic-options="topics"
+    :selected-topics="selectedTopics"
     @closed="hideClueCreatorModal"
     @clue-created="loadCreatorWords"
   />
@@ -217,9 +218,9 @@ export default {
       /**
        * A felhasználó által kiválasztott téma a rejtvényhez.
        * 
-       * @type {{ id: number, name: string } | null}
+       * @type {Array<{ id: number, name: string }>}
        */
-      selectedTopic: null,
+      selectedTopics: [],
       /**
        * A backendről betöltött témák listája, amikből a felhasználó választhat.
        * 
@@ -439,11 +440,8 @@ export default {
     /**
      * Ha a felhasználó új témát választott, akkor frissítjük a szavak listáját, hogy azok a kiválasztott témához illeszkedjenek.
      * A kiválasztott szavakat is töröljük, mivel azok már nem biztos, hogy érvényesek az új témához.
-     * 
-     * @param newVal Új témakör
-     * @param oldVal Régi témakör
      */
-    selectedTopic(newVal, oldVal) {
+    selectedTopics() {
       this.selectedWords = []
       this.loadCreatorWords()
     },
@@ -452,17 +450,17 @@ export default {
     /**
      * Betölti a backendről a rejtvénykészítőben elérhető szavakat.
      * 
-     * @param {number|null} topicId Opcionális paraméter, ami a kiválasztott témakör ID-ját adja meg.
-     *                              Ha nincs megadva, akkor a jelenleg kiválasztott témakör alapján töltjük be a szavakat.
-     *                              Lehet null is, ekkor az összes szót betöltjük.
+     * @param {Array<number>|null} topicIds Opcionális paraméter, ami a kiválasztott témakörök ID-jeit adja meg.
+     *                                      Ha vannak választott témakörök, akkor csak az ezekben szereplő szavakat töltjük be.
+     *                                      Lehet null is, ekkor az összes szót betöltjük.
      * @return {Promise<void>}
      */
-    async loadCreatorWords(topicId = this.selectedTopic?.id ?? null) {
+    async loadCreatorWords(topicIds = this.selectedTopics?.map(topic => topic.id) ?? null) {
       this.wordsLoading = true
       this.wordsError = null
 
       try {
-        this.availableWords = await fetchCreatorWords(topicId)
+        this.availableWords = await fetchCreatorWords(topicIds)
       } catch (error) {
         console.log('creator words error:', error)
         this.wordsError = error?.message ?? 'Nem sikerült betölteni a választható szavakat.'
@@ -503,7 +501,7 @@ export default {
           title: this.title.trim(),
           main_solution: this.normalizeMainSolution,
           clue_ids: this.selectedWords.map(word => word.id),
-          topic_id: this.selectedTopic?.id ?? null,
+          topic_ids: this.selectedTopics?.map(topic => topic.id) || [],
           difficulty: 'easy',
           is_public: true,
         })

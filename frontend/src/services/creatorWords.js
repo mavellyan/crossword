@@ -1,9 +1,9 @@
 import axios from 'axios'
 
-export async function fetchCreatorWords(topicId = null) {
+export async function fetchCreatorWords(topicIds = null) {
   const response = await axios.get('/creatorWords', {
     params: {
-      topic_id: topicId
+      topic_ids: topicIds
     }
   })
 

@@ -24,14 +24,15 @@
                             <input type="text" class="form-control text-uppercase" v-model="solution" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label mb-1">Téma (opcionális):</label>
+                            <label class="form-label mb-1">Témakör (opcionális):</label>
                             <v-select
-                                v-model="topic"
+                                v-model="topics"
                                 name="topic-v-select"
                                 class="rounded"
                                 label="name"
-                                :placeholder="'Válassz egy témát'"
-                                :options="topics"
+                                :placeholder="'Válassz témakört...'"
+                                :options="topicOptions"
+                                multiple
                             ></v-select>
                         </div>
                     </div>
@@ -52,12 +53,12 @@ import { createClue } from '../services/crosswordCreatorApi'
 export default {
     name: 'ClueCreatorModal',
     props: {
-        topics: {
+        topicOptions: {
             type: Array,
             required: true
         },
-        selectedTopic: {
-            type: Object,
+        selectedTopics: {
+            type: Array,
             default: null
         }
     },
@@ -65,7 +66,7 @@ export default {
         return {
             definition: '',
             solution: '',
-            topic: null,
+            topics: [],
             modalInstance: null,
         };
     },
@@ -82,10 +83,10 @@ export default {
         }
     },
     watch: {
-        selectedTopic: {
+        selectedTopics: {
             immediate: true,
-            handler(newTopic) {
-                this.topic = newTopic
+            handler(newTopics) {
+                this.topics = newTopics
             }
         }
     },
@@ -113,7 +114,7 @@ export default {
         resetModal() {
             this.definition = ''
             this.solution = ''
-            this.topic = this.selectedTopic || null
+            this.topics = this.selectedTopics || []
         },
         /**
          * Leellenőrzi, hogy a meghatározás és a megfejtés mezők érvényesek-e a megadott szabályok szerint.
@@ -203,7 +204,7 @@ export default {
             const newClue = {
                 definition: this.definition,
                 solution: this.solution.toUpperCase(),
-                topic_id: this.topic?.id,
+                topic_ids: this.topics?.map(topic => topic.id) || [],
             }
 
             this.$notify({

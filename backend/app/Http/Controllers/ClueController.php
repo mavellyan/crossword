@@ -11,12 +11,12 @@ class ClueController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $topicId = $request->input('topic_id');
+        $topicIds = $request->input('topic_ids');
         $query = Clue::query();
 
-        if ($topicId !== null) {
-            $query->whereHas('topics', function ($q) use ($topicId) {
-                $q->where('topics.id', $topicId);
+        if ($topicIds !== null) {
+            $query->whereHas('topics', function ($q) use ($topicIds) {
+                $q->whereIn('topics.id', $topicIds);
             });
         }
 
@@ -65,7 +65,8 @@ class ClueController extends Controller
         $validated = $request->validate([
             'solution' => 'required|string|min:1|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
             'definition' => 'required|string|min:5|max:50',
-            'topic_id' => 'nullable|integer|exists:topics,id',
+            'topic_ids' => 'nullable|array',
+            'topic_ids.*' => 'integer|exists:topics,id',
         ]);
 
         // Tranzakcióba rakjuk, hogy esetleges hibánál ne legyen félkész adat
@@ -75,8 +76,8 @@ class ClueController extends Controller
                 'definition' => $validated['definition'],
             ]);
 
-            if (!empty($validated['topic_id'])) {
-                $clue->topics()->attach($validated['topic_id']);
+            if (!empty($validated['topic_ids'])) {
+                $clue->topics()->attach($validated['topic_ids']);
             }
 
             return $clue;

@@ -47,7 +47,8 @@ class CrosswordController extends Controller
             'main_solution' => 'required|string|min:3|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
             'clue_ids' => 'required|array|min:1',
             'clue_ids.*' => 'required|integer|exists:clues,id',
-            'topic_id' => 'nullable|integer|exists:topics,id',
+            'topic_ids' => 'nullable|array',
+            'topic_ids.*' => 'nullable|integer|exists:topics,id',
             'difficulty' => 'nullable|string',
             'is_public' => 'nullable|boolean',
         ]);
@@ -80,6 +81,7 @@ class CrosswordController extends Controller
         return response()->json([
             'success' => true,
             'crosswords' => $crosswords->map(function ($crossword) use ($user) {
+                $crossword->load('creator', 'topics');
                 return [
                     'id' => $crossword->id,
                     'title' => $crossword->title,
@@ -92,8 +94,13 @@ class CrosswordController extends Controller
                         'username' => $crossword->creator->username,
                     ] : null,
                     'created_at' => $crossword->created_at?->toDateTimeString(),
-                    'status' => $user === null ? null :
-                        $crossword->attempts()->where('user_id', $user->id)->latest('id')->first()?->status,
+                    'status' => $user === null ? null : $crossword->attempts()->where('user_id', $user->id)->latest('id')->first()?->status,
+                    'topics' => $crossword->topics->map(function ($topic) {
+                        return [
+                            'id' => $topic->id,
+                            'name' => $topic->name,
+                        ];
+                    }),
                 ];
             })->values(),
         ]);

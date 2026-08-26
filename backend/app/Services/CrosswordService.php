@@ -157,8 +157,8 @@ class CrosswordService
                 'is_public' => $data['is_public'] ?? false,
             ]);
 
-            if (!empty($data['topic_id'])) {
-                $crossword->topics()->attach($data['topic_id']);
+            if (!empty($data['topic_ids'])) {
+                $crossword->topics()->attach($data['topic_ids']);
             }
 
             $placements = $this->generator->generatePlacementsFixedOrder(

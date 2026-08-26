@@ -29,6 +29,12 @@
 
             <small>
               Szavak száma: {{ crossword.words_count }}
+              <span v-if="crossword.topics && crossword.topics.length > 0">
+                | {{ crossword.topics.map(topic => topic.name).join(', ') }}
+              </span>
+              <span v-else>
+                | ÁLTALÁNOS
+              </span>
               <span v-if="crossword.creator">
                 | Készítő: {{ crossword.creator.username }}
               </span>
