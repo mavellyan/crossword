@@ -8,6 +8,7 @@ use App\Models\CrosswordClue;
 use App\Models\CrosswordAttempt;
 use Illuminate\Support\Facades\DB;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 
 class CrosswordService
 {
@@ -231,6 +232,34 @@ class CrosswordService
 
         if (!empty($filters['creators'])) {
             $query->whereIn('user_id', $filters['creators']);
+        }
+
+        if (!empty($filters['status']) && $filters['status'] !== 'status_all') {
+            $userId = $filters['userId'] ?? null;
+
+            if (!$userId) {
+                throw new Exception('A státusz szűrő csak bejelentkezett felhasználók számára elérhető.');
+            }
+
+            switch ($filters['status']) {
+                case 'status_new':
+                    $query->whereDoesntHave('attempts', function ($q) use ($userId) {
+                        $q->where('user_id', $userId);
+                    });
+                    break;
+                case 'status_in_progress':
+                    $query->whereHas('attempts', function ($q) use ($userId) {
+                        $q->where('user_id', $userId)->where('status', 'in_progress');
+                    });
+                    break;
+                case 'status_completed':
+                    $query->whereHas('attempts', function ($q) use ($userId) {
+                        $q->where('user_id', $userId)->where('status', 'completed');
+                    });
+                    break;
+                default:
+                    throw new Exception('Ismeretlen státusz szűrő: ' . $filters['status']); 
+            }
         }
 
         if (!empty($filters['sortOrder'])) {

@@ -72,15 +72,17 @@ class CrosswordController extends Controller
 
     public function listCrosswords(Request $request): JsonResponse
     {
+        $user = $request->user('sanctum');
+
         $list = $this->crosswordService->getAllForList([
             'search' => $request->input('search'),
             'topics' => $request->input('topics'),
             'difficulties' => $request->input('difficulties'),
             'creators' => $request->input('creators'),
             'sortOrder' => $request->input('sortOrder', 'dateDesc'),
+            'status' => $user === null ? 'status_all' : $request->input('status', 'status_all'),
+            'userId' => $user?->id,
         ]);
-
-        $user = $request->user('sanctum');
 
         $crosswords = $list->map(function ($crossword) use ($user) {
             $crossword->load('creator', 'topics');

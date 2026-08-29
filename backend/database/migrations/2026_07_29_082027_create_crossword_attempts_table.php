@@ -15,8 +15,7 @@ return new class extends Migration
 
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
 
-            // in_progress, completed, abandoned
-            $table->string('status', 20)->default('in_progress');
+            $table->enum('status', ['in_progress', 'completed', 'abandoned'])->default('in_progress');
 
             // A felhasználó által beírt cellák állapota.
             $table->json('grid_state')->nullable();

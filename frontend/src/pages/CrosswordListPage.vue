@@ -9,9 +9,38 @@
         <h3>
           Szűrők
         </h3>
-        <div class="mb-3 w-75 text-center">
+        <div v-if="authStore.isLoggedIn" class="mb-3 w-75 text-center">
           <label class="form-label mb-1">Státusz:</label>
-          <!-- ide majd ilyen badgekre szűrés jön, kis pill formájú cuccosok prolly -->
+          <div class="d-flex justify-content-center gap-2">
+            <div
+              class="badge pill border border-secondary border-2 bg-light text-dark px-2 hover-effect"
+              :class="{'opacity-50': selectedStatus !== 'status_all'}"
+              @click="setSelectedStatus('status_all')"
+            >
+              Mind
+            </div>
+            <div
+              class="badge pill border border-secondary border-2 bg-info text-dark px-2 hover-effect"
+              :class="{'opacity-50': selectedStatus !== 'status_new'}"
+              @click="setSelectedStatus('status_new')"
+            >
+              Új
+            </div>
+            <div
+              class="badge pill border border-secondary border-2 bg-warning text-dark px-2 hover-effect"
+              :class="{'opacity-50': selectedStatus !== 'status_in_progress'}"
+              @click="setSelectedStatus('status_in_progress')"
+           >
+              Folyamatban
+            </div>
+            <div
+              class="badge pill border border-secondary border-2 bg-success text-dark px-2 hover-effect"
+              :class="{'opacity-50': selectedStatus !== 'status_completed'}"
+              @click="setSelectedStatus('status_completed')"
+            >
+              Befejezett
+            </div>
+          </div>
         </div>
         <div class="mb-3 w-75 text-center">
           <label class="form-label mb-1">Témakör:</label>
@@ -152,11 +181,13 @@
 <script>
 import { listCrosswords, listTopics } from '@/services/crosswordApi'
 import { listCreators } from '@/services/userApi'
+import { useAuthStore } from '@/stores/auth';
 
 export default {
   name: 'CrosswordListPage',
   data() {
     return {
+      authStore: useAuthStore(),
       /**
        * A betöltött rejtvények listája.
        * 
@@ -240,6 +271,13 @@ export default {
        * @type {string}
        */
       sortOrder: 'dateDesc',
+      /**
+       * A kiválasztott rejtvény státusz a szűréshez. Alapértelmezetten minden státusz megjelenik.
+       * Csak bejelentkezett felhasználóknál van jelentősége, mivel vendégeknél nincs eltárolva a megfejtés.
+       * 
+       * @type {string}
+       */
+      selectedStatus: 'status_all',
     }
   },
   mounted() {
@@ -267,6 +305,7 @@ export default {
             difficulties: this.selectedDifficulties.length > 0 ? this.selectedDifficulties : undefined,
             creators: this.selectedCreators.length > 0 ? this.selectedCreators.map(creator => creator.id) : undefined,
             sortOrder: this.sortOrder,
+            status: this.selectedStatus,
           })
         } catch (error) {
           console.log('crossword list error:', error)
@@ -301,8 +340,27 @@ export default {
       this.selectedDifficulties = []
       this.selectedCreators = []
       this.search = ''
+      this.sortOrder = 'dateDesc'
+      this.selectedStatus = 'status_all'
+      this.loadCrosswords()
+    },
+    setSelectedStatus(status) {
+      this.selectedStatus = status
       this.loadCrosswords()
     },
   },
 }
 </script>
+
+<style lang="scss" scoped>
+
+.hover-effect {
+  cursor: pointer;
+  transition: opacity 0.3s;
+
+  &:hover {
+    opacity: 1 !important;
+  }
+}
+
+</style>
