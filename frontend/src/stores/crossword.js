@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loadCrosswordById, saveCrosswordProgress } from '@/services/crosswordApi'
+import { loadCrosswordById, saveCrosswordProgress, startAttempt, stopAttempt } from '@/services/crosswordApi'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -63,6 +63,10 @@ export const useCrosswordStore = defineStore('crossword', {
     attemptId: null,
     status: null,
     stateVersion: null,
+    isAttemptInProgress: false,
+
+    elapsedTime: 0,
+    startedAt: null,
 
     wordInputs: [],
     wordStatus: [],
@@ -95,6 +99,10 @@ export const useCrosswordStore = defineStore('crossword', {
       this.attemptId = null
       this.status = null
       this.stateVersion = null
+      this.isAttemptInProgress = false
+
+      this.elapsedTime = 0
+      this.startedAt = null
 
       this.wordInputs = []
       this.wordStatus = []
@@ -125,9 +133,17 @@ export const useCrosswordStore = defineStore('crossword', {
       this.width = crossword.width ?? null
       this.height = crossword.height ?? null
 
-      this.attemptId = attempt?.id ?? null
-      this.status = attempt?.status ?? null
-      this.stateVersion = attempt?.state_version ?? null
+      if (attempt) {
+        this.attemptId = attempt.id
+        this.status = attempt.status
+        this.stateVersion = attempt.state_version
+        
+        if (attempt.status === 'in_progress') {
+          this.elapsedTime = attempt.elapsed_time ?? 0
+          this.startedAt = attempt.started_at ?? null
+          this.isAttemptInProgress = this.startedAt !== null
+        }
+      }
 
       this.wordInputs = createWordInputs(this.words, attempt?.word_inputs ?? {})
       this.wordStatus = createWordStatus(this.words)
@@ -297,28 +313,8 @@ export const useCrosswordStore = defineStore('crossword', {
      * @returns {Promise<void>}
      */
     async saveProgress() {
-      if (!useAuthStore().isLoggedIn) {
-        console.log('A felhasználó nincs bejelentkezve, nem lehet menteni a folyamatot.')
-        return
-      }
-
-      if (!this.attemptId) {
-        console.log('Nincs attemptId, nem lehet menteni a folyamatot.')
-        return
-      }
-      
-      if (this.status === 'completed') {
-        console.log('A rejtvény már be van fejezve, nem lehet menteni a folyamatot.')
-        return
-      }
-
-      if (!this.modified) {
-        console.log('Nincs módosítás, nem kell menteni a folyamatot.')
-        return
-      }
-
-      if (this.saving) {
-        console.log('Már folyamatban van egy mentés, várni kell a befejezésére.')
+      // Ha a felhasználó nincs belentkezve, nincs attemptId, a rejtvény már be van fejezve, vagy éppen mentés folyik, akkor nem csinálunk semmit
+      if (!useAuthStore().isLoggedIn || !this.attemptId || this.status === 'completed' || this.saving) {
         return
       }
 
@@ -333,11 +329,6 @@ export const useCrosswordStore = defineStore('crossword', {
         this.status = response.attempt.status
         this.stateVersion = response.attempt.state_version
 
-        // Előfordulhat, hogy mentés közben a felhasználó újabb betűt írt be,
-        // ezért a mentés után újra ellenőrizni kell, hogy van-e módosítás
-        const currentSnapshot = this.createProgressPayload()
-
-        this.modified = JSON.stringify(snapshot) !== JSON.stringify(currentSnapshot)
       } catch (error) {
         console.log('Hiba a rejtvény mentése közben:', error)
         this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény mentése közben.'
@@ -345,5 +336,50 @@ export const useCrosswordStore = defineStore('crossword', {
         this.saving = false
       }
     },
+    async startAttempt() {
+      if (!useAuthStore().isLoggedIn || !this.attemptId) {
+        return
+      }
+
+      try {
+        const data = await startAttempt(this.attemptId)
+
+        if (data.attempt) {
+          this.elapsedTime = data.attempt.elapsed_time ?? 0
+          this.startedAt = data.attempt.started_at ?? null
+          this.status = data.attempt.status
+        }
+
+        return true
+      } catch (error) {
+        console.log('Hiba a rejtvény próbálkozás elindítása közben:', error)
+        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás elindítása közben.'
+
+        return false
+      }
+    },
+    async stopAttempt() {
+      if (!useAuthStore().isLoggedIn || !this.attemptId) {
+        return
+      }
+
+      if (this.status === 'completed' || !this.startedAt) {
+        return
+      }
+
+      try {
+        const data = await stopAttempt(this.attemptId)
+
+        if (data.attempt) {
+          this.status = data.attempt.status ?? this.status
+          this.elapsedTime = data.attempt.elapsed_time ?? this.elapsedTime
+          this.startedAt = null
+          this.isAttemptInProgress = false
+        }
+      } catch (error) {
+        console.log('Hiba a rejtvény próbálkozás leállítása közben:', error)
+        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás leállítása közben.'
+      }
+    }
   },
 })

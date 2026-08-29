@@ -7,9 +7,17 @@
       Készítette: {{ store.creator }}
     </h5>
     <CrosswordGrid
+      v-if="store.words !== null"
       :words="store.words"
       :width="store.width"
+      @start-game="startGame()"
     />
+    <div class="text-center mt-4">
+      Időmérő
+      <div>
+        {{  displayTime  }}
+      </div>
+    </div>
   </div>
   <div v-else class="text-center">
     <p v-if="store.loading">
@@ -39,6 +47,9 @@ export default {
   data() {
     return {
       saveInterval: null,
+      isCrosswordStarted: false,
+      timerInterval: null,
+      timerTick: 0,
     }
   },
   computed: {
@@ -62,6 +73,29 @@ export default {
         !this.store.error
       )
     },
+    /**
+     * Formázza az eltelt időt órákra, percekre és másodpercekre.
+     *
+     * @returns {string} Az eltelt idő formázott stringként (HH:MM:SS).
+     */
+    displayTime() {
+      this.timerTick // Timer ticket használjuk, hogy a computed property újraszámolódjon minden másodpercben.
+
+      let totalSeconds = this.store.elapsedTime
+
+      if (this.store.startedAt) {
+        const startedAt = new Date(this.store.startedAt)
+        const elapsedSinceStart = Math.floor((Date.now() - startedAt.getTime()) / 1000)
+
+        totalSeconds += elapsedSinceStart
+      }
+
+      const hours = Math.floor(totalSeconds / 3600)
+      const minutes = Math.floor(totalSeconds / 60) % 60
+      const seconds = totalSeconds % 60
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    },
   },
   watch: {
     id: {
@@ -76,21 +110,21 @@ export default {
       async handler(newId, oldId) {
         if (oldId && oldId !== newId) {
           await this.store.saveProgress()
+          await this.store.stopAttempt()
         }
 
         await this.store.loadCrossword(newId)
       }
     },
   },
-  mounted() {
-    this.startAutoSave()
-  },
   beforeUnmount() {
+    this.stopGameTimer()
     this.stopAutoSave()
   },
   async beforeRouteLeave() {
     this.stopAutoSave()
     await this.store.saveProgress()
+    await this.store.stopAttempt()
   },
   methods: {
     /**
@@ -98,7 +132,7 @@ export default {
      * Ha már fut az automatikus mentés, nem történik semmi.
      */
     startAutoSave() {
-      if (this.saveInterval !== null) {
+      if (this.saveInterval !== null || !this.isCrosswordStarted) {
         return
       }
 
@@ -110,13 +144,47 @@ export default {
      * Leállítja az automatikus mentést. Ha nincs futó automatikus mentés, nem történik semmi.
      */
     stopAutoSave() {
-      if (this.saveInterval === null) {
+      if (this.saveInterval !== null) {
+        clearInterval(this.saveInterval)
+        this.saveInterval = null
+      }
+
+      this.isCrosswordStarted = false
+    },
+    /**
+     * Elindítja a játékot, beállítja a `isCrosswordStarted` változót igazra és elindítja az automatikus mentést.
+     */
+    async startGame() {
+      const started = await this.store.startAttempt()
+      
+      if (!started) {
         return
       }
 
-      clearInterval(this.saveInterval)
-      this.saveInterval = null
-    }
+      this.isCrosswordStarted = true
+
+      this.startAutoSave()
+      this.startGameTimer()
+    },
+    /**
+     * Elindítja a játék időzítőjét, ami minden másodpercben frissíti az eltelt időt.
+     */
+    startGameTimer() {
+      this.stopGameTimer()
+
+      this.timerInterval = setInterval(() => {
+        this.timerTick++
+      }, 1000)
+    },
+    /**
+     * Leállítja a játék időzítőjét, ha az fut. Ha nincs futó időzítő, nem történik semmi.
+     */
+    stopGameTimer() {
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval)
+        this.timerInterval = null
+      }
+    },
   }
 }
 </script>

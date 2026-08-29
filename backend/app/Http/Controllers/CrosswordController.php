@@ -8,6 +8,7 @@ use App\Http\Resources\CrosswordResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
+use Illuminate\Support\Carbon;
 
 class CrosswordController extends Controller
 {
@@ -31,16 +32,18 @@ class CrosswordController extends Controller
         return response()->json([
             'success' => true,
             'crossword' => new CrosswordResource($result),
-            'attempt' => $user == null ? null : [
+            'attempt' => $user === null ? null : [
                 'id' => $attempt->id,
                 'status' => $attempt->status,
                 'state_version' => $attempt->state_version,
                 'word_inputs' => data_get($attempt->grid_state, 'word_inputs', []),
+                'elapsed_time' => $attempt->elapsed_time,
+                'started_at' => $attempt->started_at,
             ],
         ]);
     }
 
-    public function create(Request $request): JsonResponse
+    public function createCrossword(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'title' => 'required|string|min:5|max:255',
@@ -192,6 +195,11 @@ class CrosswordController extends Controller
         $attempt->state_version++;
 
         if ($isCompleted) {
+            if ($attempt->started_at !== null) {
+                $attempt->elapsed_time += $attempt->started_at->diffInSeconds(now());
+                $attempt->started_at = null;
+            }
+
             $attempt->status = 'completed';
             $attempt->completed_at = now();
         }
@@ -205,6 +213,96 @@ class CrosswordController extends Controller
                 'id' => $attempt->id,
                 'status' => $attempt->status,
                 'state_version' => $attempt->state_version,
+                'elapsed_time' => $attempt->elapsed_time,
+                'started_at' => $attempt->started_at,
+            ],
+        ]);
+    }
+
+    public function startAttempt(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'attempt_id' => 'nullable|integer|exists:crossword_attempts,id',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A felhasználó nincs bejelentkezve.',
+            ], 401);
+        }
+
+        $attempt = CrosswordAttempt::query()
+            ->whereKey($validated['attempt_id'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        if ($attempt->status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ez a próbálkozás már be van fejezve.',
+            ], 409);
+        }
+
+        $attempt->started_at = now();
+        $attempt->save();
+
+        return response()->json([
+            'success' => true,
+            'attempt' => [
+                'id' => $attempt->id,
+                'status' => $attempt->status,
+                'state_version' => $attempt->state_version,
+                'elapsed_time' => $attempt->elapsed_time,
+                'started_at' => $attempt->started_at,
+            ],
+        ]);
+    }
+
+    public function stopAttempt(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'attempt_id' => 'required|integer|exists:crossword_attempts,id',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A felhasználó nincs bejelentkezve.',
+            ], 401);
+        }
+
+        $attempt = CrosswordAttempt::query()
+            ->whereKey($validated['attempt_id'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        if ($attempt->status !== 'in_progress') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ez a próbálkozás már be van fejezve, nem lehet leállítani.',
+            ], 409);
+        }
+
+        if ($attempt->started_at !== null) {
+            $attempt->elapsed_time += $attempt->started_at->diffInSeconds(now());
+            $attempt->started_at = null;
+        }
+
+        $attempt->save();
+
+        return response()->json([
+            'success' => true,
+            'attempt' => [
+                'id' => $attempt->id,
+                'status' => $attempt->status,
+                'state_version' => $attempt->state_version,
+                'elapsed_time' => $attempt->elapsed_time,
+                'started_at' => $attempt->started_at,
             ],
         ]);
     }

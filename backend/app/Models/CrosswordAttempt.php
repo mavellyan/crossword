@@ -13,6 +13,7 @@ class CrosswordAttempt extends Model
         'status',
         'grid_state',
         'state_version',
+        'elapsed_time',
         'started_at',
         'completed_at',
         'abandoned_at',
@@ -23,6 +24,7 @@ class CrosswordAttempt extends Model
         return [
             'grid_state' => 'array',
             'started_at' => 'datetime',
+            'elapsed_time' => 'integer',
             'completed_at' => 'datetime',
             'abandoned_at' => 'datetime',
         ];

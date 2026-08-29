@@ -45,6 +45,7 @@ class CrosswordService
                         'word_inputs' => [],
                     ],
                     'state_version' => 0,
+                    'elapsed_time' => 0,
                 ]);
             }
         }

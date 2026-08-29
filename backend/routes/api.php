@@ -22,7 +22,7 @@ Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])-
 
 Route::get('/crossword', [\App\Http\Controllers\CrosswordController::class, 'getCrossword']);
 
-Route::post('/createCrossword', [\App\Http\Controllers\CrosswordController::class, 'create'])->middleware('auth:sanctum');
+Route::post('/createCrossword', [\App\Http\Controllers\CrosswordController::class, 'createCrossword'])->middleware('auth:sanctum');
 
 Route::get('/listCrosswords', [\App\Http\Controllers\CrosswordController::class, 'listCrosswords']);
 
@@ -35,3 +35,7 @@ Route::post('/createClue', [\App\Http\Controllers\ClueController::class, 'create
 Route::get('/topics', [\App\Http\Controllers\TopicController::class, 'index']);
 
 Route::get('/creators', [\App\Http\Controllers\UserController::class, 'index']);
+
+Route::post('/startAttempt', [\App\Http\Controllers\CrosswordController::class, 'startAttempt'])->middleware('auth:sanctum');
+
+Route::post('/stopAttempt', [\App\Http\Controllers\CrosswordController::class, 'stopAttempt'])->middleware('auth:sanctum');

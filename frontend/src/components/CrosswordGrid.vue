@@ -1,43 +1,59 @@
 <template>
-  <div v-if="words !== null" class="layout justify-content-center">
-    <div class="grid">
-      <div
-        v-for="(word, wordIndex) in words"
-        :key="wordIndex"
-        class="grid-row"
-        :class="{ 'active-row': store.activeWordIndex === wordIndex }"
+  <div class="crossword-wrapper position-relative">
+    <div
+      v-if="!isCrosswordStarted"
+      class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center z-1"
+    >
+      <button
+        class="btn btn-primary btn-lg shadow text-uppercase fw-bold"
+        @click="startGame()"
       >
+        {{ startButtonText }}
+      </button>
+    </div>
+    <div
+      class="layout justify-content-center"
+      :class="{'blur-background': !isCrosswordStarted}"
+    >
+      <div class="grid">
         <div
-          v-for="(cell, visibleCellIndex) in getCellsForWord(word)"
-          :key="visibleCellIndex"
-          class="cell"
+          v-for="(word, wordIndex) in words"
+          :key="wordIndex"
+          class="grid-row"
+          :class="{ 'active-row': store.activeWordIndex === wordIndex }"
         >
-          <div v-if="cell.type === 'black'" class="black" />
-          <CrosswordCell
-            v-else
-            class="input"
-            :model-value="getCellValue(wordIndex, cell.cellIndex)"
-            :is-correct="isWordCorrect(wordIndex)"
-            :is-row-filled="isWordFilled(wordIndex)"
-            :ref="(el) => setInputRef(el, wordIndex, cell.cellIndex)"
-            @update:modelValue="(value) => handleCellInput(wordIndex, cell.cellIndex, value)"
-            @keydown="(event) => handleKeydown(event, wordIndex, cell.cellIndex)"
-            @click="setActiveWordAndCell(wordIndex, cell.cellIndex)"
-          />
+          <div
+            v-for="(cell, visibleCellIndex) in getCellsForWord(word)"
+            :key="visibleCellIndex"
+            class="cell"
+          >
+            <div v-if="cell.type === 'black'" class="black" />
+            <CrosswordCell
+              v-else
+              class="input"
+              :model-value="getCellValue(wordIndex, cell.cellIndex)"
+              :is-correct="isWordCorrect(wordIndex)"
+              :is-row-filled="isWordFilled(wordIndex)"
+              :ref="(el) => setInputRef(el, wordIndex, cell.cellIndex)"
+              @update:modelValue="(value) => handleCellInput(wordIndex, cell.cellIndex, value)"
+              @keydown="(event) => handleKeydown(event, wordIndex, cell.cellIndex)"
+              @click="setActiveWordAndCell(wordIndex, cell.cellIndex)"
+            />
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="definitions">
-      <h3>Definíciók</h3>
-      <div
-        v-for="(word, index) in words"
-        :key="index"
-        class="definition"
-        :class="{ 'active-row': store.activeWordIndex === index }"
-        @click="handleDefinitionClick(index)"
-      >
-        <strong>{{ index + 1 }}.</strong> {{ word.definition }}
+      <div class="definitions">
+        <h3>Definíciók</h3>
+        <div
+          v-for="(word, index) in words"
+          :key="index"
+          class="definition"
+          :class="{ 'active-row': store.activeWordIndex === index }"
+          @click="handleDefinitionClick(index)"
+        >
+          <strong>{{ index + 1 }}.</strong> {{ word.definition }}
+        </div>
       </div>
     </div>
   </div>
@@ -49,6 +65,7 @@ import CrosswordCell from './CrosswordCell.vue'
 
 export default {
   name: 'CrosswordGrid',
+  emits: ['start-game'],
   components: {
     CrosswordCell,
   },
@@ -65,6 +82,12 @@ export default {
   data() {
     return {
       inputRefs: {},
+      /**
+       * A felhasználó elindította-e a rejtvény kitöltését.
+       * 
+       * @type {boolean}
+       */
+      isCrosswordStarted: false,
     }
   },
   computed: {
@@ -75,6 +98,13 @@ export default {
      */
     store() {
       return useCrosswordStore()
+    },
+    startButtonText() {
+      if (this.store.status === 'in_progress' && this.store.elapsedTime > 0) {
+        return 'Folytatás'
+      } else {
+        return 'Játék indítása'
+      }
     },
   },
   methods: {
@@ -334,10 +364,20 @@ export default {
         this.focusPrevInWord(wordIndex, cellIndex)
       }
     },
+    startGame() {
+      this.isCrosswordStarted = true
+      // Itt jöjjön majd létre az attempt, ne a rejtvény megnyitásakor
+      this.$emit('start-game')
+    },
   },
 }
 </script>
 
 <style scoped>
 @import '../styles/crosswordPage.scss';
+
+.blur-background {
+  filter: blur(6px);
+  pointer-events: none;
+}
 </style>
