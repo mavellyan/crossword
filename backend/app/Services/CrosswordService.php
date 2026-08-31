@@ -31,7 +31,7 @@ class CrosswordService
             $attempt = CrosswordAttempt::query()
                 ->where('user_id', $userId)
                 ->where('crossword_id', $id)
-                ->where('status', 'in_progress')
+                ->whereIn('status', ['in_progress', 'not_started'])
                 ->latest('id')
                 ->first();
 
@@ -40,7 +40,7 @@ class CrosswordService
                 $attempt = CrosswordAttempt::create([
                     'user_id' => $userId,
                     'crossword_id' => $id,
-                    'status' => 'in_progress',
+                    'status' => 'not_started',
                     'grid_state' => [
                         'word_inputs' => [],
                     ],

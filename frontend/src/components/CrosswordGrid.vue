@@ -5,7 +5,7 @@
       class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center z-1"
     >
       <button
-        class="btn btn-primary btn-lg shadow text-uppercase fw-bold"
+        class="btn btn-success btn-lg shadow text-uppercase fw-bold"
         @click="startGame()"
       >
         {{ startButtonText }}

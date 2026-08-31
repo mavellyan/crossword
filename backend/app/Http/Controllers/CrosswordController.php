@@ -247,6 +247,10 @@ class CrosswordController extends Controller
             ], 409);
         }
 
+        if ($attempt->status === 'not_started') {
+            $attempt->status = 'in_progress';
+        }
+
         $attempt->started_at = now();
         $attempt->save();
 
