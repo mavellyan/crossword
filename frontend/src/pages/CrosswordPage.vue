@@ -46,10 +46,33 @@ export default {
   },
   data() {
     return {
+      /**
+       * Az automatikus mentéshez használt intervallum azonosítója. Ha null, akkor nincs futó automatikus mentés.
+       */
       saveInterval: null,
+      /**
+       * Jelzi, hogy a rejtvény játék elindult-e. Ha igaz, akkor az automatikus mentés és az időzítő is fut.
+       * 
+       * @type {boolean}
+       */
       isCrosswordStarted: false,
+      /**
+       * Az időzítő intervallum azonosítója, ami minden másodpercben frissíti az eltelt időt. Ha null, akkor nincs futó időzítő.
+       */
       timerInterval: null,
+      /**
+       * A timerTick változó minden másodpercben növekszik, így a displayTime computed property újraszámolódik.
+       * 
+       * @type {number}
+       */
       timerTick: 0,
+      /**
+       * Jelzi, hogy a játék megállt-e. Ha igaz, akkor a játék leállt és a felhasználó nem tudja folytatni.
+       * Azért van rá szükség, hogy ne próbáljuk meg 2x leállítani a próbálkozást a visibilitychange miatt.
+       * 
+       * @type {boolean}
+       */
+      isAttemptStopped: false,
     }
   },
   computed: {
@@ -109,22 +132,24 @@ export default {
        */
       async handler(newId, oldId) {
         if (oldId && oldId !== newId) {
-          await this.store.saveProgress()
-          await this.store.stopAttempt()
+          await this.stopGame()
         }
 
         await this.store.loadCrossword(newId)
       }
     },
   },
+  mounted() {
+    window.addEventListener('pagehide', this.handlePageHide)
+  },
   beforeUnmount() {
+    window.removeEventListener('pagehide', this.handlePageHide)
+
     this.stopGameTimer()
     this.stopAutoSave()
   },
   async beforeRouteLeave() {
-    this.stopAutoSave()
-    await this.store.saveProgress()
-    await this.store.stopAttempt()
+    await this.stopGame()
   },
   methods: {
     /**
@@ -162,9 +187,31 @@ export default {
       }
 
       this.isCrosswordStarted = true
+      this.isAttemptStopped = false
 
       this.startAutoSave()
       this.startGameTimer()
+    },
+    /**
+     * Leállítja a játékot, elmenti a rejtvény aktuális állapotát és leállítja az automatikus mentést és az időzítőt.
+     * Ha a játék már leállt, vagy még nem indult el, nem történik semmi.
+     */
+    async stopGame() {
+      if (!this.isCrosswordStarted || this.isAttemptStopped) {
+        return
+      }
+
+      this.isAttemptStopped = true
+
+      this.stopGameTimer()
+      this.stopAutoSave()
+
+      try {
+        await this.store.saveProgress()
+        await this.store.stopAttempt()
+      } finally {
+        this.isCrosswordStarted = false
+      }
     },
     /**
      * Elindítja a játék időzítőjét, ami minden másodpercben frissíti az eltelt időt.
@@ -183,6 +230,19 @@ export default {
       if (this.timerInterval) {
         clearInterval(this.timerInterval)
         this.timerInterval = null
+      }
+    },
+    /**
+     * Oldal elhagyás, F5, bezárás esetén leállítja a próbálkozást és elmenti az időt
+     */
+    handlePageHide() {
+      if (this.isCrosswordStarted && !this.isAttemptStopped) {
+        this.isAttemptStopped = true
+
+        this.stopGameTimer()
+        this.stopAutoSave()
+
+        this.store.stopAttemptBeacon()
       }
     },
   }

@@ -32,7 +32,7 @@ class TestCrosswordSeeder extends Seeder
                     'title' => 'Teszt rejtvény - piros',
                 ],
                 [
-                    'creator_user_id' => $user->id,
+                    'user_id' => $user->id,
                     'main_solution' => 'piros',
 
                     'difficulty' => Difficulty::EASY,
