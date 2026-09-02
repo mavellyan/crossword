@@ -2,13 +2,23 @@
   <div class="crossword-wrapper position-relative">
     <div
       v-if="!isCrosswordStarted"
-      class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center z-1"
+      class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center z-1 gap-3"
     >
       <button
         class="btn btn-success btn-lg shadow text-uppercase fw-bold"
         @click="startGame()"
+        :disabled="isCrosswordResetting"
       >
         {{ startButtonText }}
+      </button>
+      <button
+        v-if="store.status === 'in_progress' && store.elapsedTime > 0"
+        class="btn btn-danger btn-lg shadow text-uppercase fw-bold"
+        @click="this.$emit('abandon-attempt')"
+        :disabled="isCrosswordResetting"
+        v-tooltip.hover="'Törli a korábbi próbálkozást és visszaállítja a játékot a kezdeti állapotba.'"
+      >
+        Újrakezdés
       </button>
     </div>
     <div
@@ -65,7 +75,7 @@ import CrosswordCell from './CrosswordCell.vue'
 
 export default {
   name: 'CrosswordGrid',
-  emits: ['start-game'],
+  emits: ['start-game', 'abandon-attempt'],
   components: {
     CrosswordCell,
   },
@@ -76,6 +86,10 @@ export default {
     },
     width: {
       type: Number,
+      required: true,
+    },
+    isCrosswordResetting: {
+      type: Boolean,
       required: true,
     },
   },
@@ -364,9 +378,13 @@ export default {
         this.focusPrevInWord(wordIndex, cellIndex)
       }
     },
+    /**
+     * Elindítja a próbálkozást.
+     *
+     * @returns {void}
+     */
     startGame() {
       this.isCrosswordStarted = true
-      // Itt jöjjön majd létre az attempt, ne a rejtvény megnyitásakor
       this.$emit('start-game')
     },
   },

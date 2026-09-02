@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loadCrosswordById, saveCrosswordProgress, startAttempt, stopAttempt, stopAttemptBeacon } from '@/services/crosswordApi'
+import { loadCrosswordById, saveCrosswordProgress, startAttempt, stopAttempt, stopAttemptBeacon, abandonAttempt } from '@/services/crosswordApi'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -379,6 +379,22 @@ export const useCrosswordStore = defineStore('crossword', {
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás leállítása közben:', error)
         this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás leállítása közben.'
+      }
+    },
+    async abandonAttempt() {
+      if (!useAuthStore().isLoggedIn || !this.attemptId) {
+        return
+      }
+
+      try {
+        const data = await abandonAttempt(this.attemptId)
+
+        if (data.success) {
+          this.loadCrossword(this.id)
+        }
+      } catch (error) {
+        console.log('Hiba a rejtvény próbálkozás feladása közben:', error)
+        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás feladása közben.'
       }
     },
     stopAttemptBeacon() {

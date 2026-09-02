@@ -10,7 +10,9 @@
       v-if="store.words !== null"
       :words="store.words"
       :width="store.width"
+      :is-crossword-resetting="isCrosswordResetting"
       @start-game="startGame()"
+      @abandon-attempt="abandonAttempt()"
     />
     <div class="text-center mt-4">
       Időmérő
@@ -67,12 +69,18 @@ export default {
        */
       timerTick: 0,
       /**
-       * Jelzi, hogy a játék megállt-e. Ha igaz, akkor a játék leállt és a felhasználó nem tudja folytatni.
+       * Jelzi, hogy a próbálkozás megállt-e. Ha igaz, akkor a játék leállt és a felhasználó nem tudja folytatni.
        * Azért van rá szükség, hogy ne próbáljuk meg 2x leállítani a próbálkozást a visibilitychange miatt.
        * 
        * @type {boolean}
        */
-      isAttemptStopped: false,
+      isAttemptStopped: true,
+      /**
+       * Jelzi, hogy a rejtvény visszaállítása folyamatban van-e. Ha igaz, akkor a felhasználó nem tudja újraindítani a játékot.
+       * 
+       * @type {boolean}
+       */
+      isCrosswordResetting: false,
     }
   },
   computed: {
@@ -211,6 +219,26 @@ export default {
         await this.store.stopAttempt()
       } finally {
         this.isCrosswordStarted = false
+      }
+    },
+    /**
+     * Leállítja a próbálkozást, eldobja az aktuális próbálkozás állapotát és visszaállítja a rejtvényt a kezdeti állapotba.
+     */
+    async abandonAttempt() {
+      if (this.isCrosswordStarted || !this.isAttemptStopped || this.isCrosswordResetting) {
+        return
+      }
+
+      this.isCrosswordResetting = true
+
+      try {
+        await this.store.abandonAttempt()
+      } catch (error) {
+        console.error('Hiba a próbálkozás elhagyása közben:', error)
+      } finally {
+        this.isCrosswordStarted = false
+        this.isAttemptStopped = false
+        this.isCrosswordResetting = false
       }
     },
     /**

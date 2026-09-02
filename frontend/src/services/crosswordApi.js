@@ -90,6 +90,19 @@ export async function stopAttempt(attemptId) {
   return response.data
 }
 
+export async function abandonAttempt(attemptId) {
+  const response = await axios.post('/abandonAttempt', {
+    attempt_id: attemptId,
+  })
+  
+  if (!response.data.success) {
+    console.log('Hibás API válasz:', response.data)
+    throw new Error(response.data.message ?? 'Nem sikerült feladni a rejtvény próbálkozást.')
+  }
+  
+  return response.data
+}
+
 export function stopAttemptBeacon(attemptId) {
   const data = new FormData()
 

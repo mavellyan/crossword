@@ -311,4 +311,41 @@ class CrosswordController extends Controller
             ],
         ]);
     }
+
+    public function abandonAttempt(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'attempt_id' => 'required|integer|exists:crossword_attempts,id',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A felhasználó nincs bejelentkezve.',
+            ], 401);
+        }
+
+        $attempt = CrosswordAttempt::query()
+            ->whereKey($validated['attempt_id'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        if ($attempt->status !== 'in_progress') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ez a próbálkozás már be van fejezve, nem lehet visszaállítani.',
+            ], 409);
+        }
+
+        $attempt->status = 'abandoned';
+        $attempt->abandoned_at = now();
+        $attempt->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Próbálkozás sikeresen törölve.',
+        ]);
+    }
 }

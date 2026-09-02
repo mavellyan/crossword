@@ -39,3 +39,5 @@ Route::get('/creators', [\App\Http\Controllers\UserController::class, 'index']);
 Route::post('/startAttempt', [\App\Http\Controllers\CrosswordController::class, 'startAttempt'])->middleware('auth:sanctum');
 
 Route::post('/stopAttempt', [\App\Http\Controllers\CrosswordController::class, 'stopAttempt'])->middleware('auth:sanctum');
+
+Route::post('/abandonAttempt', [\App\Http\Controllers\CrosswordController::class, 'abandonAttempt'])->middleware('auth:sanctum');
