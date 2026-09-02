@@ -49,11 +49,7 @@ export default {
   data() {
     return {
       /**
-       * Az automatikus mentéshez használt intervallum azonosítója. Ha null, akkor nincs futó automatikus mentés.
-       */
-      saveInterval: null,
-      /**
-       * Jelzi, hogy a rejtvény játék elindult-e. Ha igaz, akkor az automatikus mentés és az időzítő is fut.
+       * Jelzi, hogy a rejtvény játék elindult-e. Ha igaz, akkor az időzítő fut.
        * 
        * @type {boolean}
        */
@@ -161,31 +157,7 @@ export default {
   },
   methods: {
     /**
-     * Elindítja az automatikus mentést, ami 2 másodpercenként elmenti a rejtvény aktuális állapotát.
-     * Ha már fut az automatikus mentés, nem történik semmi.
-     */
-    startAutoSave() {
-      if (this.saveInterval !== null || !this.isCrosswordStarted) {
-        return
-      }
-
-      this.saveInterval = setInterval(() => {
-        this.store.saveProgress()
-      }, 2000)
-    },
-    /**
-     * Leállítja az automatikus mentést. Ha nincs futó automatikus mentés, nem történik semmi.
-     */
-    stopAutoSave() {
-      if (this.saveInterval !== null) {
-        clearInterval(this.saveInterval)
-        this.saveInterval = null
-      }
-
-      this.isCrosswordStarted = false
-    },
-    /**
-     * Elindítja a játékot, beállítja a `isCrosswordStarted` változót igazra és elindítja az automatikus mentést.
+     * Elindítja a játékot és az időzítőt, beállítja a `isCrosswordStarted` változót igazra.
      */
     async startGame() {
       const started = await this.store.startAttempt()
@@ -197,11 +169,10 @@ export default {
       this.isCrosswordStarted = true
       this.isAttemptStopped = false
 
-      this.startAutoSave()
       this.startGameTimer()
     },
     /**
-     * Leállítja a játékot, elmenti a rejtvény aktuális állapotát és leállítja az automatikus mentést és az időzítőt.
+     * Leállítja a játékot, elmenti a rejtvény aktuális állapotát és leállítja az időzítőt.
      * Ha a játék már leállt, vagy még nem indult el, nem történik semmi.
      */
     async stopGame() {
@@ -212,7 +183,6 @@ export default {
       this.isAttemptStopped = true
 
       this.stopGameTimer()
-      this.stopAutoSave()
 
       try {
         await this.store.saveProgress()
@@ -268,7 +238,6 @@ export default {
         this.isAttemptStopped = true
 
         this.stopGameTimer()
-        this.stopAutoSave()
 
         this.store.stopAttemptBeacon()
       }

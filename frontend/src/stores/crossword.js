@@ -73,6 +73,8 @@ export const useCrosswordStore = defineStore('crossword', {
     activeWordIndex: null,
     activeCellByWord: [],
 
+    saveTimer: null,
+
     loading: false,
     saving: false,
     modified: false,
@@ -108,6 +110,8 @@ export const useCrosswordStore = defineStore('crossword', {
       this.activeWordIndex = null
       this.activeCellByWord = []
 
+      this.saveTimer = null
+      
       this.loading = false
       this.saving = false
       this.modified = false
@@ -171,6 +175,7 @@ export const useCrosswordStore = defineStore('crossword', {
       this.wordInputs[wordIndex][cellIndex] = normalizeLetter(value)
       this.validateWord(wordIndex)
       this.modified = true
+      this.scheduleSave()
     },
 
     /**
@@ -193,6 +198,7 @@ export const useCrosswordStore = defineStore('crossword', {
       this.wordInputs[wordIndex][cellIndex] = ''
       this.validateWord(wordIndex)
       this.modified = true
+      this.scheduleSave()
     },
 
     /**
@@ -299,7 +305,20 @@ export const useCrosswordStore = defineStore('crossword', {
         ]),
       )
     },
-
+    /**
+     * Ütemezi a rejtvény mentését 1,5 másodperccel a legutóbbi változtatás után.
+     * 
+     * @returns {void}
+     */
+    scheduleSave() {
+      if (this.saveTimer) {
+        clearTimeout(this.saveTimer)
+      }
+      
+      this.saveTimer = setTimeout(() => {
+        this.saveProgress()
+      }, 1500)
+    },
     /**
      * Elmenti a rejtvény aktuális állapotát, 2 másodpercenként fut.
      * Ha nincs bejelentkezett felhasználó, nincs attemptId, vagy a rejtvény már be van fejezve,
@@ -309,7 +328,7 @@ export const useCrosswordStore = defineStore('crossword', {
      */
     async saveProgress() {
       // Ha a felhasználó nincs belentkezve, nincs attemptId, a rejtvény már be van fejezve, vagy éppen mentés folyik, akkor nem csinálunk semmit
-      if (!useAuthStore().isLoggedIn || !this.attemptId || this.status === 'completed' || this.saving) {
+      if (!useAuthStore().isLoggedIn || !this.attemptId || this.status === 'completed' || this.saving || !this.modified) {
         return
       }
 
@@ -323,6 +342,15 @@ export const useCrosswordStore = defineStore('crossword', {
         // Itt biztosan lennie kell már attemptnek, mivel a backend csak akkor engedi a mentést, ha van attemptId és login
         this.status = response.attempt.status
         this.stateVersion = response.attempt.state_version
+
+        // Ellenőrízzük, hogy a mentés közben történt-e változás a rejtvényben
+        // Ha a snapshot és az új snapshot nem egyezik, akkor a rejtvény módosult a mentés óta
+        const newSnapshot = this.createProgressPayload()
+        this.modified = JSON.stringify(snapshot) !== JSON.stringify(newSnapshot)
+
+        if (this.modified) {
+          this.scheduleSave()
+        }
 
       } catch (error) {
         console.log('Hiba a rejtvény mentése közben:', error)
