@@ -6,13 +6,13 @@
     >
       <button
         class="btn btn-success btn-lg shadow text-uppercase fw-bold"
-        @click="startGame()"
+        @click="store.status === 'completed' ? this.$emit('abandon-attempt') : startGame()"
         :disabled="isCrosswordResetting"
       >
         {{ startButtonText }}
       </button>
       <button
-        v-if="store.status === 'in_progress' && store.elapsedTime > 0"
+        v-if="store.status === 'in_progress'"
         class="btn btn-danger btn-lg shadow text-uppercase fw-bold"
         @click="this.$emit('abandon-attempt')"
         :disabled="isCrosswordResetting"
@@ -114,8 +114,10 @@ export default {
       return useCrosswordStore()
     },
     startButtonText() {
-      if (this.store.status === 'in_progress' && this.store.elapsedTime > 0) {
+      if (this.store.status === 'in_progress') {
         return 'Folytatás'
+      } else if (this.store.status === 'completed') {
+        return 'Újraindítás'
       } else {
         return 'Játék indítása'
       }

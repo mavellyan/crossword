@@ -31,12 +31,10 @@ class CrosswordService
             $attempt = CrosswordAttempt::query()
                 ->where('user_id', $userId)
                 ->where('crossword_id', $id)
-                ->whereIn('status', ['in_progress', 'not_started'])
                 ->latest('id')
                 ->first();
-
         
-            if (!$attempt) {
+            if (!$attempt || $attempt->status === 'abandoned') {
                 $attempt = CrosswordAttempt::create([
                     'user_id' => $userId,
                     'crossword_id' => $id,

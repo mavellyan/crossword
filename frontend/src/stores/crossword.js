@@ -63,7 +63,6 @@ export const useCrosswordStore = defineStore('crossword', {
     attemptId: null,
     status: null,
     stateVersion: null,
-    isAttemptInProgress: false,
 
     elapsedTime: 0,
     startedAt: null,
@@ -99,7 +98,6 @@ export const useCrosswordStore = defineStore('crossword', {
       this.attemptId = null
       this.status = null
       this.stateVersion = null
-      this.isAttemptInProgress = false
 
       this.elapsedTime = 0
       this.startedAt = null
@@ -138,11 +136,8 @@ export const useCrosswordStore = defineStore('crossword', {
         this.status = attempt.status
         this.stateVersion = attempt.state_version
         
-        if (attempt.status === 'in_progress') {
-          this.elapsedTime = attempt.elapsed_time ?? 0
-          this.startedAt = attempt.started_at ?? null
-          this.isAttemptInProgress = this.startedAt !== null
-        }
+        this.elapsedTime = attempt.elapsed_time ?? 0
+        this.startedAt = attempt.started_at ?? null
       }
 
       this.wordInputs = createWordInputs(this.words, attempt?.word_inputs ?? {})
@@ -374,7 +369,6 @@ export const useCrosswordStore = defineStore('crossword', {
           this.status = data.attempt.status ?? this.status
           this.elapsedTime = data.attempt.elapsed_time ?? this.elapsedTime
           this.startedAt = null
-          this.isAttemptInProgress = false
         }
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás leállítása közben:', error)

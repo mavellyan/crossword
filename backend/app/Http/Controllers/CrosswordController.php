@@ -332,11 +332,32 @@ class CrosswordController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        if ($attempt->status !== 'in_progress') {
+        if (!in_array($attempt->status, ['in_progress', 'completed'], true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ez a próbálkozás már be van fejezve, nem lehet visszaállítani.',
+                'message' => 'Ez a próbálkozás még nincs elkezdve, vagy már el van dobva, nem lehet eldobni.',
             ], 409);
+        }
+
+        // Ha a próbálkozás már be van fejezve, akkor nem kell semmit csinálni, csak jelezzük, hogy új próbálkozást kell indítani.
+        if ($attempt->status === 'completed') {
+            $newAttempt = CrosswordAttempt::create([
+                'user_id' => $user->id,
+                'crossword_id' => $attempt->crossword_id,
+                'status' => 'not_started',
+                'grid_state' => [
+                    'word_inputs' => [],
+                ],
+                'state_version' => 0,
+                'elapsed_time' => 0,
+            ]);
+
+            $newAttempt->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Befejezett próbálkozás, létrehoztunk egy újat.',
+            ], 200);
         }
 
         $attempt->status = 'abandoned';
