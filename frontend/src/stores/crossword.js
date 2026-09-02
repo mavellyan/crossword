@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loadCrosswordById, saveCrosswordProgress, startAttempt, stopAttempt, stopAttemptBeacon, abandonAttempt } from '@/services/crosswordApi'
+import { loadCrosswordById, saveCrosswordProgress, startAttempt, stopAttempt, saveAndStopBeacon, abandonAttempt } from '@/services/crosswordApi'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -349,6 +349,12 @@ export const useCrosswordStore = defineStore('crossword', {
         this.stateVersion = response.attempt.state_version
         this.correctWords = response.attempt.correct_words ?? []
 
+        // Ha a rejtvény befejeződött, akkor nullázzuk a startedAt értéket, és frissítjük az elapsedTime-ot a backendről
+        if (this.status === 'completed') {
+          this.elapsedTime = response.attempt.elapsed_time ?? this.elapsedTime
+          this.startedAt = null
+        }
+
         this.validateWords()
 
         // Ellenőrízzük, hogy a mentés közben történt-e változás a rejtvényben
@@ -427,12 +433,19 @@ export const useCrosswordStore = defineStore('crossword', {
         this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás feladása közben.'
       }
     },
-    stopAttemptBeacon() {
-      if (!useAuthStore().isLoggedIn || !this.attemptId || this.status !== 'in_progress' || !this.startedAt) {
+    flushOnUnload() {
+      if (!useAuthStore().isLoggedIn || !this.attemptId || this.status !== 'in_progress') {
         return
       }
 
-      stopAttemptBeacon(this.attemptId)
+      // Fölösleges az ütemezett timer, úgyis kilőttük az oldalt
+      if (this.saveTimer) {
+        clearTimeout(this.saveTimer)
+        this.saveTimer = null
+      }
+
+      const snapshot = this.createProgressPayload()
+      saveAndStopBeacon(this.attemptId, snapshot, this.stateVersion)
     },
   },
 })

@@ -110,6 +110,8 @@ export default {
 
       let totalSeconds = this.store.elapsedTime
 
+      console.log('totalsec ', totalSeconds)
+
       if (this.store.startedAt) {
         const startedAt = new Date(this.store.startedAt)
         const elapsedSinceStart = Math.floor((Date.now() - startedAt.getTime()) / 1000)
@@ -238,7 +240,7 @@ export default {
 
         this.stopGameTimer()
 
-        this.store.stopAttemptBeacon()
+        this.store.flushOnUnload()
       }
     },
   }

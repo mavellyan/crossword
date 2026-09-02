@@ -9,6 +9,7 @@ use App\Models\CrosswordAttempt;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 
 class CrosswordService
 {
@@ -286,5 +287,47 @@ class CrosswordService
         }
 
         return $query->get();
+    }
+
+    public function checkSubmittedInputs(Collection $placements, array $submittedInputs)
+    {
+        $normalizedInputs = [];
+        $isCompleted = true;
+        $correctWords = [];
+
+        foreach ($placements as $placement) {
+            $placementId = $placement->id;
+
+            $expectedSolution = mb_strtoupper($placement->getSolution());
+            $expectedLength = mb_strlen($expectedSolution);
+
+            $submittedCells = array_values($submittedInputs[$placementId] ?? []);
+            $normalizedCells = [];
+
+            for ($index = 0; $index < $expectedLength; $index++) {
+                $cellValue = $submittedCells[$index] ?? '';
+
+                if ($cellValue === null || $cellValue === '') {
+                    $normalizedCells[] = '';
+                    continue;
+                }
+
+                $normalizedCells[] = mb_substr(mb_strtoupper((string) $cellValue), 0, 1);
+            }
+
+            $normalizedInputs[$placementId] = $normalizedCells;
+
+            if (implode('', $normalizedCells) !== $expectedSolution) {
+                $isCompleted = false;
+            } else {
+                $correctWords[] = $placementId;
+            }
+        }
+
+        return [
+            'normalizedInputs' => $normalizedInputs,
+            'isCompleted' => $isCompleted,
+            'correctWords' => $correctWords,
+        ];
     }
 }

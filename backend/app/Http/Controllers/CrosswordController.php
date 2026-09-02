@@ -160,38 +160,12 @@ class CrosswordController extends Controller
         $placements = $attempt->crossword->getWords()->values();
 
         $submittedInputs = $validated['word_inputs'];
-        $normalizedInputs = [];
-        $isCompleted = true;
-        $correctWords = [];
 
-        foreach ($placements as $placement) {
-            $placementId = $placement->id;
+        $inputCheck = $this->crosswordService->checkSubmittedInputs($placements, $submittedInputs);
 
-            $expectedSolution = mb_strtoupper($placement->getSolution());
-            $expectedLength = mb_strlen($expectedSolution);
-
-            $submittedCells = array_values($submittedInputs[$placementId] ?? []);
-            $normalizedCells = [];
-
-            for ($index = 0; $index < $expectedLength; $index++) {
-                $cellValue = $submittedCells[$index] ?? '';
-
-                if ($cellValue === null || $cellValue === '') {
-                    $normalizedCells[] = '';
-                    continue;
-                }
-
-                $normalizedCells[] = mb_substr(mb_strtoupper((string) $cellValue), 0, 1);
-            }
-
-            $normalizedInputs[$placementId] = $normalizedCells;
-
-            if (implode('', $normalizedCells) !== $expectedSolution) {
-                $isCompleted = false;
-            } else {
-                $correctWords[] = $placementId;
-            }
-        }
+        $normalizedInputs = $inputCheck['normalizedInputs'];
+        $isCompleted = $inputCheck['isCompleted'];
+        $correctWords = $inputCheck['correctWords'];
 
         $attempt->grid_state = [
             'word_inputs' => $normalizedInputs,
@@ -281,10 +255,7 @@ class CrosswordController extends Controller
         $user = $request->user();
 
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'A felhasználó nincs bejelentkezve.',
-            ], 401);
+            return response()->json(['success' => false], 401);
         }
 
         $attempt = CrosswordAttempt::query()
@@ -292,11 +263,8 @@ class CrosswordController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        if ($attempt->status !== 'in_progress') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ez a próbálkozás már be van fejezve, nem lehet leállítani.',
-            ], 409);
+        if (!$attempt || $attempt->status !== 'in_progress') {
+            return response()->json(['success' => false], 409);
         }
 
         if ($attempt->started_at !== null) {
@@ -306,16 +274,74 @@ class CrosswordController extends Controller
 
         $attempt->save();
 
-        return response()->json([
-            'success' => true,
-            'attempt' => [
-                'id' => $attempt->id,
-                'status' => $attempt->status,
-                'state_version' => $attempt->state_version,
-                'elapsed_time' => $attempt->elapsed_time,
-                'started_at' => $attempt->started_at,
-            ],
+        return response()->json(['success' => true,]);
+    }
+
+    public function saveAndStopBeacon(Request $request): JsonResponse
+    {
+        Log::info('beacon hivas');
+        Log::info('request adatok', ['request' => $request->all()]);
+        $validated = $request->validate([
+            'attempt_id' => 'required|integer|exists:crossword_attempts,id',
+            'state_version' => 'required|integer',
+            'word_inputs' => 'required|array',
+            'word_inputs.*' => 'required|array',
+            'word_inputs.*.*' => 'nullable|string|max:1'
         ]);
+
+        Log::info('beacon hivas, validalas sikeres');
+
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['success' => false], 401);
+        }
+
+        Log::info('beacon hivas, user megtalalva');
+
+        $attempt = CrosswordAttempt::query()
+            ->whereKey($validated['attempt_id'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        Log::info('beacon hivas, attempt megtalalva');
+
+        if (!$attempt || $attempt->status !== 'in_progress') {
+            return response()->json(['success' => false], 409);
+        }
+
+        $placements = $attempt->crossword->getWords()->values();
+
+        $submittedInputs = $validated['word_inputs'];
+
+        $inputCheck = $this->crosswordService->checkSubmittedInputs($placements, $submittedInputs);
+
+        $normalizedInputs = $inputCheck['normalizedInputs'];
+        $isCompleted = $inputCheck['isCompleted'];
+        $correctWords = $inputCheck['correctWords'];
+
+        $attempt->grid_state = [
+            'word_inputs' => $normalizedInputs,
+            'correct_words' => $correctWords,
+        ];
+
+        $attempt->state_version++;
+
+        if ($attempt->started_at !== null) {
+            $attempt->elapsed_time += $attempt->started_at->diffInSeconds(now());
+            $attempt->started_at = null;
+        }
+
+        if ($isCompleted) {
+            $attempt->status = 'completed';
+            $attempt->completed_at = now();
+        }
+
+        $attempt->save();
+
+        Log::info('beacon hivas, elvileg minden lefutott?');
+
+        return response()->json(['success' => true,]);
     }
 
     public function abandonAttempt(Request $request): JsonResponse

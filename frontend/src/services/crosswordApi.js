@@ -103,18 +103,19 @@ export async function abandonAttempt(attemptId) {
   return response.data
 }
 
-export function stopAttemptBeacon(attemptId) {
-  const data = new FormData()
-
-  data.append('attempt_id', attemptId)
-
-  return fetch(axios.defaults.baseURL + '/stopAttempt', {
+export function saveAndStopBeacon(attemptId, wordInputs, stateVersion) {
+  return fetch(axios.defaults.baseURL + '/saveAndStopBeacon', {
     method: 'POST',
-    body: data,
     keepalive: true,
     headers: {
       'Accept': 'application/json',
+      'Content-Type': 'application/json',
       ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}),
-    }
+    },
+    body: JSON.stringify({
+      attempt_id: attemptId,
+      word_inputs: wordInputs,
+      state_version: stateVersion,
+    }),
   })
 }

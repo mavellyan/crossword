@@ -40,4 +40,6 @@ Route::post('/startAttempt', [\App\Http\Controllers\CrosswordController::class, 
 
 Route::post('/stopAttempt', [\App\Http\Controllers\CrosswordController::class, 'stopAttempt'])->middleware('auth:sanctum');
 
+Route::post('/saveAndStopBeacon', [\App\Http\Controllers\CrosswordController::class, 'saveAndStopBeacon'])->middleware('auth:sanctum');
+
 Route::post('/abandonAttempt', [\App\Http\Controllers\CrosswordController::class, 'abandonAttempt'])->middleware('auth:sanctum');
