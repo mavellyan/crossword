@@ -38,6 +38,7 @@ class CrosswordController extends Controller
                 'status' => $attempt->status,
                 'state_version' => $attempt->state_version,
                 'word_inputs' => data_get($attempt->grid_state, 'word_inputs', []),
+                'correct_words' => data_get($attempt->grid_state, 'correct_words', []),
                 'elapsed_time' => $attempt->elapsed_time,
                 'started_at' => $attempt->started_at,
             ],
@@ -161,6 +162,7 @@ class CrosswordController extends Controller
         $submittedInputs = $validated['word_inputs'];
         $normalizedInputs = [];
         $isCompleted = true;
+        $correctWords = [];
 
         foreach ($placements as $placement) {
             $placementId = $placement->id;
@@ -186,11 +188,14 @@ class CrosswordController extends Controller
 
             if (implode('', $normalizedCells) !== $expectedSolution) {
                 $isCompleted = false;
+            } else {
+                $correctWords[] = $placementId;
             }
         }
 
         $attempt->grid_state = [
             'word_inputs' => $normalizedInputs,
+            'correct_words' => $correctWords,
         ];
 
         $attempt->state_version++;
@@ -216,6 +221,7 @@ class CrosswordController extends Controller
                 'state_version' => $attempt->state_version,
                 'elapsed_time' => $attempt->elapsed_time,
                 'started_at' => $attempt->started_at,
+                'correct_words' => $attempt->grid_state['correct_words'] ?? [],
             ],
         ]);
     }

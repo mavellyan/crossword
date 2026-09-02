@@ -43,6 +43,7 @@
               class="input"
               :model-value="getCellValue(wordIndex, cell.cellIndex)"
               :is-correct="isWordCorrect(wordIndex)"
+              :is-pending="isWordPending(wordIndex)"
               :is-row-filled="isWordFilled(wordIndex)"
               :ref="(el) => setInputRef(el, wordIndex, cell.cellIndex)"
               @update:modelValue="(value) => handleCellInput(wordIndex, cell.cellIndex, value)"
@@ -172,6 +173,16 @@ export default {
      */
     isWordCorrect(wordIndex) {
       return Boolean(this.store.wordStatus[wordIndex]?.correct)
+    },
+    /**
+     * Visszaadja, hogy az adott szó jelenleg függőben van-e.
+     * A Boolean wrapper akkor is szigorúan boolean értéket ad, ha hiányzik a state.
+     *
+     * @param {number} wordIndex A szó indexe.
+     * @returns {boolean} True, ha a szó függőben van.
+     */
+    isWordPending(wordIndex) {
+      return Boolean(this.store.wordStatus[wordIndex]?.pending)
     },
     /**
      * Visszaadja a szó karakterszámú cellahosszát.

@@ -18,12 +18,10 @@ class CrosswordClueResource extends JsonResource
         return [
             'placement_id' => (int) $this->id,
             'definition' => $this->clue?->definition,
-            'solution' => $this->clue?->solution,
             'x_pos' => (int) $this->start_col,
             'y_pos' => (int) $this->start_row,
             'direction' => $this->getDirectionValue(),
             'cells' => $this->getCellsForFrontend(),
-            'is_main' => (bool) $this->is_main,
         ];
     }
 

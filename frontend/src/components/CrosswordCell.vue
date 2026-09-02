@@ -31,6 +31,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    isPending: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
     /**
@@ -39,7 +43,7 @@ export default {
      * @returns {boolean} True, ha a cellát tiltani kell.
      */
     isDisabled() {
-      return this.isRowFilled && this.isCorrect
+      return (this.isRowFilled && this.isCorrect) || this.isPending
     },
   },
   methods: {

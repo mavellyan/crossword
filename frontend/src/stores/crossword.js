@@ -46,7 +46,7 @@ function createWordInputs(words, savedWordInputs = {}) {
  * @returns {Array<{ filled: boolean, correct: boolean }>} Kezdeti szó állapot lista.
  */
 function createWordStatus(words) {
-  return (words ?? []).map(() => ({ filled: false, correct: false }))
+  return (words ?? []).map(() => ({ filled: false, correct: false, pending: false }))
 }
 
 export const useCrosswordStore = defineStore('crossword', {
@@ -69,6 +69,7 @@ export const useCrosswordStore = defineStore('crossword', {
 
     wordInputs: [],
     wordStatus: [],
+    correctWords: [],
 
     activeWordIndex: null,
     activeCellByWord: [],
@@ -106,12 +107,13 @@ export const useCrosswordStore = defineStore('crossword', {
 
       this.wordInputs = []
       this.wordStatus = []
+      this.correctWords = []
 
       this.activeWordIndex = null
       this.activeCellByWord = []
 
       this.saveTimer = null
-      
+
       this.loading = false
       this.saving = false
       this.modified = false
@@ -142,20 +144,21 @@ export const useCrosswordStore = defineStore('crossword', {
         
         this.elapsedTime = attempt.elapsed_time ?? 0
         this.startedAt = attempt.started_at ?? null
+        this.correctWords = attempt.correct_words ?? []
       }
 
       this.wordInputs = createWordInputs(this.words, attempt?.word_inputs ?? {})
       this.wordStatus = createWordStatus(this.words)
 
       // Validálni kell, mivel lehet, hogy volt korábbi próbálkozás már
-      this.words.forEach((_, index) => this.validateWord(index))
+      this.validateWords()
 
       this.activeWordIndex = this.words?.length ? 0 : null
       this.activeCellByWord = this.wordInputs.map(() => 0)
     },
 
     /**
-     * Frissít egy adott cellát egy szóban, majd újraszámolja a szó állapotát.
+     * Frissít egy adott cellát egy szóban.
      * Érvénytelen indexeket biztonságosan figyelmen kívül hagy.
      *
      * @param {number} wordIndex A cél szó indexe.
@@ -173,13 +176,18 @@ export const useCrosswordStore = defineStore('crossword', {
       }
 
       this.wordInputs[wordIndex][cellIndex] = normalizeLetter(value)
-      this.validateWord(wordIndex)
       this.modified = true
+
+      if (this.wordInputs[wordIndex].join('').length === this.words[wordIndex].cells.length) {
+        this.wordStatus[wordIndex].pending = true
+        this.saveProgress()
+      }
+
       this.scheduleSave()
     },
 
     /**
-     * Törli a karaktert egy adott szó cellájából, majd újraszámolja a státuszt.
+     * Törli a karaktert egy adott szó cellájából.
      * Érvénytelen indexeket biztonságosan figyelmen kívül hagy.
      *
      * @param {number} wordIndex A cél szó indexe.
@@ -196,19 +204,32 @@ export const useCrosswordStore = defineStore('crossword', {
       }
 
       this.wordInputs[wordIndex][cellIndex] = ''
-      this.validateWord(wordIndex)
+
+      if (this.wordInputs[wordIndex].join('').length < this.words[wordIndex].cells.length) {
+        this.wordStatus[wordIndex].filled = false
+      }
+
       this.modified = true
       this.scheduleSave()
     },
 
     /**
-     * Egy szót úgy validál, hogy összehasonlítja az aktuális felhasználói inputot az elvárt megoldással.
-     * Egy szó csak akkor lehet helyes, ha teljesen ki van töltve.
+     * Backenden validáljuk a megoldásokat, és visszaadjuk a helyesen kitöltött szavak indexeit. Frontenden ez alapján jelöljük a hibás és helyes szavakat.
+     * Egy szó csak akkor lehet helyesnek vagy hibásnak jelölve, ha teljesen ki van töltve.
      *
-     * @param {number} wordIndex A validálandó szó indexe.
      * @returns {void}
      */
-    validateWord(wordIndex) {
+    validateWords() {
+      this.words.forEach((word, wordIndex) => {
+        const isCorrect = this.correctWords.includes(word.placement_id)
+
+        this.wordStatus[wordIndex] = {
+          filled: this.wordInputs[wordIndex].every(cell => cell !== ''),
+          correct: isCorrect,
+          pending: false,
+        }
+      })
+      /*
       const inputs = this.wordInputs[wordIndex]
       const word = this.words?.[wordIndex]
 
@@ -224,6 +245,7 @@ export const useCrosswordStore = defineStore('crossword', {
         filled,
         correct: filled && attempt === expected,
       }
+        */
     },
 
     /**
@@ -342,6 +364,9 @@ export const useCrosswordStore = defineStore('crossword', {
         // Itt biztosan lennie kell már attemptnek, mivel a backend csak akkor engedi a mentést, ha van attemptId és login
         this.status = response.attempt.status
         this.stateVersion = response.attempt.state_version
+        this.correctWords = response.attempt.correct_words ?? []
+
+        this.validateWords()
 
         // Ellenőrízzük, hogy a mentés közben történt-e változás a rejtvényben
         // Ha a snapshot és az új snapshot nem egyezik, akkor a rejtvény módosult a mentés óta

@@ -150,7 +150,6 @@ export default {
     window.removeEventListener('pagehide', this.handlePageHide)
 
     this.stopGameTimer()
-    this.stopAutoSave()
   },
   async beforeRouteLeave() {
     await this.stopGame()
