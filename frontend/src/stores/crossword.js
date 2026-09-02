@@ -229,23 +229,6 @@ export const useCrosswordStore = defineStore('crossword', {
           pending: false,
         }
       })
-      /*
-      const inputs = this.wordInputs[wordIndex]
-      const word = this.words?.[wordIndex]
-
-      if (!inputs || !word) {
-        return
-      }
-
-      const filled = inputs.every((cell) => cell !== '')
-      const expected = (word.solution ?? '').toUpperCase()
-      const attempt = inputs.join('')
-
-      this.wordStatus[wordIndex] = {
-        filled,
-        correct: filled && attempt === expected,
-      }
-        */
     },
 
     /**
