@@ -212,9 +212,9 @@ export const useAttemptStore = defineStore('attempt', {
         const data = await abandonAttempt(this.id)
     
         if (data.success) {
-          this.loadAttempt(this.crosswordStore.id)
-          this.crosswordStore.loadCrossword(this.crosswordStore.id)
-          this.loadBestAttempts(this.crosswordStore.id)
+          await this.loadAttempt(this.crosswordStore.id)
+          await this.crosswordStore.loadCrossword(this.crosswordStore.id)
+          await this.loadBestAttempts(this.crosswordStore.id)
         }
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás feladása közben:', error)
