@@ -29,8 +29,27 @@
         <p>Legjobb időd: {{ formatBestTime }}</p>
       </div>
     </div>
-    <div class="text-center mt-4">
-      Itt lesz a legjobb idős táblázat
+    <div class="text-center mt-5">
+      <div class="fw-bold lead">A legjobb próbálkozások listája:</div>
+      <table v-if="isTableVisible" class="table table-striped w-50 mx-auto mt-3">
+        <thead>
+          <tr>
+            <th scope="col">Rang</th>
+            <th scope="col">Felhasználó</th>
+            <th scope="col">Idő</th>
+            <th scope="col">Dátum</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(attempt, index) in attemptStore.bestAttempts" :key="index">
+            <td>{{ index + 1 }}</td>
+            <td>{{ attempt.username }}</td>
+            <td>{{ formatTime(attempt.elapsed_time) }}</td>
+            <td>{{ formatDate(attempt.completed_at) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="text-muted">Még nincs befejezett próbálkozás. Légy te az első!</p>
     </div>
   </div>
   <div v-else class="text-center">
@@ -120,6 +139,9 @@ export default {
         Array.isArray(this.crosswordStore.words)
       )
     },
+    isTableVisible() {
+      return this.attemptStore.bestAttempts.length > 0
+    },
     /**
      * Ellenőrzi, hogy a rejtvény be van-e fejezve.
      * 
@@ -187,6 +209,7 @@ export default {
 
         await this.attemptStore.loadAttempt(newId)
         await this.crosswordStore.loadCrossword(newId)
+        await this.attemptStore.loadBestAttempts(newId)
       }
     },
   },
@@ -287,6 +310,54 @@ export default {
 
         this.attemptStore.flushOnUnload()
       }
+    },
+    /**
+     * Formázza az időt óra:perc:másodperc formátumba.
+     * 
+     * @param timeInSeconds Az eltelt idő másodpercben.
+     * @returns {string} A formázott idő.
+     */
+    formatTime(timeInSeconds) {
+      if (timeInSeconds === null) {
+        return 'N/A'
+      }
+
+      const hours = Math.floor(timeInSeconds / 3600)
+      const minutes = Math.floor(timeInSeconds / 60) % 60
+      const seconds = timeInSeconds % 60
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    },
+    /**
+     * Formázza a dátumot a felhasználó helyi beállításainak megfelelően.
+     * 
+     * @param dateString A dátum string, amit formázni szeretnénk.
+     * @returns {string} A formázott dátum.
+     */
+    formatDate(dateString) {
+      if (!dateString) {
+        return 'N/A'
+      }
+
+      // Ha 3-nál több tizedesjegy van a másodperc után, levágjuk 3 jegyre (.123456Z -> .123Z),
+      // mert bizonyos böngészők nem tudják jól kezelni, és amúgy sem jelenítjük meg őket.
+      const normalizedDate = dateString.replace(/\.(\d{3})\d+Z$/, '.$1Z')
+
+      const date = new Date(normalizedDate)
+
+      if (isNaN(date.getTime())) {
+        console.log('ezaz?')
+        return 'N/A'
+      }
+
+      return date.toLocaleDateString('hu-HU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
     },
   }
 }

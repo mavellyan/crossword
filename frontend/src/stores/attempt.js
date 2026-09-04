@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loadAttempt, startAttempt, stopAttempt, abandonAttempt, saveProgress, saveAndStopBeacon } from '@/services/attemptApi'
+import { loadAttempt, startAttempt, stopAttempt, abandonAttempt, saveProgress, saveAndStopBeacon, listBestAttempts } from '@/services/attemptApi'
 import { useAuthStore } from '@/stores/auth'
 import { useCrosswordStore } from '@/stores/crossword'
 
@@ -81,6 +81,18 @@ export const useAttemptStore = defineStore('attempt', {
      * @type {boolean}
      */
     modified: false,
+    /**
+     * Jelzi, hogy a próbálkozás mentése folyamatban van-e.
+     * 
+     * @type {boolean}
+     */
+    saving: false,
+    /**
+     * A rejtvényhez tartozó 5 legjobb próbálkozás listája, a backend adja vissza. Ha üres, akkor nincs még befejezett próbálkozás.
+     * 
+     * @type {Array<Object>}
+     */
+    bestAttempts: [],
   }),
 
   actions: {
@@ -97,6 +109,8 @@ export const useAttemptStore = defineStore('attempt', {
       this.loading = false
       this.error = null
       this.modified = false
+      this.saving = false
+      this.bestAttempts = []
     },
     initializeAttemptState(attempt) {
       this.id = attempt.id
@@ -200,6 +214,7 @@ export const useAttemptStore = defineStore('attempt', {
         if (data.success) {
           this.loadAttempt(this.crosswordStore.id)
           this.crosswordStore.loadCrossword(this.crosswordStore.id)
+          this.loadBestAttempts(this.crosswordStore.id)
         }
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás feladása közben:', error)
@@ -251,6 +266,7 @@ export const useAttemptStore = defineStore('attempt', {
 
         if (this.status === 'completed' && response.best_time !== undefined) {
           this.bestTime = response.best_time
+          this.loadBestAttempts(this.crosswordStore.id)
         }
 
       } catch (error) {
@@ -274,6 +290,18 @@ export const useAttemptStore = defineStore('attempt', {
 
       const snapshot = this.crosswordStore.createProgressPayload()
       saveAndStopBeacon(this.id, snapshot, this.stateVersion)
+    },
+    async loadBestAttempts(crosswordId) {
+      if (!crosswordId) {
+        return
+      }
+
+      try {
+        const response = await listBestAttempts(crosswordId)
+        this.bestAttempts = response
+      } catch (error) {
+        console.error('Hiba a legjobb próbálkozások betöltésekor:', error)
+      }
     },
   },
 })

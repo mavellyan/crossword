@@ -77,6 +77,21 @@ export async function saveProgress(attemptId, wordInputs, stateVersion) {
   return response.data
 }
 
+export async function listBestAttempts(crosswordId) {
+  const response = await axios.get('/listBestAttempts', {
+    params: {
+      crossword_id: crosswordId,
+    }
+  })
+
+  if (!response.data.success) {
+    console.log('Hibás API válasz:', response.data)
+    throw new Error(response.data.message ?? 'Hiba a legjobb próbálkozások lekérése közben.')
+  }
+
+  return response.data.table ?? []
+}
+
 export function saveAndStopBeacon(attemptId, wordInputs, stateVersion) {
   return fetch(axios.defaults.baseURL + '/saveAndStopBeacon', {
     method: 'POST',

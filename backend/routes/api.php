@@ -46,4 +46,4 @@ Route::post('/saveAndStopBeacon', [\App\Http\Controllers\AttemptController::clas
 
 Route::post('/abandonAttempt', [\App\Http\Controllers\AttemptController::class, 'abandonAttempt'])->middleware('auth:sanctum');
 
-Route::get('/listBestAttempts', [\App\Http\Controllers\AttemptController::class, 'listBestAttempts'])->middleware('auth:sanctum');
+Route::get('/listBestAttempts', [\App\Http\Controllers\AttemptController::class, 'listBestAttempts']);
