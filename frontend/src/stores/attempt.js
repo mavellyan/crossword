@@ -6,7 +6,6 @@ import { useCrosswordStore } from '@/stores/crossword'
 export const useAttemptStore = defineStore('attempt', {
   state: () => ({
     crosswordStore: useCrosswordStore(),
-
     /**
      * Az adott rejtvényhez tartozó próbálkozás azonosítója
      * 

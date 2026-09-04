@@ -126,7 +126,7 @@ export default {
      * @returns {boolean} Igaz, ha a rejtvény be van fejezve, hamis egyébként.
      */
     isCrosswordCompleted() {
-      return this.crosswordStore.isCompleted || this.attemptStore.status === 'completed'
+      return this.attemptStore.isCompleted || this.attemptStore.status === 'completed'
     },
     /**
      * Formázza az eltelt időt órákra, percekre és másodpercekre.

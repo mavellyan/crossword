@@ -58,7 +58,6 @@ export const useCrosswordStore = defineStore('crossword', {
      */
 
     attemptStore: useAttemptStore(),
-
     /**
      * A rejtvény azonosítója
      * 
@@ -107,41 +106,6 @@ export const useCrosswordStore = defineStore('crossword', {
      * @type {number|null}
      */
     height: null,
-
-    /**
-     * A felhasználónak az adott rejtvényhez tartozó próbálkozásának azonosítója.
-     * Csak bejelentkezett felhasználók esetén értelmezett.
-     * 
-     * @type {string|null}
-     */
-    attemptId: null,
-    /**
-     * A próbálkozás állapotának verziószáma, amelyet a backend kezel. Minden mentés után növekszik.
-     * 
-     * @type {number|null}
-     */
-    stateVersion: null,
-
-    /**
-     * A rejtvény megoldására fordított összes eltelt idő másodpercben.
-     *  Backenden történik a tényleges számlálás, a frontend csak betölti, és folytatás esetén intervallal számol tovább, de a backend a mérvadó, db-be az kerül.
-     * 
-     * @type {number}
-     */
-    elapsedTime: 0,
-    /**
-     * A próbálkozás elindításának időbélyege, amelyet a backend ad vissza. Ha null, akkor a próbálkozás még nem indult el.
-     * 
-     * @type {string|null}
-     */
-    startedAt: null,
-    /**
-     * A rejtvény megoldásának állapota.
-     * 
-     * @type {boolean}
-     */
-    isCompleted: false,
-
     /**
      * A felhasználó által beírt karakterek minden szóhoz. Minden szóhoz tartozik egy tömb, amely a szó celláinak számával egyezik.
      * 
@@ -155,13 +119,6 @@ export const useCrosswordStore = defineStore('crossword', {
      * @type {Array<{ filled: boolean, correct: boolean, pending: boolean }>}
      */
     wordStatus: [],
-    /**
-     * A backend által visszaadott helyes szavak elhelyezési azonosítóinak listája. Ezt a frontend a wordStatus tömb frissítésére használja.
-     * Ez alapján jelöljük a hibás és helyes szavakat a felhasználói felületen.
-     * 
-     * @type {Array<string>}
-     */
-    correctWords: [],
 
     /**
      * Az aktív szó indexe a words tömbben.
@@ -175,7 +132,6 @@ export const useCrosswordStore = defineStore('crossword', {
      * @type {Array<number>}
      */
     activeCellByWord: [],
-
     /**
      * A mentés ütemezéséhez használt timer azonosítója. Ha null, akkor nincs ütemezett mentés.
      * Módosítás esetén 1,5 másodperces debounce timer indul, ha közben újabb módosítás történik, akkor a timer újraindul.
@@ -185,7 +141,6 @@ export const useCrosswordStore = defineStore('crossword', {
      * @type {number|null}
      */
     saveTimer: null,
-
     /**
      * Jelzi, hogy a rejtvény betöltése folyamatban van-e. Ha true, akkor a komponensek betöltési állapotot jelenítenek meg.
      * 
@@ -199,23 +154,11 @@ export const useCrosswordStore = defineStore('crossword', {
      */
     saving: false,
     /**
-     * Jelzi, hogy a rejtvény módosult-e a legutóbbi mentés óta. Ha true, akkor a komponensek mentési állapotot jelenítenek meg.
-     * 
-     * @type {boolean}
-     */
-    modified: false,
-    /**
      * Hibaüzenet, ha a rejtvény betöltése vagy mentése közben hiba történt. Ha null, akkor nincs hiba.
      * 
      * @type {string|null}
      */
     error: null,
-    /**
-     * A felhasználó legjobb ideje a rejtvény megoldására másodpercben. Ha null, akkor nincs még befejezett próbálkozás.
-     * 
-     * @type {number|null}
-     */
-    bestTime: null,
   }),
 
   actions: {
@@ -234,17 +177,8 @@ export const useCrosswordStore = defineStore('crossword', {
       this.width = null
       this.height = null
 
-      this.attemptId = null
-      this.stateVersion = null
-
-      this.elapsedTime = 0
-      this.startedAt = null
-      this.isCompleted = false
-      this.bestTime = null
-
       this.wordInputs = []
       this.wordStatus = []
-      this.correctWords = []
 
       this.activeWordIndex = null
       this.activeCellByWord = []
@@ -252,8 +186,6 @@ export const useCrosswordStore = defineStore('crossword', {
       this.saveTimer = null
 
       this.loading = false
-      this.saving = false
-      this.modified = false
       this.error = null
     },
 

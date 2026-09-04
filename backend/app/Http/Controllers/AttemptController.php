@@ -22,6 +22,13 @@ class AttemptController extends Controller
 
         $user = $request->user('sanctum');
 
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A felhasználó nincs bejelentkezve.',
+            ], 401);
+        }
+
         $result = $this->attemptService->getById($validated['crossword_id'], $user?->id);
 
         $attempt = $result['attempt'];
@@ -29,7 +36,7 @@ class AttemptController extends Controller
         return response()->json([
             'success' => true,
             'attempt' => $user === null ? null : [
-                'id' => $attempt->id,
+                'id' => $attempt->id, 
                 'status' => $attempt->status,
                 'state_version' => $attempt->state_version,
                 'word_inputs' => data_get($attempt->grid_state, 'word_inputs', []),
