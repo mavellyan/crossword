@@ -9,7 +9,7 @@
         <h3>
           Szűrők
         </h3>
-        <div v-if="authStore.isLoggedIn" class="mb-3 w-75 text-center">
+        <div v-if="isLoggedIn" class="mb-3 w-75 text-center">
           <label class="form-label mb-1">Státusz:</label>
           <div class="d-flex justify-content-center gap-2">
             <div
@@ -182,12 +182,12 @@
 import { listCrosswords, listTopics } from '@/services/crosswordApi'
 import { listCreators } from '@/services/userApi'
 import { useAuthStore } from '@/stores/auth';
+import { mapState } from 'pinia';
 
 export default {
   name: 'CrosswordListPage',
   data() {
     return {
-      authStore: useAuthStore(),
       /**
        * A betöltött rejtvények listája.
        * 
@@ -286,6 +286,12 @@ export default {
     this.loadCreators()
   },
   computed: {
+    ...mapState(useAuthStore, ['isLoggedIn']),
+    /**
+     * Ellenőrzi, hogy a rejtvények listája megjeleníthető-e.
+     * 
+     * @returns {boolean} Igaz, ha a rejtvények listája megjeleníthető azaz nem történt hiba, a lista betöltődött és van legalább 1 rejtvény
+     */
     isListVisible() {
       return this.crosswords.length > 0 && !this.loading && !this.error && this.listLoaded
     },

@@ -1,27 +1,27 @@
 <template>
-  <div v-if="isCrosswordLoaded">
+  <div v-if="isPageLoaded">
     <h1 class="text-center mb-2">
-      {{ store.title }}
+      {{ crosswordStore.title }}
     </h1>
     <h5 class="text-center text-muted mb-5 fst-italic">
-      Készítette: {{ store.creator }}
+      Készítette: {{ crosswordStore.creator }}
     </h5>
     <CrosswordGrid
-      v-if="store.words !== null"
-      :words="store.words"
-      :width="store.width"
+      v-if="crosswordStore.words !== null"
+      :words="crosswordStore.words"
+      :width="crosswordStore.width"
       :is-crossword-resetting="isCrosswordResetting"
       @start-game="startGame()"
       @abandon-attempt="abandonAttempt()"
     />
-    <div v-if="authStore.isLoggedIn && !isCrosswordCompleted" class="text-center mt-4">
+    <div v-if="isLoggedIn && !isCrosswordCompleted" class="text-center mt-4">
       Időmérő
       <div>
         {{  displayTime  }}
       </div>
     </div>
     <div
-      v-if="authStore.isLoggedIn && isCrosswordCompleted"
+      v-if="isLoggedIn && isCrosswordCompleted"
     >
       <div class="text-center bg-light p-4 rounded shadow w-50 mx-auto mt-5">
         <p class="lead fw-bold">Gratulálunk, sikeresen megoldottad a rejtvényt!</p>
@@ -29,21 +29,26 @@
         <p>Legjobb időd: {{ formatBestTime }}</p>
       </div>
     </div>
+    <div class="text-center mt-4">
+      Itt lesz a legjobb idős táblázat
+    </div>
   </div>
   <div v-else class="text-center">
-    <p v-if="store.loading">
+    <p v-if="crosswordStore.loading">
       Betöltés...
     </p>
-    <p v-else-if="store.error" class="alert alert-danger">
-      {{ store.error }}
+    <p v-else-if="crosswordStore.error" class="alert alert-danger">
+      {{ crosswordStore.error }}
     </p>
   </div>
 </template>
 
 <script>
 import { useCrosswordStore } from '../stores/crossword';
+import { useAttemptStore } from '../stores/attempt';
 import CrosswordGrid from '../components/CrosswordGrid.vue';
 import { useAuthStore } from '../stores/auth';
+import { mapState } from 'pinia';
 
 export default {
   name: 'CrosswordPage',
@@ -58,7 +63,6 @@ export default {
   },
   data() {
     return {
-      authStore: useAuthStore(),
       /**
        * Jelzi, hogy a rejtvény játék elindult-e. Ha igaz, akkor az időzítő fut.
        * 
@@ -91,24 +95,29 @@ export default {
     }
   },
   computed: {
+    ...mapState(useAuthStore, ['isLoggedIn']),
     /**
      * Elérhetővé teszi a crossword Pinia store-t az oldal számára.
      *
      * @returns {import('../stores/crossword').useCrosswordStore}
      */
-    store() {
+    crosswordStore() {
       return useCrosswordStore()
+    },
+    attemptStore() {
+      return useAttemptStore()
     },
     /**
      * Ellenőrzi, hogy a rejtvény adatai betöltődtek-e.
      * 
      * @returns {boolean} Igaz, ha a rejtvény adatai betöltődtek, hamis egyébként.
      */
-    isCrosswordLoaded() {
-      return (this.store.id !== null &&
-        Array.isArray(this.store.words) &&
-        !this.store.loading &&
-        !this.store.error
+    isPageLoaded() {
+      return (
+        this.crosswordStore.id !== null && this.attemptStore.id !== null &&
+        !this.crosswordStore.loading && !this.attemptStore.loading &&
+        !this.crosswordStore.error && !this.attemptStore.error &&
+        Array.isArray(this.crosswordStore.words)
       )
     },
     /**
@@ -117,7 +126,7 @@ export default {
      * @returns {boolean} Igaz, ha a rejtvény be van fejezve, hamis egyébként.
      */
     isCrosswordCompleted() {
-      return this.store.isCompleted || this.store.status === 'completed'
+      return this.crosswordStore.isCompleted || this.attemptStore.status === 'completed'
     },
     /**
      * Formázza az eltelt időt órákra, percekre és másodpercekre.
@@ -127,10 +136,10 @@ export default {
     displayTime() {
       this.timerTick // Timer ticket használjuk, hogy a computed property újraszámolódjon minden másodpercben.
 
-      let totalSeconds = this.store.elapsedTime
+      let totalSeconds = this.attemptStore.elapsedTime
 
-      if (this.store.startedAt) {
-        const startedAt = new Date(this.store.startedAt)
+      if (this.attemptStore.startedAt) {
+        const startedAt = new Date(this.attemptStore.startedAt)
         const elapsedSinceStart = Math.floor((Date.now() - startedAt.getTime()) / 1000)
 
         totalSeconds += elapsedSinceStart
@@ -149,11 +158,11 @@ export default {
      * @returns {string} A legjobb idő formázott stringként (HH:MM:SS) vagy 'N/A'.
      */
     formatBestTime() {
-      if (this.store.bestTime === null) {
+      if (this.attemptStore.bestTime === null) {
         return 'N/A'
       }
 
-      const totalSeconds = this.store.bestTime
+      const totalSeconds = this.attemptStore.bestTime
       const hours = Math.floor(totalSeconds / 3600)
       const minutes = Math.floor(totalSeconds / 60) % 60
       const seconds = totalSeconds % 60
@@ -176,7 +185,8 @@ export default {
           await this.stopGame()
         }
 
-        await this.store.loadCrossword(newId)
+        await this.attemptStore.loadAttempt(newId)
+        await this.crosswordStore.loadCrossword(newId)
       }
     },
   },
@@ -196,7 +206,7 @@ export default {
      * Elindítja a játékot és az időzítőt, beállítja a `isCrosswordStarted` változót igazra.
      */
     async startGame() {
-      const started = await this.store.startAttempt()
+      const started = await this.attemptStore.startAttempt()
       
       if (!started) {
         return
@@ -221,8 +231,8 @@ export default {
       this.stopGameTimer()
 
       try {
-        await this.store.saveProgress()
-        await this.store.stopAttempt()
+        await this.attemptStore.saveProgress()
+        await this.attemptStore.stopAttempt()
       } finally {
         this.isCrosswordStarted = false
       }
@@ -238,7 +248,7 @@ export default {
       this.isCrosswordResetting = true
 
       try {
-        await this.store.abandonAttempt()
+        await this.attemptStore.abandonAttempt()
       } catch (error) {
         console.error('Hiba a próbálkozás elhagyása közben:', error)
       } finally {
@@ -275,7 +285,7 @@ export default {
 
         this.stopGameTimer()
 
-        this.store.flushOnUnload()
+        this.attemptStore.flushOnUnload()
       }
     },
   }

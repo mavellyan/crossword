@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 export async function loadCrossword(id) {
-  const response = await axios.get('/crossword', {
+  const response = await axios.get('/getCrossword', {
     params: {
       id: id,
     }
@@ -12,14 +12,13 @@ export async function loadCrossword(id) {
   }
 
   const crossword = response.data.crossword
-  const attempt = response.data.attempt
 
   if (!crossword || !Array.isArray(crossword.grid)) {
     console.log('Hibás API válasz:', response.data)
     throw new Error('Hibás API válasz a rejtvény betöltésekor.')
   }
 
-  return { crossword, attempt }
+  return crossword
 }
 
 export async function listCrosswords(params = {}) {
@@ -47,36 +46,4 @@ export async function listTopics() {
   }
 
   return response.data.topics
-}
-
-export async function saveProgress(attemptId, wordInputs, stateVersion) {
-  const response = await axios.post('/saveProgress', {
-    attempt_id: attemptId,
-    word_inputs: wordInputs,
-    state_version: stateVersion,
-  })
-
-  if (!response.data.success) {
-    console.log('Hibás API válasz:', response.data)
-    throw new Error(response.data.message ?? 'Hiba a rejtvény mentése közben.')
-  }
-
-  return response.data
-}
-
-export function saveAndStopBeacon(attemptId, wordInputs, stateVersion) {
-  return fetch(axios.defaults.baseURL + '/saveAndStopBeacon', {
-    method: 'POST',
-    keepalive: true,
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}),
-    },
-    body: JSON.stringify({
-      attempt_id: attemptId,
-      word_inputs: wordInputs,
-      state_version: stateVersion,
-    }),
-  })
 }

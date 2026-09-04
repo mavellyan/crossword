@@ -26,38 +26,6 @@ class CrosswordService
             'topics',
         ])->findOrFail($id);
 
-        $attempt = null;
-
-        if ($userId !== null) {
-            $attempt = CrosswordAttempt::query()
-                ->where('user_id', $userId)
-                ->where('crossword_id', $id)
-                ->latest('id')
-                ->first();
-        
-            if (!$attempt || $attempt->status === 'abandoned') {
-                $attempt = CrosswordAttempt::create([
-                    'user_id' => $userId,
-                    'crossword_id' => $id,
-                    'status' => 'not_started',
-                    'grid_state' => [
-                        'word_inputs' => [],
-                    ],
-                    'state_version' => 0,
-                    'elapsed_time' => 0,
-                ]);
-            }
-
-            $bestAttempt = CrosswordAttempt::query()
-                ->where('user_id', $userId)
-                ->where('crossword_id', $id)
-                ->where('status', 'completed')
-                ->orderBy('elapsed_time', 'asc')
-                ->first();
-
-            $bestTime = $bestAttempt ? $bestAttempt->elapsed_time : null;
-        }
-
         $gridData = $this->generator->generateGrid(
             $crossword->main_solution,
             $crossword->getWords(),
@@ -70,8 +38,6 @@ class CrosswordService
             'height' => $gridData['height'],
             'solution_col' => $gridData['solution_col'],
             'main_solution' => $gridData['main_solution'],
-            'attempt' => $attempt,
-            'best_time' => $bestTime ?? null,
         ];
     }
 
@@ -297,47 +263,5 @@ class CrosswordService
         }
 
         return $query->get();
-    }
-
-    public function checkSubmittedInputs(Collection $placements, array $submittedInputs)
-    {
-        $normalizedInputs = [];
-        $isCompleted = true;
-        $correctWords = [];
-
-        foreach ($placements as $placement) {
-            $placementId = $placement->id;
-
-            $expectedSolution = mb_strtoupper($placement->getSolution());
-            $expectedLength = mb_strlen($expectedSolution);
-
-            $submittedCells = array_values($submittedInputs[$placementId] ?? []);
-            $normalizedCells = [];
-
-            for ($index = 0; $index < $expectedLength; $index++) {
-                $cellValue = $submittedCells[$index] ?? '';
-
-                if ($cellValue === null || $cellValue === '') {
-                    $normalizedCells[] = '';
-                    continue;
-                }
-
-                $normalizedCells[] = mb_substr(mb_strtoupper((string) $cellValue), 0, 1);
-            }
-
-            $normalizedInputs[$placementId] = $normalizedCells;
-
-            if (implode('', $normalizedCells) !== $expectedSolution) {
-                $isCompleted = false;
-            } else {
-                $correctWords[] = $placementId;
-            }
-        }
-
-        return [
-            'normalizedInputs' => $normalizedInputs,
-            'isCompleted' => $isCompleted,
-            'correctWords' => $correctWords,
-        ];
     }
 }

@@ -6,13 +6,13 @@
     >
       <button
         class="btn btn-success btn-lg shadow text-uppercase fw-bold"
-        @click="store.status === 'completed' ? this.$emit('abandon-attempt') : startGame()"
+        @click="attemptStore.status === 'completed' ? this.$emit('abandon-attempt') : startGame()"
         :disabled="isCrosswordResetting"
       >
         {{ startButtonText }}
       </button>
       <button
-        v-if="store.status === 'in_progress'"
+        v-if="attemptStore.status === 'in_progress'"
         class="btn btn-danger btn-lg shadow text-uppercase fw-bold"
         @click="this.$emit('abandon-attempt')"
         :disabled="isCrosswordResetting"
@@ -30,7 +30,7 @@
           v-for="(word, wordIndex) in words"
           :key="wordIndex"
           class="grid-row"
-          :class="{ 'active-row': store.activeWordIndex === wordIndex }"
+          :class="{ 'active-row': crosswordStore.activeWordIndex === wordIndex }"
         >
           <div
             v-for="(cell, visibleCellIndex) in getCellsForWord(word)"
@@ -60,7 +60,7 @@
           v-for="(word, index) in words"
           :key="index"
           class="definition"
-          :class="{ 'active-row': store.activeWordIndex === index }"
+          :class="{ 'active-row': crosswordStore.activeWordIndex === index }"
           @click="handleDefinitionClick(index)"
         >
           <strong>{{ index + 1 }}.</strong> {{ word.definition }}
@@ -72,6 +72,7 @@
 
 <script>
 import { useCrosswordStore } from '../stores/crossword'
+import { useAttemptStore } from '../stores/attempt'
 import CrosswordCell from './CrosswordCell.vue'
 
 export default {
@@ -106,18 +107,16 @@ export default {
     }
   },
   computed: {
-    /**
-     * Központi rejtvény játékállapotot ad a komponensnek.
-     *
-     * @returns {import('../stores/crossword').useCrosswordStore}
-     */
-    store() {
+    crosswordStore() {
       return useCrosswordStore()
     },
+    attemptStore() {
+      return useAttemptStore()
+    },
     startButtonText() {
-      if (this.store.status === 'in_progress') {
+      if (this.attemptStore.status === 'in_progress') {
         return 'Folytatás'
-      } else if (this.store.status === 'completed') {
+      } else if (this.attemptStore.status === 'completed') {
         return 'Újraindítás'
       } else {
         return 'Játék indítása'
@@ -152,7 +151,7 @@ export default {
      * @returns {string} Az aktuális cella értéke.
      */
     getCellValue(wordIndex, cellIndex) {
-      return this.store.wordInputs[wordIndex]?.[cellIndex] ?? ''
+      return this.crosswordStore.wordInputs[wordIndex]?.[cellIndex] ?? ''
     },
     /**
      * Visszaadja, hogy egy szó minden cellája ki van-e töltve.
@@ -162,7 +161,7 @@ export default {
      * @returns {boolean} True, ha a szó teljesen ki van töltve.
      */
     isWordFilled(wordIndex) {
-      return Boolean(this.store.wordStatus[wordIndex]?.filled)
+      return Boolean(this.crosswordStore.wordStatus[wordIndex]?.filled)
     },
     /**
      * Visszaadja, hogy az adott szó jelenleg helyesre van-e validálva.
@@ -172,7 +171,7 @@ export default {
      * @returns {boolean} True, ha a szó helyes.
      */
     isWordCorrect(wordIndex) {
-      return Boolean(this.store.wordStatus[wordIndex]?.correct)
+      return Boolean(this.crosswordStore.wordStatus[wordIndex]?.correct)
     },
     /**
      * Visszaadja, hogy az adott szó jelenleg függőben van-e.
@@ -182,7 +181,7 @@ export default {
      * @returns {boolean} True, ha a szó függőben van.
      */
     isWordPending(wordIndex) {
-      return Boolean(this.store.wordStatus[wordIndex]?.pending)
+      return Boolean(this.crosswordStore.wordStatus[wordIndex]?.pending)
     },
     /**
      * Visszaadja a szó karakterszámú cellahosszát.
@@ -216,8 +215,8 @@ export default {
      * @returns {void}
      */
     setActiveWordAndCell(wordIndex, cellIndex) {
-      this.store.setActiveWord(wordIndex)
-      this.store.setActiveCellInWord(wordIndex, cellIndex)
+      this.crosswordStore.setActiveWord(wordIndex)
+      this.crosswordStore.setActiveCellInWord(wordIndex, cellIndex)
     },
     /**
      * Ref alapján fókuszál egy konkrét input cellára.
@@ -255,7 +254,7 @@ export default {
         return null
       }
 
-      const inputs = this.store.wordInputs[wordIndex] ?? []
+      const inputs = this.crosswordStore.wordInputs[wordIndex] ?? []
       const firstEmptyIndex = inputs.findIndex((value) => value === '')
 
       if (firstEmptyIndex !== -1) {
@@ -271,7 +270,7 @@ export default {
      * @returns {void}
      */
     handleDefinitionClick(wordIndex) {
-      this.store.setActiveWord(wordIndex)
+      this.crosswordStore.setActiveWord(wordIndex)
       const targetCellIndex = this.getDefinitionFocusTarget(wordIndex)
 
       if (targetCellIndex !== null) {
@@ -322,7 +321,7 @@ export default {
 
       const targetCellIndex = this.getDefinitionFocusTarget(nextWordIndex)
       if (targetCellIndex === null) {
-        this.store.setActiveWord(nextWordIndex)
+        this.crosswordStore.setActiveWord(nextWordIndex)
         return
       }
 
@@ -338,7 +337,7 @@ export default {
      */
     handleCellInput(wordIndex, cellIndex, value) {
       this.setActiveWordAndCell(wordIndex, cellIndex)
-      this.store.updateWordCell(wordIndex, cellIndex, value)
+      this.crosswordStore.updateWordCell(wordIndex, cellIndex, value)
 
       if (value && !this.isWordCorrect(wordIndex)) {
         this.focusNextInWord(wordIndex, cellIndex)
@@ -384,7 +383,7 @@ export default {
 
         const currentValue = this.getCellValue(wordIndex, cellIndex)
         if (currentValue) {
-          this.store.deleteWordCell(wordIndex, cellIndex)
+          this.crosswordStore.deleteWordCell(wordIndex, cellIndex)
           return
         }
 

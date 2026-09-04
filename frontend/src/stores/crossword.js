@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
-import { loadCrossword, saveProgress, saveAndStopBeacon } from '@/services/crosswordApi'
-import { startAttempt, stopAttempt, abandonAttempt } from '@/services/attemptApi'
-import { useAuthStore } from '@/stores/auth'
+import { loadCrossword } from '@/services/crosswordApi'
+import { useAttemptStore } from '@/stores/attempt'
 
 /**
  * Egy nyers cella inputot egyetlen nagybetűs karakterre normalizál.
@@ -57,6 +56,8 @@ export const useCrosswordStore = defineStore('crossword', {
      * A store minden mezője alapértelmezett értékre van állítva, hogy a komponensek ne kapjanak undefined értékeket.
      * A rejtvény betöltésekor a loadCrossword() hívás után az initializePlayState() metódus inicializálja a store-t a backendről érkező adatokkal.
      */
+
+    attemptStore: useAttemptStore(),
 
     /**
      * A rejtvény azonosítója
@@ -114,12 +115,6 @@ export const useCrosswordStore = defineStore('crossword', {
      * @type {string|null}
      */
     attemptId: null,
-    /**
-     * A próbálkozás státusza, lehetséges értékek: "not_started", "in_progress", "completed", "abandoned".
-     * 
-     * @type {string|null}
-     */
-    status: null,
     /**
      * A próbálkozás állapotának verziószáma, amelyet a backend kezel. Minden mentés után növekszik.
      * 
@@ -240,7 +235,6 @@ export const useCrosswordStore = defineStore('crossword', {
       this.height = null
 
       this.attemptId = null
-      this.status = null
       this.stateVersion = null
 
       this.elapsedTime = 0
@@ -270,7 +264,7 @@ export const useCrosswordStore = defineStore('crossword', {
      * @param {object|null} attempt Felhasználói próbálkozás objektum, ha van. Amennyiben nincs regisztrálva a felhasználó, null.
      * @returns {void}
      */
-    initializePlayState(crossword, attempt) {
+    initializePlayState(crossword) {
       this.id = crossword.id
       this.grid = crossword.grid ?? null
       this.title = crossword.title
@@ -280,19 +274,7 @@ export const useCrosswordStore = defineStore('crossword', {
       this.width = crossword.width ?? null
       this.height = crossword.height ?? null
 
-      if (attempt) {
-        this.attemptId = attempt.id
-        this.status = attempt.status
-        this.stateVersion = attempt.state_version
-        
-        this.elapsedTime = attempt.elapsed_time ?? 0
-        this.startedAt = attempt.started_at ?? null
-        this.correctWords = attempt.correct_words ?? []
-      }
-
-      this.bestTime = crossword.best_time ?? null
-
-      this.wordInputs = createWordInputs(this.words, attempt?.word_inputs ?? {})
+      this.wordInputs = createWordInputs(this.words, this.attemptStore.wordInputs ?? {})
       this.wordStatus = createWordStatus(this.words)
 
       // Validálni kell, mivel lehet, hogy volt korábbi próbálkozás már
@@ -321,11 +303,11 @@ export const useCrosswordStore = defineStore('crossword', {
       }
 
       this.wordInputs[wordIndex][cellIndex] = normalizeLetter(value)
-      this.modified = true
+      this.attemptStore.modified = true
 
       if (this.wordInputs[wordIndex].join('').length === this.words[wordIndex].cells.length) {
         this.wordStatus[wordIndex].pending = true
-        this.saveProgress()
+        this.attemptStore.saveProgress()
       }
 
       this.scheduleSave()
@@ -354,7 +336,7 @@ export const useCrosswordStore = defineStore('crossword', {
         this.wordStatus[wordIndex].filled = false
       }
 
-      this.modified = true
+      this.attemptStore.modified = true
       this.scheduleSave()
     },
 
@@ -366,7 +348,7 @@ export const useCrosswordStore = defineStore('crossword', {
      */
     validateWords() {
       this.words.forEach((word, wordIndex) => {
-        const isCorrect = this.correctWords.includes(word.placement_id)
+        const isCorrect = this.attemptStore.correctWords.includes(word.placement_id)
 
         this.wordStatus[wordIndex] = {
           filled: this.wordInputs[wordIndex].every(cell => cell !== ''),
@@ -431,9 +413,9 @@ export const useCrosswordStore = defineStore('crossword', {
       this.loading = true
 
       try {
-        const { crossword, attempt } = await loadCrossword(id)
+        const crossword = await loadCrossword(id)
 
-        this.initializePlayState(crossword, attempt)
+        this.initializePlayState(crossword)
       } catch (error) {
         console.log('error: ', error)
         this.error = error?.message ?? 'Hiba a rejtvény betöltése közben.'
@@ -466,156 +448,8 @@ export const useCrosswordStore = defineStore('crossword', {
       }
       
       this.saveTimer = setTimeout(() => {
-        this.saveProgress()
+        this.attemptStore.saveProgress()
       }, 1500)
-    },
-    /**
-     * Elmenti a rejtvény aktuális állapotát, 2 másodpercenként fut.
-     * Ha nincs bejelentkezett felhasználó, nincs attemptId, vagy a rejtvény már be van fejezve,
-     * nem történt módosítás, vagy van jelenleg futó mentés, akkor nem történik semmi.
-     * 
-     * @returns {Promise<void>}
-     */
-    async saveProgress() {
-      // Ha a felhasználó nincs belentkezve, nincs attemptId, a rejtvény már be van fejezve, vagy éppen mentés folyik, akkor nem csinálunk semmit
-      if (!useAuthStore().isLoggedIn || !this.attemptId || this.status === 'completed' || this.saving || !this.modified) {
-        return
-      }
-
-      this.saving = true
-
-      try {
-        const snapshot = this.createProgressPayload()
-        
-        const response = await saveProgress(this.attemptId, snapshot, this.stateVersion)
-
-        // Itt biztosan lennie kell már attemptnek, mivel a backend csak akkor engedi a mentést, ha van attemptId és login
-        this.status = response.attempt.status
-        this.stateVersion = response.attempt.state_version
-        this.correctWords = response.attempt.correct_words ?? []
-
-        // Ha a rejtvény befejeződött, akkor nullázzuk a startedAt értéket, és frissítjük az elapsedTime-ot a backendről
-        if (this.status === 'completed') {
-          this.elapsedTime = response.attempt.elapsed_time ?? this.elapsedTime
-          this.startedAt = null
-          this.isCompleted = true
-        }
-
-        this.validateWords()
-
-        // Ellenőrízzük, hogy a mentés közben történt-e változás a rejtvényben
-        // Ha a snapshot és az új snapshot nem egyezik, akkor a rejtvény módosult a mentés óta
-        const newSnapshot = this.createProgressPayload()
-        this.modified = JSON.stringify(snapshot) !== JSON.stringify(newSnapshot)
-
-        if (this.modified) {
-          this.scheduleSave()
-        }
-
-        if (this.status === 'completed' && response.best_time !== undefined) {
-          this.bestTime = response.best_time
-        }
-
-      } catch (error) {
-        console.log('Hiba a rejtvény mentése közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény mentése közben.'
-      } finally {
-        this.saving = false
-      }
-    },
-    /**
-     * Bejelentkezett felhasználók esetén elindítja a rejtvény próbálkozást a backendnél. Ha nincs bejelentkezett felhasználó, vagy nincs attemptId, akkor nem történik semmi.
-     * 
-     * @returns {Promise<boolean>} Sikeres volt-e a próbálkozás indítása.
-     */
-    async startAttempt() {
-      if (!useAuthStore().isLoggedIn || !this.attemptId) {
-        return
-      }
-
-      try {
-        const data = await startAttempt(this.attemptId)
-
-        if (data.attempt) {
-          this.elapsedTime = data.attempt.elapsed_time ?? 0
-          this.startedAt = data.attempt.started_at ?? null
-          this.status = data.attempt.status
-        }
-
-        return true
-      } catch (error) {
-        console.log('Hiba a rejtvény próbálkozás elindítása közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás elindítása közben.'
-
-        return false
-      }
-    },
-    /**
-     * Leállítja a rejtvény próbálkozást. Ha nincs bejelentkezett felhasználó, vagy nincs attemptId, akkor nem történik semmi.
-     * 
-     * @returns {Promise<void>}
-     */
-    async stopAttempt() {
-      if (!useAuthStore().isLoggedIn || !this.attemptId) {
-        return
-      }
-
-      if (this.status === 'completed' || !this.startedAt) {
-        return
-      }
-
-      try {
-        const data = await stopAttempt(this.attemptId)
-
-        if (data.attempt) {
-          this.status = data.attempt.status ?? this.status
-          this.elapsedTime = data.attempt.elapsed_time ?? this.elapsedTime
-          this.startedAt = null
-        }
-      } catch (error) {
-        console.log('Hiba a rejtvény próbálkozás leállítása közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás leállítása közben.'
-      }
-    },
-    /**
-     * Feladja a rejtvény próbálkozást, és újratölti a rejtvényt, így létrehozva egy új próbálkozást.
-     * 
-     * @returns {Promise<void>}
-     */
-    async abandonAttempt() {
-      if (!useAuthStore().isLoggedIn || !this.attemptId) {
-        return
-      }
-
-      try {
-        const data = await abandonAttempt(this.attemptId)
-
-        if (data.success) {
-          this.loadCrossword(this.id)
-        }
-      } catch (error) {
-        console.log('Hiba a rejtvény próbálkozás feladása közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás feladása közben.'
-      }
-    },
-    /**
-     * Mentés és próbálkozás leállítás a böngésző ablak bezárása/újratöltése előtt.
-     * 
-     * @returns {Promise<void>}
-     */
-    flushOnUnload() {
-      if (!useAuthStore().isLoggedIn || !this.attemptId || this.status !== 'in_progress') {
-        return
-      }
-
-      // Fölösleges az ütemezett timer, úgyis kilőttük az oldalt
-      if (this.saveTimer) {
-        clearTimeout(this.saveTimer)
-        this.saveTimer = null
-      }
-
-      const snapshot = this.createProgressPayload()
-      saveAndStopBeacon(this.attemptId, snapshot, this.stateVersion)
     },
   },
 })
