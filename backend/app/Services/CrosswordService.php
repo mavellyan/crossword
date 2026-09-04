@@ -47,6 +47,15 @@ class CrosswordService
                     'elapsed_time' => 0,
                 ]);
             }
+
+            $bestAttempt = CrosswordAttempt::query()
+                ->where('user_id', $userId)
+                ->where('crossword_id', $id)
+                ->where('status', 'completed')
+                ->orderBy('elapsed_time', 'asc')
+                ->first();
+
+            $bestTime = $bestAttempt ? $bestAttempt->elapsed_time : null;
         }
 
         $gridData = $this->generator->generateGrid(
@@ -62,6 +71,7 @@ class CrosswordService
             'solution_col' => $gridData['solution_col'],
             'main_solution' => $gridData['main_solution'],
             'attempt' => $attempt,
+            'best_time' => $bestTime ?? null,
         ];
     }
 

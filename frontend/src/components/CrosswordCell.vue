@@ -10,6 +10,7 @@
     :class="{
       'correct': isRowFilled && isCorrect,
       'incorrect': isRowFilled && !isCorrect,
+      'pending': isPending,
     }"
   />
 </template>

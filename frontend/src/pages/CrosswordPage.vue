@@ -14,10 +14,19 @@
       @start-game="startGame()"
       @abandon-attempt="abandonAttempt()"
     />
-    <div class="text-center mt-4">
+    <div v-if="authStore.isLoggedIn && !isCrosswordCompleted" class="text-center mt-4">
       Időmérő
       <div>
         {{  displayTime  }}
+      </div>
+    </div>
+    <div
+      v-if="authStore.isLoggedIn && isCrosswordCompleted"
+    >
+      <div class="text-center bg-light p-4 rounded shadow w-50 mx-auto mt-5">
+        <p class="lead fw-bold">Gratulálunk, sikeresen megoldottad a rejtvényt!</p>
+        <p>Jelenlegi időd: {{ displayTime }}</p>
+        <p>Legjobb időd: {{ formatBestTime }}</p>
       </div>
     </div>
   </div>
@@ -34,6 +43,7 @@
 <script>
 import { useCrosswordStore } from '../stores/crossword';
 import CrosswordGrid from '../components/CrosswordGrid.vue';
+import { useAuthStore } from '../stores/auth';
 
 export default {
   name: 'CrosswordPage',
@@ -48,6 +58,7 @@ export default {
   },
   data() {
     return {
+      authStore: useAuthStore(),
       /**
        * Jelzi, hogy a rejtvény játék elindult-e. Ha igaz, akkor az időzítő fut.
        * 
@@ -101,6 +112,14 @@ export default {
       )
     },
     /**
+     * Ellenőrzi, hogy a rejtvény be van-e fejezve.
+     * 
+     * @returns {boolean} Igaz, ha a rejtvény be van fejezve, hamis egyébként.
+     */
+    isCrosswordCompleted() {
+      return this.store.isCompleted || this.store.status === 'completed'
+    },
+    /**
      * Formázza az eltelt időt órákra, percekre és másodpercekre.
      *
      * @returns {string} Az eltelt idő formázott stringként (HH:MM:SS).
@@ -110,8 +129,6 @@ export default {
 
       let totalSeconds = this.store.elapsedTime
 
-      console.log('totalsec ', totalSeconds)
-
       if (this.store.startedAt) {
         const startedAt = new Date(this.store.startedAt)
         const elapsedSinceStart = Math.floor((Date.now() - startedAt.getTime()) / 1000)
@@ -119,6 +136,24 @@ export default {
         totalSeconds += elapsedSinceStart
       }
 
+      const hours = Math.floor(totalSeconds / 3600)
+      const minutes = Math.floor(totalSeconds / 60) % 60
+      const seconds = totalSeconds % 60
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    },
+    /**
+     * A rejtvény befejezését követően, vagy befejezett rejtvény betöltése esetén megjeleníti a felhasználó próbálkozásai közül
+     * a legjobb időt, formázottan, vagy 'N/A' ha nincs még befejezett próbálkozás.
+     * 
+     * @returns {string} A legjobb idő formázott stringként (HH:MM:SS) vagy 'N/A'.
+     */
+    formatBestTime() {
+      if (this.store.bestTime === null) {
+        return 'N/A'
+      }
+
+      const totalSeconds = this.store.bestTime
       const hours = Math.floor(totalSeconds / 3600)
       const minutes = Math.floor(totalSeconds / 60) % 60
       const seconds = totalSeconds % 60

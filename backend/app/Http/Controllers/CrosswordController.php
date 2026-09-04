@@ -182,6 +182,19 @@ class CrosswordController extends Controller
 
             $attempt->status = 'completed';
             $attempt->completed_at = now();
+
+            $bestAttempt = CrosswordAttempt::query()
+                ->where('user_id', $user->id)
+                ->where('crossword_id', $attempt->crossword_id)
+                ->where('status', 'completed')
+                ->orderBy('elapsed_time', 'asc')
+                ->first();
+
+            $bestTime = $bestAttempt ? $bestAttempt->elapsed_time : null;
+
+            if ($bestTime === null || $attempt->elapsed_time < $bestTime) {
+                $bestTime = $attempt->elapsed_time;
+            }
         }
 
         $attempt->save();
@@ -197,6 +210,7 @@ class CrosswordController extends Controller
                 'started_at' => $attempt->started_at,
                 'correct_words' => $attempt->grid_state['correct_words'] ?? [],
             ],
+            'best_time' => $bestTime ?? null,
         ]);
     }
 

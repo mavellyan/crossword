@@ -26,6 +26,7 @@ class CrosswordResource extends JsonResource
             'words' => CrosswordClueResource::collection($crossword->getWords()),
             'width' => $this->resource['width'],
             'height' => $this->resource['height'],
+            'best_time' => $this->resource['best_time'] ?? null,
         ];
     }
 }

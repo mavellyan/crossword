@@ -51,35 +51,175 @@ function createWordStatus(words) {
 
 export const useCrosswordStore = defineStore('crossword', {
   state: () => ({
+    /**
+     * A store-ban tárolt rejtvény adatok és játékállapotok.
+     * A store minden mezője alapértelmezett értékre van állítva, hogy a komponensek ne kapjanak undefined értékeket.
+     * A rejtvény betöltésekor a loadCrosswordById() hívás után az initializePlayState() metódus inicializálja a store-t a backendről érkező adatokkal.
+     */
+
+    /**
+     * A rejtvény azonosítója
+     * 
+     * @type {string|null}
+     */
     id: null,
+    /**
+     * A rejtvény rácsa, amely egy kétdimenziós tömb, ahol minden cella lehet üres vagy tartalmazhat egy karaktert.
+     * 
+     * @type {Array<Array<unknown>>|null}
+     */
     grid: null,
+    /**
+     * A rejtvény címe
+     * 
+     * @type {string|null}
+     */
     title: null,
+    /**
+     * A rejtvény készítőjének neve
+     * 
+     * @type {string|null}
+     */
     creator: null,
+    /**
+     * A rejtvény fő megoldása
+     * 
+     * @type {string|null}
+     */
     mainSolution: null,
+    /**
+     * A rejtvény szavai, amelyek tartalmazzák a cellák elhelyezkedését és a megoldásokat.
+     * 
+     * @type {Array<unknown>|null}
+     */
     words: null,
+    /**
+     * A rejtvény szélessége
+     * 
+     * @type {number|null}
+     */
     width: null,
+    /**
+     * A rejtvény magassága
+     * 
+     * @type {number|null}
+     */
     height: null,
 
+    /**
+     * A felhasználónak az adott rejtvényhez tartozó próbálkozásának azonosítója.
+     * Csak bejelentkezett felhasználók esetén értelmezett.
+     * 
+     * @type {string|null}
+     */
     attemptId: null,
+    /**
+     * A próbálkozás státusza, lehetséges értékek: "not_started", "in_progress", "completed", "abandoned".
+     * 
+     * @type {string|null}
+     */
     status: null,
+    /**
+     * A próbálkozás állapotának verziószáma, amelyet a backend kezel. Minden mentés után növekszik.
+     * 
+     * @type {number|null}
+     */
     stateVersion: null,
 
+    /**
+     * A rejtvény megoldására fordított összes eltelt idő másodpercben.
+     *  Backenden történik a tényleges számlálás, a frontend csak betölti, és folytatás esetén intervallal számol tovább, de a backend a mérvadó, db-be az kerül.
+     * 
+     * @type {number}
+     */
     elapsedTime: 0,
+    /**
+     * A próbálkozás elindításának időbélyege, amelyet a backend ad vissza. Ha null, akkor a próbálkozás még nem indult el.
+     * 
+     * @type {string|null}
+     */
     startedAt: null,
+    /**
+     * A rejtvény megoldásának állapota.
+     * 
+     * @type {boolean}
+     */
+    isCompleted: false,
 
+    /**
+     * A felhasználó által beírt karakterek minden szóhoz. Minden szóhoz tartozik egy tömb, amely a szó celláinak számával egyezik.
+     * 
+     * @type {Array<Array<string>>}
+     */
     wordInputs: [],
+    /**
+     * A felhasználó által beírt karakterek állapota minden szóhoz. Minden szóhoz tartozik egy objektum, amely jelzi,
+     * hogy a szó teljesen ki van-e töltve, helyes-e, és van-e folyamatban lévő mentés.
+     * 
+     * @type {Array<{ filled: boolean, correct: boolean, pending: boolean }>}
+     */
     wordStatus: [],
+    /**
+     * A backend által visszaadott helyes szavak elhelyezési azonosítóinak listája. Ezt a frontend a wordStatus tömb frissítésére használja.
+     * Ez alapján jelöljük a hibás és helyes szavakat a felhasználói felületen.
+     * 
+     * @type {Array<string>}
+     */
     correctWords: [],
 
+    /**
+     * Az aktív szó indexe a words tömbben.
+     * 
+     * @type {number|null}
+     */
     activeWordIndex: null,
+    /**
+     * Az aktív cella indexe minden szóhoz. Minden szóhoz tartozik egy szám, amely az aktív cella indexét jelzi a szó celláinak tömbjében.
+     * 
+     * @type {Array<number>}
+     */
     activeCellByWord: [],
 
+    /**
+     * A mentés ütemezéséhez használt timer azonosítója. Ha null, akkor nincs ütemezett mentés.
+     * Módosítás esetén 1,5 másodperces debounce timer indul, ha közben újabb módosítás történik, akkor a timer újraindul.
+     * Ha a timer lejár, akkor a rejtvény mentése megtörténik. Ha egy sort kitölt a user,
+     * akkor automatikusan instant mentés történik, hogy ne érződjön "laggosnak" a felhasználó részéről.
+     * 
+     * @type {number|null}
+     */
     saveTimer: null,
 
+    /**
+     * Jelzi, hogy a rejtvény betöltése folyamatban van-e. Ha true, akkor a komponensek betöltési állapotot jelenítenek meg.
+     * 
+     * @type {boolean}
+     */
     loading: false,
+    /**
+     * Jelzi, hogy a rejtvény mentése folyamatban van-e. Ha true, akkor a komponensek mentési állapotot jelenítenek meg.
+     * 
+     * @type {boolean}
+     */
     saving: false,
+    /**
+     * Jelzi, hogy a rejtvény módosult-e a legutóbbi mentés óta. Ha true, akkor a komponensek mentési állapotot jelenítenek meg.
+     * 
+     * @type {boolean}
+     */
     modified: false,
+    /**
+     * Hibaüzenet, ha a rejtvény betöltése vagy mentése közben hiba történt. Ha null, akkor nincs hiba.
+     * 
+     * @type {string|null}
+     */
     error: null,
+    /**
+     * A felhasználó legjobb ideje a rejtvény megoldására másodpercben. Ha null, akkor nincs még befejezett próbálkozás.
+     * 
+     * @type {number|null}
+     */
+    bestTime: null,
   }),
 
   actions: {
@@ -104,6 +244,8 @@ export const useCrosswordStore = defineStore('crossword', {
 
       this.elapsedTime = 0
       this.startedAt = null
+      this.isCompleted = false
+      this.bestTime = null
 
       this.wordInputs = []
       this.wordStatus = []
@@ -146,6 +288,8 @@ export const useCrosswordStore = defineStore('crossword', {
         this.startedAt = attempt.started_at ?? null
         this.correctWords = attempt.correct_words ?? []
       }
+
+      this.bestTime = crossword.best_time ?? null
 
       this.wordInputs = createWordInputs(this.words, attempt?.word_inputs ?? {})
       this.wordStatus = createWordStatus(this.words)
@@ -353,6 +497,7 @@ export const useCrosswordStore = defineStore('crossword', {
         if (this.status === 'completed') {
           this.elapsedTime = response.attempt.elapsed_time ?? this.elapsedTime
           this.startedAt = null
+          this.isCompleted = true
         }
 
         this.validateWords()
@@ -366,6 +511,10 @@ export const useCrosswordStore = defineStore('crossword', {
           this.scheduleSave()
         }
 
+        if (this.status === 'completed' && response.best_time !== undefined) {
+          this.bestTime = response.best_time
+        }
+
       } catch (error) {
         console.log('Hiba a rejtvény mentése közben:', error)
         this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény mentése közben.'
@@ -373,6 +522,11 @@ export const useCrosswordStore = defineStore('crossword', {
         this.saving = false
       }
     },
+    /**
+     * Bejelentkezett felhasználók esetén elindítja a rejtvény próbálkozást a backendnél. Ha nincs bejelentkezett felhasználó, vagy nincs attemptId, akkor nem történik semmi.
+     * 
+     * @returns {Promise<boolean>} Sikeres volt-e a próbálkozás indítása.
+     */
     async startAttempt() {
       if (!useAuthStore().isLoggedIn || !this.attemptId) {
         return
@@ -395,6 +549,11 @@ export const useCrosswordStore = defineStore('crossword', {
         return false
       }
     },
+    /**
+     * Leállítja a rejtvény próbálkozást. Ha nincs bejelentkezett felhasználó, vagy nincs attemptId, akkor nem történik semmi.
+     * 
+     * @returns {Promise<void>}
+     */
     async stopAttempt() {
       if (!useAuthStore().isLoggedIn || !this.attemptId) {
         return
@@ -417,6 +576,11 @@ export const useCrosswordStore = defineStore('crossword', {
         this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás leállítása közben.'
       }
     },
+    /**
+     * Feladja a rejtvény próbálkozást, és újratölti a rejtvényt, így létrehozva egy új próbálkozást.
+     * 
+     * @returns {Promise<void>}
+     */
     async abandonAttempt() {
       if (!useAuthStore().isLoggedIn || !this.attemptId) {
         return
@@ -433,6 +597,11 @@ export const useCrosswordStore = defineStore('crossword', {
         this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás feladása közben.'
       }
     },
+    /**
+     * Mentés és próbálkozás leállítás a böngésző ablak bezárása/újratöltése előtt.
+     * 
+     * @returns {Promise<void>}
+     */
     flushOnUnload() {
       if (!useAuthStore().isLoggedIn || !this.attemptId || this.status !== 'in_progress') {
         return
