@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { loadCrosswordById, saveCrosswordProgress, startAttempt, stopAttempt, saveAndStopBeacon, abandonAttempt } from '@/services/crosswordApi'
+import { loadCrossword, saveProgress, saveAndStopBeacon } from '@/services/crosswordApi'
+import { startAttempt, stopAttempt, abandonAttempt } from '@/services/attemptApi'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -54,7 +55,7 @@ export const useCrosswordStore = defineStore('crossword', {
     /**
      * A store-ban tárolt rejtvény adatok és játékállapotok.
      * A store minden mezője alapértelmezett értékre van állítva, hogy a komponensek ne kapjanak undefined értékeket.
-     * A rejtvény betöltésekor a loadCrosswordById() hívás után az initializePlayState() metódus inicializálja a store-t a backendről érkező adatokkal.
+     * A rejtvény betöltésekor a loadCrossword() hívás után az initializePlayState() metódus inicializálja a store-t a backendről érkező adatokkal.
      */
 
     /**
@@ -430,7 +431,7 @@ export const useCrosswordStore = defineStore('crossword', {
       this.loading = true
 
       try {
-        const { crossword, attempt } = await loadCrosswordById(id)
+        const { crossword, attempt } = await loadCrossword(id)
 
         this.initializePlayState(crossword, attempt)
       } catch (error) {
@@ -486,7 +487,7 @@ export const useCrosswordStore = defineStore('crossword', {
       try {
         const snapshot = this.createProgressPayload()
         
-        const response = await saveCrosswordProgress(this.attemptId, snapshot, this.stateVersion)
+        const response = await saveProgress(this.attemptId, snapshot, this.stateVersion)
 
         // Itt biztosan lennie kell már attemptnek, mivel a backend csak akkor engedi a mentést, ha van attemptId és login
         this.status = response.attempt.status

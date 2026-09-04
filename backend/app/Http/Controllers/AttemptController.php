@@ -142,4 +142,35 @@ class AttemptController extends Controller
             'message' => 'Próbálkozás sikeresen törölve.',
         ]);
     }
+
+    public function listBestAttempts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'crossword_id' => 'required|integer|exists:crosswords,id',
+        ]);
+
+        $attempts = CrosswordAttempt::query()
+            ->where('crossword_id', $validated['crossword_id'])
+            ->where('status', 'completed')
+            ->orderBy('elapsed_time', 'asc')
+            ->limit(5)
+            ->get();
+        
+        $table = [];
+
+        foreach ($attempts as $attempt) {
+            $user = $attempt->user;
+
+            $table[] = [
+                'username' => $user->username,
+                'elapsed_time' => $attempt->elapsed_time,
+                'completed_at' => $attempt->completed_at,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'table' => $table
+        ]);
+    }
 }
