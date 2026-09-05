@@ -47,3 +47,18 @@ export async function listTopics() {
 
   return response.data.topics
 }
+
+export async function validateWordForGuest(crosswordId, wordIndex, userInput) {
+  const response = await axios.post('/validateWordForGuest', {
+    crossword_id: crosswordId,
+    word_index: wordIndex,
+    user_input: userInput,
+  })
+
+  if (!response.data.success) {
+    console.log('Hibás API válasz:', response.data)
+    throw new Error(response.data.message ?? 'Nem sikerült ellenőrizni a szót.')
+  }
+
+  return response.data.is_correct
+}

@@ -106,4 +106,32 @@ class CrosswordController extends Controller
             'crosswords' => $crosswords,
         ]);
     }
+
+    public function validateWordForGuest(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'crossword_id' => 'required|integer|exists:crosswords,id',
+            'word_index' => 'required|integer|min:0',
+            'user_input' => 'required|string|min:1|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
+        ]);
+
+        try {
+            $isCorrect = $this->crosswordService->validateWordForGuest(
+                $validated['crossword_id'],
+                $validated['word_index'],
+                $validated['user_input']
+            );
+
+            return response()->json([
+                'success' => true,
+                'is_correct' => $isCorrect,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Error validating word for guest: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while validating the word.',
+            ], 500);
+        }
+    }
 }

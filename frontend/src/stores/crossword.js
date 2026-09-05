@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { loadCrossword } from '@/services/crosswordApi'
+import { loadCrossword, validateWordForGuest } from '@/services/crosswordApi'
 import { useAttemptStore } from '@/stores/attempt'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * Egy nyers cella inputot egyetlen nagybetűs karakterre normalizál.
@@ -58,6 +59,7 @@ export const useCrosswordStore = defineStore('crossword', {
      */
 
     attemptStore: useAttemptStore(),
+    authStore: useAuthStore(),
     /**
      * A rejtvény azonosítója
      * 
@@ -239,7 +241,12 @@ export const useCrosswordStore = defineStore('crossword', {
 
       if (this.wordInputs[wordIndex].join('').length === this.words[wordIndex].cells.length) {
         this.wordStatus[wordIndex].pending = true
-        this.attemptStore.saveProgress()
+
+        if (this.authStore.isLoggedIn) {
+          this.attemptStore.saveProgress()
+        } else {
+          this.validateGuestWord(wordIndex)
+        }
       }
 
       this.scheduleSave()
@@ -375,6 +382,10 @@ export const useCrosswordStore = defineStore('crossword', {
      * @returns {void}
      */
     scheduleSave() {
+      if (!this.authStore.isLoggedIn) {
+        return
+      }
+
       if (this.saveTimer) {
         clearTimeout(this.saveTimer)
       }
@@ -382,6 +393,20 @@ export const useCrosswordStore = defineStore('crossword', {
       this.saveTimer = setTimeout(() => {
         this.attemptStore.saveProgress()
       }, 1500)
+    },
+    async validateGuestWord(wordIndex) {
+      const userInput = this.wordInputs[wordIndex].join('')
+
+      try {
+        const isCorrect = await validateWordForGuest(this.id, wordIndex, userInput)
+
+        this.wordStatus[wordIndex].correct = isCorrect
+        this.wordStatus[wordIndex].filled = true
+        
+        this.wordStatus[wordIndex].pending = false
+      } catch (error) {
+        console.log('Hiba a vendég szó validálásakor:', error)
+      }
     },
   },
 })

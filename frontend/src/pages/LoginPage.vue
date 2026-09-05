@@ -29,6 +29,10 @@
         </div>
 
         <button type="submit" class="btn btn-primary w-100">Belépés</button>
+        <p class="text-center mt-3">
+          Nincs még fiókod?
+          <router-link to="/register">Ide</router-link> kattintva regisztrálhatsz!
+        </p>
       </form>
     </div>
   </div>

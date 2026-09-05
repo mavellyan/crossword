@@ -1,7 +1,7 @@
 <template>
   <div class="crossword-wrapper position-relative">
     <div
-      v-if="!isCrosswordStarted"
+      v-if="!isCrosswordStarted && isLoggedIn"
       class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center z-1 gap-3"
     >
       <button
@@ -23,7 +23,7 @@
     </div>
     <div
       class="layout justify-content-center"
-      :class="{'blur-background': !isCrosswordStarted}"
+      :class="{'blur-background': !isCrosswordStarted && isLoggedIn}"
     >
       <div class="grid">
         <div
@@ -74,6 +74,8 @@
 import { useCrosswordStore } from '../stores/crossword'
 import { useAttemptStore } from '../stores/attempt'
 import CrosswordCell from './CrosswordCell.vue'
+import { useAuthStore } from '../stores/auth'
+import { mapState } from 'pinia'
 
 export default {
   name: 'CrosswordGrid',
@@ -107,6 +109,7 @@ export default {
     }
   },
   computed: {
+    ...mapState(useAuthStore, ['isLoggedIn']),
     crosswordStore() {
       return useCrosswordStore()
     },

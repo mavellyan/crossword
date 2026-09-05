@@ -264,4 +264,17 @@ class CrosswordService
 
         return $query->get();
     }
+
+    public function validateWordForGuest(int $crosswordId, int $wordIndex, string $userInput): bool
+    {
+        $crossword = Crossword::with('crosswordClues.clue')->findOrFail($crosswordId);
+
+        $clue = $crossword->crosswordClues->where('is_main', false)->values()->get($wordIndex)?->clue;
+
+        if (!$clue) {
+            throw new Exception('A megadott szóindex nem létezik a keresztrejtvényben.');
+        }
+
+        return mb_strtoupper($userInput) === mb_strtoupper($clue->solution);
+    }
 }

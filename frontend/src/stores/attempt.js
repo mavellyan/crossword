@@ -129,6 +129,10 @@ export const useAttemptStore = defineStore('attempt', {
      * @returns {Promise<void>}
      */
     async loadAttempt(id) {
+      if (!id || !useAuthStore().isLoggedIn) {
+        return
+      }
+      
       this.resetState()
       this.loading = true
     
