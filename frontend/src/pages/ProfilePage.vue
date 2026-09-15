@@ -62,6 +62,7 @@
 
                   <div class="text-muted small mt-2">
                     {{ crossword.attempts_count > 0 ? 'Próbálkozások száma: ' + crossword.attempts_count : 'Még nincs próbálkozás.' }}
+                    | Legjobb idő: {{  crossword.best_time !== null ? displayElapsedTime(crossword.best_time) : 'N/A' }}
                   </div>
                   <div class="text-muted small mt-2">
                     Létrehozva: {{ new Date(crossword.created_at).toLocaleDateString() }}

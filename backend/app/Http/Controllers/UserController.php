@@ -32,6 +32,11 @@ class UserController extends Controller
             ->get(['crosswords.id', 'crosswords.title', 'crosswords.is_public', 'crosswords.created_at']);
 
         $crosswordsWithTopics = $crosswords->map(function ($crossword) {
+            $bestAttempt = $crossword->attempts()
+                ->where('status', 'completed')
+                ->orderBy('elapsed_time', 'asc')
+                ->first();
+            
             return [
                 'id' => $crossword->id,
                 'title' => $crossword->title,
@@ -45,6 +50,7 @@ class UserController extends Controller
                         'name' => $topic->name
                     ];
                 }),
+                'best_time' => $bestAttempt ? $bestAttempt->elapsed_time : null,
             ];
         });
 
