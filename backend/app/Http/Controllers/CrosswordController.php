@@ -210,4 +210,27 @@ class CrosswordController extends Controller
             ], 422);
         }
     }
+
+    public function deleteCrossword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer|exists:crosswords,id',
+        ]);
+
+        $user = $request->user('sanctum');
+
+        try {
+            $this->crosswordService->deleteCrossword($validated['id'], $user->id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'A rejtvény sikeresen törölve.',
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a rejtvény törlésekor: ' . $e->getMessage(),
+            ], 403);
+        }
+    }
 }

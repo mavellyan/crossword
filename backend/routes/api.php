@@ -44,6 +44,8 @@ Route::get('/getCrosswordForEdit', [\App\Http\Controllers\CrosswordController::c
 
 Route::post('/updateCrossword', [\App\Http\Controllers\CrosswordController::class, 'updateCrossword'])->middleware('auth:sanctum');
 
+Route::delete('/deleteCrossword', [\App\Http\Controllers\CrosswordController::class, 'deleteCrossword'])->middleware('auth:sanctum');
+
 // Attempt controller routes
 Route::get('/getAttempt', [\App\Http\Controllers\AttemptController::class, 'getAttempt'])->middleware('auth:sanctum');
 

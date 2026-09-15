@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="{'blur-background': isClueCreatorModalOpen}"
+    :class="{'blur-background': isClueCreatorModalOpen || isPopupVisible}"
   >
     <h1 class="text-center pb-5">
       {{  isEditMode ? 'Rejtvény megtekintése / szerkesztése' : 'Hozz létre saját rejtvényt!'  }}
@@ -171,15 +171,25 @@
           </label>
         </div>
       </div>
-    <button
-      v-if="isCrosswordVisible"
-      type="button"
-      class="btn btn-primary d-block mx-auto mt-4"
-      :disabled="!canCreateCrossword || wordsLoading || !!wordsError"
-      @click="submitCrossword"
-    >
-      {{  creating ? 'Mentés folyamatban...' : (isEditMode ? 'Módosítások mentése' : 'Rejtvény létrehozása') }}
-    </button>
+    <div class="row row-cols-2">
+      <button
+        v-if="isCrosswordVisible"
+        type="button"
+        class="btn btn-primary d-block mx-auto mt-4 w-25"
+        :disabled="!canCreateCrossword || wordsLoading || !!wordsError"
+        @click="submitCrossword"
+      >
+        {{  creating ? 'Mentés folyamatban...' : (isEditMode ? 'Módosítások mentése' : 'Rejtvény létrehozása') }}
+      </button>
+      <button
+        v-if="isEditMode"
+        type="button"
+        class="btn btn-danger d-block mx-auto mt-4 w-25"
+        @click="isPopupVisible = true"
+      >
+        Rejtvény törlése
+      </button>
+    </div>
 
     <p v-if="createError" class="alert alert-danger text-center w-75 mx-auto mt-3">
       {{ createError }}
@@ -192,10 +202,44 @@
     @closed="hideClueCreatorModal"
     @clue-created="loadCreatorWords"
   />
+  <div
+    v-if="isEditMode && !isLoadingEditor && isPopupVisible"
+    class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center z-3 p-3"
+    @click.self="cancelDelete"
+  >
+    <div class="card shadow-lg p-4 p-md-5 text-center" style="max-width: 520px; width: 100%;">
+      <h3 class="fw-bold mb-3">Biztosan törölni szeretnéd a rejtvényed?</h3>
+    
+      <p class="text-muted mb-3">
+        Vigyázz, ha törlöd a rejtvényt, az <strong>véglegesen</strong> eltűnik a rendszerből, és <strong>nem lehet visszaállítani</strong>.
+      </p>
+
+      <div class="d-grid gap-2 col-11 mx-auto mt-2">
+        <button 
+          type="button" 
+          class="btn btn-danger fw-bold text-uppercase shadow-sm"
+          :disabled="isDeleting"
+          @click="confirmDelete"
+        >
+          <span v-if="isDeleting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          Törlés
+        </button>
+        
+        <button 
+          type="button" 
+          class="btn btn-outline-secondary fw-bold text-uppercase shadow-sm" 
+          :disabled="isDeleting"
+          @click="cancelDelete"
+        >
+          Mégsem
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-import { createCrossword, listCreatorWords, getWordsForLetterFromList, getCrosswordForEdit, updateCrossword } from '../services/crosswordCreatorApi'
+import { createCrossword, listCreatorWords, getWordsForLetterFromList, getCrosswordForEdit, updateCrossword, deleteCrossword } from '../services/crosswordCreatorApi'
 import { listTopics } from '../services/crosswordApi'
 import ClueCreatorModal from '../components/ClueCreatorModal.vue'
 
@@ -314,6 +358,18 @@ export default {
        * @type {boolean}
        */
       isLoadingEditor: false,
+      /**
+       * A rejtvény törlése folyamatban van-e
+       * 
+       * @type {boolean}
+       */
+      isDeleting: false,
+      /**
+       * A rejtvény törléséről szóló felugró ablak látszódik-e
+       * 
+       * @type {boolean}
+       */
+      isPopupVisible: false,
     }
   },
   async mounted() {
@@ -848,6 +904,51 @@ export default {
       this.isPublic = false
       this.isEditMode = false
       this.setPublic = false
+      this.isLoadingEditor = false
+      this.isDeleting = false
+      this.isPopupVisible = false
+    },
+    /**
+     * Megerősíti a rejtvény törlését, és elküldi a backendnek a törlési kérést.
+     * Ha sikeres, átirányítja a felhasználót a profil oldalára.
+     */
+    async confirmDelete() {
+      if (!this.isEditMode || this.isDeleting) {
+        return
+      }
+
+      this.isDeleting = true
+
+      try {
+        await deleteCrossword(this.editCrosswordId)
+
+        this.$notify({
+          type: 'success',
+          title: 'Sikeres törlés',
+          text: 'A rejtvényed sikeresen törölve lett.',
+        })
+
+        this.$router.push('/profile')
+      } catch (error) {
+        console.error('Hiba történt a rejtvény törlése során:', error)
+
+        this.$notify({
+          type: 'error',
+          title: 'Hiba történt',
+          text: error?.response?.data?.message
+            ?? error?.message
+            ?? 'Nem sikerült törölni a rejtvényt. Kérjük, próbáld újra később.',
+        })
+      } finally {
+        this.isDeleting = false
+        this.isPopupVisible = false
+      }
+    },
+    /**
+     * Mégsem gombra kattintáskor elrejti a törlés megerősítő felugró ablakot.
+     */
+    cancelDelete() {
+      this.isPopupVisible = false
     },
   },
 }

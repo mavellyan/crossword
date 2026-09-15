@@ -391,4 +391,15 @@ class CrosswordService
             return $crossword;
         });
     }
+
+    public function deleteCrossword(int $id, int $userId): void
+    {
+        $crossword = Crossword::findOrFail($id);
+
+        if ($crossword->user_id !== $userId) {
+            throw new Exception('Más rejtvényét nem törölheted.');
+        }
+
+        $crossword->delete();
+    }
 }

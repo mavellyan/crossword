@@ -95,3 +95,21 @@ export async function toggleVisibility(crosswordId) {
     throw error
   }
 }
+
+export async function deleteCrossword(crosswordId) {
+  try {
+    const response = await axios.delete('/deleteCrossword', 
+      { params: { id: crosswordId }
+    })
+
+    if (!response.data.success) {
+      console.log('Érvénytelen API válasz:', response.data)
+      throw new Error(response.data.message ?? 'Nem sikerült törölni a rejtvényt.')
+    }
+
+    return response.data.success
+  } catch (error) {
+    console.error('Hiba a rejtvény törlésekor:', error)
+    throw error
+  }
+}
