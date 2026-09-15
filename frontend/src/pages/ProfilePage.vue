@@ -16,8 +16,8 @@
       </h1>
 
       <div class="row mx-3 g-4">
-        <div class="col-12 col-md-6">
-          <h2 class="h5 mb-3 text-center">Az általad létrehozott rejtvények:</h2>
+        <div class="col-12 col-md-6 border-end border-1 border-dark pe-md-4">
+          <h2 class="h4 mb-3 text-center text-decoration-underline fw-bold">Az általad létrehozott rejtvények:</h2>
     
           <div v-if="profileStore.crosswords.length === 0" class="text-muted">
             Még nem hoztál létre rejtvényt.
@@ -74,8 +74,8 @@
 
         </div>
 
-        <div class="col-12 col-md-6">
-          <h2 class="h5 mb-3 text-center">Az általad megkezdett rejtvények:</h2>
+        <div class="col-12 col-md-6 ps-md-4">
+          <h2 class="h4 mb-3 text-center text-decoration-underline fw-bold">Az általad megkezdett rejtvények:</h2>
 
           <div v-if="profileStore.attempts.length === 0" class="text-muted text-center">
             Még nem kezdtél meg rejtvényt.
