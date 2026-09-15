@@ -10,3 +10,14 @@ export async function listCreators() {
 
     return response.data.creators
 }
+
+export async function getProfile() {
+    const response = await axios.get('/profile')
+
+    if (!response.data.success || !response.data.user) {
+        console.log('Érvénytelen API válasz:', response.data)
+        throw new Error(response.data.message ?? 'Nem sikerült betölteni a felhasználói profilt.')
+    }
+
+    return response.data
+}

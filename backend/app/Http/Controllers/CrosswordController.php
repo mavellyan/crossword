@@ -127,10 +127,32 @@ class CrosswordController extends Controller
                 'is_correct' => $isCorrect,
             ]);
         } catch (Throwable $e) {
-            Log::error('Error validating word for guest: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while validating the word.',
+                'message' => 'Hiba történt a szó érvényesítésekor: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function toggleVisibility(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer|exists:crosswords,id',
+        ]);
+
+        $user = $request->user('sanctum');
+
+        try {
+            $result = $this->crosswordService->toggleVisibility($validated['id'], $user->id);
+
+            return response()->json([
+                'success' => true,
+                'is_public' => (bool) $result->is_public,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a rejtvény láthatóságának váltásakor: ' . $e->getMessage(),
             ], 500);
         }
     }

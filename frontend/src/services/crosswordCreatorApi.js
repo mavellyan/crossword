@@ -53,3 +53,21 @@ export function getWordsForLetterFromList(words, letter) {
     String(word.solution ?? '').toUpperCase().includes(normalizedLetter)
   )
 }
+
+export async function toggleVisibility(crosswordId) {
+  try {
+    const response = await axios.post('/toggleVisibility', { 
+      id: crosswordId,
+     })
+
+    if (!response.data.success) {
+      console.log('Érvénytelen API válasz:', response.data)
+      throw new Error(response.data.message ?? 'Nem sikerült váltani a rejtvény láthatóságát.')
+    }
+
+    return response.data.success
+  } catch (error) {
+    console.error('Hiba a rejtvény láthatóságának váltásakor:', error)
+    throw error
+  }
+}

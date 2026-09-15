@@ -1,30 +1,4 @@
 <template>
-  <div
-    v-if="isPopupShown && isPageLoaded"
-    class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center z-3 p-3"
-  >
-    <div class="card shadow-lg p-4 p-md-5 text-center" style="max-width: 520px; width: 100%;">
-      <h3 class="fw-bold mb-3">Szeretnéd elmenteni az eredményeid?</h3>
-    
-      <p class="text-muted mb-3">
-        Vendégként is játszhatsz, de bejelentkezve elérhetővé válik az 
-        <strong>időmérés</strong>, a <strong>félbehagyott játékok mentése</strong>, <strong>saját rejtvények készítése</strong> és még sok más.
-      </p>
-
-      <div class="d-grid gap-2 col-11 mx-auto mt-2">
-        <router-link to="/login" class="btn btn-primary fw-bold text-uppercase shadow-sm">
-          Bejelentkezés / Regisztráció
-        </router-link>
-        <button 
-          type="button" 
-          class="btn btn-outline-secondary fw-bold" 
-          @click="isPopupHidden = true"
-        >
-          Folytatás vendégként
-        </button>
-      </div>
-    </div>
-  </div>
   <div v-if="!isPopupShown && isPageLoaded">
     <h1 class="text-center mb-2">
       {{ crosswordStore.title }}
@@ -85,6 +59,32 @@
     <p v-else-if="crosswordStore.error" class="alert alert-danger">
       {{ crosswordStore.error }}
     </p>
+  </div>
+  <div
+    v-if="isPopupShown && isPageLoaded"
+    class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center z-3 p-3"
+  >
+    <div class="card shadow-lg p-4 p-md-5 text-center" style="max-width: 520px; width: 100%;">
+      <h3 class="fw-bold mb-3">Szeretnéd elmenteni az eredményeid?</h3>
+    
+      <p class="text-muted mb-3">
+        Vendégként is játszhatsz, de bejelentkezve elérhetővé válik az 
+        <strong>időmérés</strong>, a <strong>félbehagyott játékok mentése</strong>, <strong>saját rejtvények készítése</strong> és még sok más.
+      </p>
+
+      <div class="d-grid gap-2 col-11 mx-auto mt-2">
+        <router-link to="/login" class="btn btn-primary fw-bold text-uppercase shadow-sm">
+          Bejelentkezés / Regisztráció
+        </router-link>
+        <button 
+          type="button" 
+          class="btn btn-outline-secondary fw-bold" 
+          @click="isPopupHidden = true"
+        >
+          Folytatás vendégként
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 

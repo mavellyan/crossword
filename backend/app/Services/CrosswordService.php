@@ -185,8 +185,8 @@ class CrosswordService
                 'crosswordClues as words_count' => function ($query) {
                     $query->where('is_main', false);
                 },
-            ]);
-            //->where('is_public', true); - egyelőre kikapcsolva, mivel még tesztjelleg az egész
+            ])
+            ->where('is_public', true);
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
@@ -276,5 +276,19 @@ class CrosswordService
         }
 
         return mb_strtoupper($userInput) === mb_strtoupper($clue->solution);
+    }
+
+    public function toggleVisibility(int $crosswordId, int $userId): Crossword
+    {
+        $crossword = Crossword::findOrFail($crosswordId);
+
+        if ($crossword->user_id !== $userId) {
+            throw new Exception('Más rejtvényének a láthatóságát nem módosíthatod.');
+        }
+
+        $crossword->is_public = !$crossword->is_public;
+        $crossword->save();
+
+        return $crossword;
     }
 }

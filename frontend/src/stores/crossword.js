@@ -394,6 +394,13 @@ export const useCrosswordStore = defineStore('crossword', {
         this.attemptStore.saveProgress()
       }, 1500)
     },
+    /**
+     * Nem bejelentkezett felhasználók számára validálja a szavakat, de nem ment.
+     * 
+     * @param {number} wordIndex - A szó indexe, amelyet validálni szeretnénk a vendég felhasználó számára.
+     * @returns {Promise<void>} - Egy Promise, amely a validálás befejeződését jelzi.
+     * @throws {Error} - Ha a validálás során hiba történik, akkor egy Error objektumot dob.
+     */
     async validateGuestWord(wordIndex) {
       const userInput = this.wordInputs[wordIndex].join('')
 
