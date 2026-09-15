@@ -126,7 +126,12 @@
             v-for="crossword in crosswords"
             :key="crossword.id"
             :to="{ name: 'crossword', params: { id: crossword.id } }"
-            class="list-group-item list-group-item-action w-50 mx-auto"
+            class="list-group-item list-group-item-action w-50 mx-auto mb-3 rounded shadow-sm border border-1"
+            :class="{
+              'easy' : 'border-success',
+              'medium' : 'border-warning',
+              'hard' : 'border-danger'
+            }[crossword.difficulty]"
           >
             <div class="d-flex justify-content-between align-items-start">
               <div>
