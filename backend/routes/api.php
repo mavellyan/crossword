@@ -40,6 +40,9 @@ Route::post('/validateWordForGuest', [\App\Http\Controllers\CrosswordController:
 
 Route::post('/toggleVisibility', [\App\Http\Controllers\CrosswordController::class, 'toggleVisibility'])->middleware('auth:sanctum');
 
+Route::get('/getCrosswordForEdit', [\App\Http\Controllers\CrosswordController::class, 'getCrosswordForEdit'])->middleware('auth:sanctum');
+
+Route::post('/updateCrossword', [\App\Http\Controllers\CrosswordController::class, 'updateCrossword'])->middleware('auth:sanctum');
 
 // Attempt controller routes
 Route::get('/getAttempt', [\App\Http\Controllers\AttemptController::class, 'getAttempt'])->middleware('auth:sanctum');

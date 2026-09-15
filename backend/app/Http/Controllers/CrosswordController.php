@@ -156,4 +156,58 @@ class CrosswordController extends Controller
             ], 500);
         }
     }
+
+    public function getCrosswordForEdit(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer|exists:crosswords,id',
+        ]);
+
+        $user = $request->user('sanctum');
+
+        try {
+            $result = $this->crosswordService->getForEdit($validated['id'], $user->id);
+
+            return response()->json([
+                'success' => true,
+                'crossword' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
+        }
+    }
+
+    public function updateCrossword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer|exists:crosswords,id',
+            'title' => 'required|string|min:5|max:255',
+            'main_solution' => 'required|string|min:3|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
+            'clue_ids' => 'required|array|min:1',
+            'clue_ids.*' => 'required|integer|exists:clues,id',
+            'topic_ids' => 'nullable|array',
+            'topic_ids.*' => 'nullable|integer|exists:topics,id',
+            'difficulty' => 'nullable|string',
+            'is_public' => 'nullable|boolean',
+        ]);
+
+        $user = $request->user('sanctum');
+
+        try {
+            $crossword = $this->crosswordService->updateCrossword($validated['id'], $user->id, $validated);
+
+            return response()->json([
+                'success' => true,
+                'crossword' => $crossword,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
 }

@@ -291,4 +291,104 @@ class CrosswordService
 
         return $crossword;
     }
+
+    public function getForEdit(int $id, int $userId): array
+    {
+        $crossword = Crossword::with([
+            'topics:id,name',
+            'crosswordClues' => function ($query) {
+                $query->where('is_main', false)->orderBy('start_row', 'asc');
+            },
+            'crosswordClues.clue:id,solution,definition'
+        ])
+        ->withCount(['attempts' => function ($query) {
+            $query->where('status', '!=', 'not_started');
+        }])
+        ->findOrFail($id);
+
+        if ($crossword->user_id !== $userId) {
+            throw new Exception('Nincs jogosultságod a rejtvény megtekintéséhez/szerkesztéséhez.');
+        }
+
+        return [
+            'id' => $crossword->id,
+            'title' => $crossword->title,
+            'main_solution' => $crossword->main_solution,
+            'difficulty' => $crossword->difficulty?->value ?? $crossword->difficulty,
+            'is_public' => (bool) $crossword->is_public,
+            'attempts_count' => $crossword->attempts_count,
+            'topics' => $crossword->topics->map(fn($t) => ['id' => $t->id, 'name' => $t->name]),
+            'clues' => $crossword->crosswordClues->map(fn($cc) => [
+                'id' => $cc->clue->id,
+                'solution' => $cc->clue->solution,
+                'definition' => $cc->clue->definition,
+            ])->values(),
+        ];
+    }
+
+    public function updateCrossword(int $id, int $userId, array $data): Crossword
+    {
+        return DB::transaction(function () use ($id, $userId, $data) {
+            $crossword = Crossword::withCount(['attempts' => function ($query) {
+                $query->where('status', '!=', 'not_started');
+            }])->findOrFail($id);
+
+            if ($crossword->user_id !== $userId) {
+                throw new Exception('Más rejtvényét nem módosíthatod.');
+            }
+
+            if ($crossword->is_public || $crossword->attempts_count > 0) {
+                throw new Exception('Ez a rejtvény már nyilvános vagy rendelkezik próbálkozásokkal, így nem módosítható.');
+            }
+
+            $mainSolution = mb_strtoupper($data['main_solution']);
+            $clueIds = array_values($data['clue_ids']);
+
+            if (count($clueIds) !== mb_strlen($mainSolution)) {
+                throw new Exception('Pontosan annyi szót kell választani, ahány betűből áll a főmegoldás.');
+            }
+
+            if (count($clueIds) !== count(array_unique($clueIds))) {
+                throw new Exception('Ugyanazt a szót nem lehet többször kiválasztani.');
+            }
+
+            $cluesById = Clue::whereIn('id', $clueIds)->get()->keyBy('id');
+            $clues = collect($clueIds)->map(fn($cid) => $cluesById->get($cid))->values();
+
+            // Alapadatok frissítése
+            $crossword->update([
+                'title' => $data['title'],
+                'main_solution' => $mainSolution,
+                'difficulty' => $data['difficulty'] ?? 'easy',
+                'is_public' => $data['is_public'] ?? false,
+            ]);
+
+            // Témák frissítése
+            if (isset($data['topic_ids'])) {
+                $crossword->topics()->sync($data['topic_ids']);
+            }
+
+            // Régi elhelyezések törlése és újragenerálása
+            $crossword->crosswordClues()->delete();
+
+            $placements = $this->generator->generatePlacementsFixedOrder(
+                $crossword->main_solution,
+                $clues
+            );
+
+            foreach ($placements as $placement) {
+                CrosswordClue::create([
+                    'crossword_id' => $crossword->id,
+                    'clue_id' => $placement['clue_id'],
+                    'direction' => $placement['direction'],
+                    'start_row' => $placement['start_row'],
+                    'start_col' => $placement['start_col'],
+                    'intersection_index' => $placement['intersection_index'],
+                    'is_main' => false,
+                ]);
+            }
+
+            return $crossword;
+        });
+    }
 }

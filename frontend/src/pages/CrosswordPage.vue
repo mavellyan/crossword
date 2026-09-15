@@ -137,6 +137,11 @@ export default {
        * @type {boolean}
        */
       isCrosswordResetting: false,
+      /**
+       * Jelzi, hogy a vendég felhasználó számára megjelenő popup el van-e rejtve. Ha igaz, akkor a popup nem látható.
+       * 
+       * @type {boolean}
+       */
       isPopupHidden: false,
     }
   },

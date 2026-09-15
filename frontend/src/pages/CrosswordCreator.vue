@@ -2,7 +2,17 @@
   <div
     :class="{'blur-background': isClueCreatorModalOpen}"
   >
-    <h1 class="text-center pb-5">Hozz létre saját rejtvényt!</h1>
+    <h1 class="text-center pb-5">
+      {{  isEditMode ? 'Rejtvény megtekintése / szerkesztése' : 'Hozz létre saját rejtvényt!'  }}
+    </h1>
+    <div
+      v-if="isReadOnly"
+      class="alert alert-warning text-center w-50 mx-auto mb-3 shadow-sm"
+      role="alert" 
+    >
+      <i class="bi bi-lock-fill me-2"></i>
+      Ez a rejtvény <strong>{{  isPublic ? 'nyilvános' : 'már rendelkezik megkezdett próbálkozással' }}</strong>, így nem szerkeszthető.
+    </div>
     <div class="d-flex align-items-center justify-content-center mb-3">
       <label class="h4 w-auto">Mi legyen a rejtvényed címe?</label>
       <input
@@ -11,6 +21,7 @@
         minlength="5"
         maxlength="255"
         placeholder="pl: A világ legnehezebb rejtvénye"
+        :disabled="isReadOnly"
       />
     </div>
     <p
@@ -26,6 +37,7 @@
         class="form-control w-25 mx-3 border border-primary border-2 text-uppercase"
         maxlength="20"
         placeholder="pl: piros"
+        :disabled="isReadOnly"
         @input="mainSolution = mainSolution.toUpperCase()"
       />
     </div>
@@ -44,6 +56,7 @@
         label="name"
         :placeholder="'Válassz egy témát'"
         :options="topics"
+        :disabled="isReadOnly"
         multiple
         >
       </v-select>
@@ -86,7 +99,7 @@
               label="solution"
               :placeholder="'Válassz egy szót'"
               :options="getWordsForCurrentLetter(char, charIndex)"
-              :disabled="!isMainSolutionValid || wordsLoading || !!wordsError"
+              :disabled="isReadOnly || !isMainSolutionValid || wordsLoading || !!wordsError"
             >
               <template #no-options="{ search, searching }">
                 <template v-if="searching">
@@ -113,7 +126,7 @@
             </span>
           </div>
           <div
-            v-if="selectedWords[charIndex] == null"
+            v-if="!isReadOnly && selectedWords[charIndex] == null"
             class="d-flex align-items-center justify-content-center mb-2 pointer"
             v-tooltip.hover="'Új szó hozzáadása a listához'"
           >
@@ -126,6 +139,38 @@
         </div>
       </div>
     </div>
+          <!-- Új opciók: Nehézség (3 opciós select) és Láthatósági kapcsoló (Toggle) -->
+      <div class="d-flex align-items-center justify-content-center gap-4 mb-4 mt-2">
+        <!-- Nehézség választó -->
+        <div class="d-flex align-items-center">
+          <label class="h5 mb-0 me-2">Nehézség:</label>
+          <select 
+            v-model="difficulty" 
+            class="form-select border-primary" 
+            style="width: 140px;"
+            :disabled="isReadOnly"
+          >
+            <option value="easy">Könnyű</option>
+            <option value="medium">Közepes</option>
+            <option value="hard">Nehéz</option>
+          </select>
+        </div>
+
+        <!-- Publikus / Privát kapcsoló -->
+        <div class="form-check form-switch d-flex align-items-center mb-0">
+          <input 
+            class="form-check-input custom-switch me-2" 
+            type="checkbox" 
+            role="switch" 
+            id="visibilityToggle"
+            v-model="setPublic"
+            :disabled="isReadOnly"
+          >
+          <label class="form-check-label fw-bold" for="visibilityToggle">
+            {{ setPublic ? 'Nyilvános' : 'Privát' }}
+          </label>
+        </div>
+      </div>
     <button
       v-if="isCrosswordVisible"
       type="button"
@@ -133,7 +178,7 @@
       :disabled="!canCreateCrossword || wordsLoading || !!wordsError"
       @click="submitCrossword"
     >
-      {{  creating ? 'Létrehozás...' : 'Rejtvény létrehozása' }}
+      {{  creating ? 'Mentés folyamatban...' : (isEditMode ? 'Módosítások mentése' : 'Rejtvény létrehozása') }}
     </button>
 
     <p v-if="createError" class="alert alert-danger text-center w-75 mx-auto mt-3">
@@ -150,7 +195,7 @@
 </template>
 
 <script>
-import { createCrossword, listCreatorWords, getWordsForLetterFromList  } from '../services/crosswordCreatorApi'
+import { createCrossword, listCreatorWords, getWordsForLetterFromList, getCrosswordForEdit, updateCrossword } from '../services/crosswordCreatorApi'
 import { listTopics } from '../services/crosswordApi'
 import ClueCreatorModal from '../components/ClueCreatorModal.vue'
 
@@ -227,13 +272,74 @@ export default {
        * @type {Array<{ id: number, name: string }>}
        */
       topics: [],
+      /**
+       * A rejtvény publikus vagy privát.
+       * 
+       * @type {boolean}
+       */
+      setPublic: false,
+      /**
+       * A rejtvény nehézségi szintje, ami lehet "easy", "medium" vagy "hard".
+       * 
+       * @type {string}
+       */
+      difficulty: 'easy',
+      /**
+       * Ha a felhasználó szerkesztés módban van, akkor itt tároljuk a szerkesztett rejtvény ID-ját, hogy a backendnek tudjuk jelezni, melyik rejtvényt kell frissíteni.
+       * 
+       * @type {number|null}
+       */
+      editCrosswordId: null,
+      /**
+       * A rejtvényhez már megkezdett próbálkozások száma, ami alapján eldönthetjük, hogy a felhasználó szerkesztheti-e a rejtvényt.
+       * 
+       * @type {number}
+       */
+      attemptsCount: 0,
+      /**
+       * A rejtvény publikus vagy privát állapotát jelző változó, ami alapján eldönthetjük, hogy a felhasználó szerkesztheti-e a rejtvényt.
+       * 
+       * @type {boolean}
+       */
+      isPublic: false,
+      /**
+       * Jelzi, hogy a felhasználó szerkesztés módban van-e, azaz egy már meglévő rejtvényt szerkeszt.
+       * 
+       * @type {boolean}
+       */
+      isEditMode: false,
+      /**
+       * Jelzi, hogy a rejtvény szerkesztő betöltése folyamatban van-e.
+       * 
+       * @type {boolean}
+       */
+      isLoadingEditor: false,
     }
   },
   async mounted() {
     await this.loadCreatorWords()
     await this.loadTopics()
+
+    const crosswordId = this.$route.query.id
+    if (crosswordId) {
+      await this.initEditMode(crosswordId)
+    }
   },
   computed: {
+    /**
+     * Meghatározza, hogy az oldal szerkeszthető-e, vagy csak olvasható módban van.
+     * 
+     * Csak olvasható, ha:
+     *  - Publikus a rejtvény, VAGY
+     *  - Már van hozzá megkezdett próbálkozás (attemptsCount > 0)
+     */
+    isReadOnly() {
+      if (!this.isEditMode) {
+        return false
+      }
+
+      return this.isPublic || this.attemptsCount > 0
+    },
     /**
      * Ellenőrzi, hogy ki van-e töltve a főmegoldás.
      * 
@@ -426,6 +532,10 @@ export default {
      * @param oldVal A korábbi főmegoldás
      */
     mainSolution(newVal, oldVal) {
+      if (this.isReadOnly || this.isLoadingEditor) {
+        return
+      }
+
       if (!this.isMainSolutionValid) {
         // Ha a főmegoldás érvénytelen, töröljük a kiválasztott szavakat
         this.selectedWords = []
@@ -442,11 +552,71 @@ export default {
      * A kiválasztott szavakat is töröljük, mivel azok már nem biztos, hogy érvényesek az új témához.
      */
     selectedTopics() {
+      if (this.isReadOnly || this.isLoadingEditor) {
+        return
+      }
+
       this.selectedWords = []
       this.loadCreatorWords()
     },
   },
+  beforeRouteLeave() {
+    this.clearEditor()
+  },
+  beforeRouteUpdate(to, from, next) {
+    if (to.query.id !== from.query.id) {
+      this.clearEditor()
+    }
+
+    if (to.query.id) {
+      this.initEditMode(to.query.id)
+    }
+
+    next()
+  },
   methods: {
+    async initEditMode(id) {
+      this.isLoadingEditor = true
+
+      try {
+        const data = await getCrosswordForEdit(id)
+
+        this.isEditMode = true
+        this.editCrosswordId = data.id
+        this.title = data.title
+        this.difficulty = data.difficulty || 'easy'
+        this.isPublic = data.is_public
+        this.setPublic = data.is_public
+        this.attemptsCount = data.attempts_count ?? (data.has_attempts ? 1 : 0)
+
+        this.selectedTopics = Array.isArray(data.topics) ? data.topics : []
+
+        const topicIds = this.selectedTopics.map(topic => topic.id)
+        await this.loadCreatorWords(topicIds.length ? topicIds : null)
+
+        this.mainSolution = data.main_solution
+
+        await this.$nextTick() // Várunk, hogy a mainSolutionChars frissüljön a DOM-ban
+
+        if (data.clues && Array.isArray(data.clues)) {
+          this.selectedWords = data.clues.map(clue => {
+            const matchingWord = this.availableWords.find(word => word.id === clue.id)
+            return matchingWord || {
+              id: clue.id,
+              solution: String(clue.solution ?? '').toUpperCase(),
+              definition: clue.definition ?? '',
+              length: clue.length ?? String(clue.solution ?? '').length,
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Hiba történt a rejtvény betöltése során:', error)
+        this.createError = 'Nem sikerült betölteni a rejtvényt szerkesztéshez. Kérlek próbáld újra később.'
+      } finally {
+        await this.$nextTick() // Várunk, hogy a DOM frissüljön, mielőtt a betöltés állapotát false-ra állítjuk
+        this.isLoadingEditor = false
+      }
+    },
     /**
      * Betölti a backendről a rejtvénykészítőben elérhető szavakat.
      * 
@@ -493,22 +663,57 @@ export default {
      * Kézi elhelyezést használ, a backend az itt megadott sorrendet tartja.
      */
     async submitCrossword() {
+      if (this.isReadOnly) {
+        return
+      }
+
       this.creating = true
       this.createError = null
 
+      const payload = {
+        title: this.title.trim(),
+        main_solution: this.normalizeMainSolution,
+        clue_ids: this.selectedWords.map(word => word.id),
+        topic_ids: this.selectedTopics?.map(topic => topic.id) || [],
+        difficulty: this.difficulty,
+        is_public: this.setPublic,
+      }
+
       try {
-        const crossword = await createCrossword({
-          title: this.title.trim(),
-          main_solution: this.normalizeMainSolution,
-          clue_ids: this.selectedWords.map(word => word.id),
-          topic_ids: this.selectedTopics?.map(topic => topic.id) || [],
-          difficulty: 'easy',
-          is_public: true,
+        let result
+
+        if (this.isEditMode) {
+          result = await updateCrossword(this.editCrosswordId, payload)
+        } else {
+          result = await createCrossword(payload)
+        }
+
+        if (this.setPublic) {
+          this.$router.push(`/crossword/${result.id}`)
+        } else if (!this.$route.query.id) {
+          this.$router.push({ name: 'crosswordcreator', query: { id: result.id } })
+          this.$notify({
+            type: 'success',
+            title: 'Sikeres mentés',
+            text: 'A rejtvényed sikeresen létrehozva!',
+          })
+        } else {
+          this.$notify({
+            type: 'success',
+            title: 'Sikeres mentés',
+            text: 'A rejtvényed sikeresen elmentve! Mivel privát, csak te láthatod.',
+          })
+        }
+      } catch (error) {
+
+        this.$notify({
+          type: 'error',
+          title: 'Hiba történt',
+          text: error?.response?.data?.message
+            ?? error?.message
+            ?? 'Nem sikerült létrehozni a rejtvényt. Kérjük, próbáld újra később.',
         })
 
-        this.$router.push(`/crossword/${crossword.id}`)
-      } catch (error) {
-        console.log('create crossword error:', error)
         this.createError = error?.response?.data?.message
           ?? error?.message
           ?? 'Nem sikerült létrehozni a rejtvényt.'
@@ -619,6 +824,30 @@ export default {
     hideClueCreatorModal() {
       this.isClueCreatorModalOpen = false
       this.$refs.clueCreatorModal.closeModal()
+    },
+    /**
+     * Alaphelyzetbe állítja a rejtvénykészítő összes mezőjét, hogy új rejtvényt lehessen létrehozni.
+     * Akkor lehet rá szükség, ha pl. a felhasználó a profilról egy meglévő rejtvény szerkesztésére megy,
+     * de innen a navigációs sávban lévő "Rejtvény készítése" gombra kattint, így új rejtvényt szeretne létrehozni.
+     */
+    clearEditor() {
+      this.mainSolution = ''
+      this.selectedWords = []
+      this.title = ''
+      this.availableWords = []
+      this.wordsLoading = false
+      this.wordsError = null
+      this.creating = false
+      this.createError = null
+      this.isClueCreatorModalOpen = false
+      this.selectedTopics = []
+      this.topics = []
+      this.difficulty = 'easy'
+      this.editCrosswordId = null
+      this.attemptsCount = 0
+      this.isPublic = false
+      this.isEditMode = false
+      this.setPublic = false
     },
   },
 }

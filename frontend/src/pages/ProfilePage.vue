@@ -28,7 +28,7 @@
             <div v-for="crossword in profileStore.crosswords" :key="crossword.id" class="col">
               <div
                 class="card h-100 shadow-sm pointer hover"
-                @click="handleCrosswordClick(crossword.id)"
+                @click="handleCrosswordClick(crossword.id, true)"
               >
                 <div class="card-body d-flex flex-column justify-content-between">
                   <div>
@@ -86,7 +86,7 @@
             <div v-for="attempt in profileStore.attempts" :key="attempt.id" class="col">
               <div
                 class="card h-100 shadow-sm pointer hover"
-                @click="handleCrosswordClick(attempt.crossword_id)"
+                @click="handleCrosswordClick(attempt.crossword_id, false)"
               >
                 <div class="card-body d-flex flex-column justify-content-between">
                   <div>
@@ -182,8 +182,20 @@ export default {
     },
   },
   methods: {
-    handleCrosswordClick(crosswordId) {
-      this.$router.push({ name: 'CrosswordDetail', params: { id: crosswordId } })
+    /**
+     * A kiválasztott rejtvény szerkesztése vagy megtekintése.
+     * 
+     * @param {number} crosswordId - a kiválasztott rejtvény azonosítója
+     * @param {boolean} isEditorMode - jelzi, hogy a rejtvényt szerkesztő módban nyitjuk-e fel (saját rejtvény esetén)
+     *                                 vagy megtekintő módban (más felhasználó által készített rejtvény esetén)
+     */
+    handleCrosswordClick(crosswordId, isEditorMode) {
+      if (isEditorMode) {
+        this.$router.push({ name: 'crosswordcreator', query: { id: crosswordId } })
+        return
+      } else {
+        this.$router.push({ name: 'crossword', params: { id: crosswordId } })
+      }
     },
     /**
      * Megjeleníti a rejtvény nehézségét magyar nyelven.

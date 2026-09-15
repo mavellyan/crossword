@@ -11,6 +11,30 @@ export async function createCrossword(payload) {
   return response.data.crossword
 }
 
+export async function getCrosswordForEdit(crosswordId) {
+  const response = await axios.get('/getCrosswordForEdit', {
+    params: { id: crosswordId }
+  })
+
+  if (!response.data.success || !response.data.crossword) {
+    console.log('Érvénytelen API válasz:', response.data)
+    throw new Error(response.data.message ?? 'Nem sikerült betölteni a rejtvényt szerkesztéshez.')
+  }
+
+  return response.data.crossword
+}
+
+export async function updateCrossword(crosswordId, payload) {
+  const response = await axios.post('/updateCrossword', { id: crosswordId, ...payload })
+
+  if (!response.data.success || !response.data.crossword) {
+    console.log('Érvénytelen API válasz:', response.data)
+    throw new Error(response.data.message ?? 'Nem sikerült frissíteni a rejtvényt.')
+  }
+
+  return response.data.crossword
+}
+
 export async function createClue(payload) {
   const response = await axios.post('/createClue', payload)
 
