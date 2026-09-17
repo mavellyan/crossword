@@ -12,4 +12,6 @@ enum ValidationErrors: string {
     case BLOCKED_ENDPOINT = 'blocked_endpoint';
     case SIDE_ADJACENCY = 'side_adjacency';
     case DISCONNECTED_ENTRY = 'disconnected_entry';
+    case TOO_FEW_ENTRIES = 'too_few_entries';
+    case DISCONNECTED_LAYOUT = 'disconnected_layout';
 }

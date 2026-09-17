@@ -215,4 +215,135 @@ class PlacementValidator
     {
         return $row . ':' . $col;
     }
+
+    /**
+     * Validálja a teljes elrendezést a megadott elhelyezések alapján.
+     * Megnézi, hogy van-e legalább 2 elhelyezés, majd egy szomszédsági mátrixot hoz létre az elhelyezések között,
+     * és mélységi kereséssel ellenőrzi, hogy az összes elhelyezés összekapcsolódik-e.
+     * 
+     * @param array<Placement> $placements A teljes elrendezés elhelyezései.
+     * @param int $maximumRows A rács maximális sorainak száma
+     * @param int $maximumCols A rács maximális oszlopainak száma
+     * @return PlacementValidationResult A validáció eredménye.
+     */
+    public function validateLayout(
+        array $placements,
+        int $maximumRows = 20,
+        int $maximumCols = 20,
+    ): PlacementValidationResult
+    {
+        $errors = [];
+
+        if (count($placements) < 2) {
+            $errors[] = [
+                'code' => ValidationErrors::TOO_FEW_ENTRIES,
+                'message' => 'There must be at least 2 entries in the layout.',
+            ];
+        }
+
+        foreach ($placements as $placement) {
+            $candidateResult = $this->validateCandidate(
+                existingPlacements: array_filter($placements, fn($p) => $p !== $placement),
+                candidatePlacement: $placement,
+                maximumRows: $maximumRows,
+                maximumCols: $maximumCols,
+            );
+
+            if (!$candidateResult->valid) {
+                $errors = array_merge($errors, $candidateResult->errors);
+            }
+        }
+
+        $adjacencyMap = [];
+
+        // Létrehozunk egy szomszédsági tömböt minden elhelyezésnek egy üres tömbbel
+        foreach ($placements as $index => $placement) {
+            $adjacencyMap[$index] = [];
+        }
+
+        $intersectionCount = 0;
+
+        // Végigmegyünk az összes elhelyezés páron, úgy, hogy minden pár csak egyszer legyen ellenőrizve, 
+        // azaz, ha a jobbIndex kisebb vagy egyenlő a balIndex-szel, akkor kihagyjuk, pl. indexek: (0,1), (0,2), (0,3), (1,2), (1,3), (2,3) stb.,
+        // így nem lesz (0,1) és (1,0) pár (ugyanaz csak más sorrendben), illetve (1,1) pár sem (önmaga).
+        // Ha két elhelyezés metszi egymást, akkor hozzáadjuk az adott index szomszédsági tömbjéhez a másik indexet.
+        foreach ($placements as $leftIndex => $left) {
+            foreach ($placements as $rightIndex => $right) {
+                if ($rightIndex <= $leftIndex) {
+                    continue;
+                }
+
+                if ($this->placementsIntersect($left, $right)) {
+                    $intersectionCount++;
+                    $adjacencyMap[$leftIndex][] = $rightIndex;
+                    $adjacencyMap[$rightIndex][] = $leftIndex;
+                }
+            }
+        }
+
+        $visited = [];
+        $stack = [0];
+
+        // Ezután egy mélységi keresés algoritmust használunk, hogy ellenőrizzük, hogy az összes elhelyezés összekapcsolódik-e.
+        while ($stack !== []) {
+            // Kivesszük a legutolsó indexet a veremből
+            $index = array_pop($stack);
+
+            // Megnézzük, hogy az index már látogatott-e, ha igen, akkor kihagyjuk
+            if (isset($visited[$index])) {
+                continue;
+            }
+
+            // Ha még nem látogatott, akkor jelöljük meg látogatottnak
+            $visited[$index] = true;
+
+            // Hozzáadjuk az összes szomszédját a veremhez, hogy később ellenőrizzük őket
+            foreach ($adjacencyMap[$index] as $neighbor) {
+                $stack[] = $neighbor;
+            }
+        }
+
+        // Ha a látogatott elhelyezések száma nem egyezik meg az összes elhelyezés számával, akkor az elrendezés nem jó, nincs rendesen összekapcsolva
+        if (count($visited) !== count($placements)) {
+            $errors[] = [
+                'code' => ValidationErrors::DISCONNECTED_LAYOUT,
+                'message' => 'The layout is disconnected. All placements must be connected.',
+            ];
+        }
+
+        return new PlacementValidationResult(
+            valid: empty($errors),
+            errors: $errors,
+            intersectionCount: $intersectionCount,
+        );
+    }
+
+    /**
+     * Ellenőrzi, hogy két elhelyezés metszik-e egymást. Két elhelyezés akkor metszi egymást,
+     * ha van legalább egy cellájuk, amely ugyanazon a soron és oszlopon van, ugyanaz a betűjük, és az irányuk különböző (azaz az egyik vízszintes, a másik függőleges).
+     * 
+     * @param Placement $a Az első elhelyezés.
+     * @param Placement $b A második elhelyezés.
+     * @return bool Igaz, ha a két elhelyezés metszi egymást, hamis egyébként.
+     */
+    private function placementsIntersect(Placement $a, Placement $b): bool
+    {
+        $aCells = $a->cells();
+        $bCells = $b->cells();
+
+        foreach ($aCells as $aCell) {
+            foreach ($bCells as $bCell) {
+                if (
+                    $aCell['row'] === $bCell['row'] &&
+                    $aCell['col'] === $bCell['col'] &&
+                    $aCell['letter'] === $bCell['letter'] &&
+                    $a->direction !== $b->direction
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

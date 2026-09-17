@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
 use App\Domain\Crossword\Placement;
@@ -8,7 +8,7 @@ use App\Enums\Direction;
 use App\Services\PlacementValidator;
 use App\Enums\ValidationErrors;
 
-class PlacementValidatorTest extends TestCase
+class CandidateValidatorTest extends TestCase
 {
     /**
      * Leteszteli, hogy a Placement osztály cells() metódusa helyesen adja vissza a cellákat a megadott kezdő koordináták és irány alapján.
@@ -79,7 +79,7 @@ class PlacementValidatorTest extends TestCase
         $result = $validator->validateCandidate([$horizontal_placement], $vertical_placement);
 
         $this->assertTrue($result->valid);
-        $this->assertSame([], $result->errors);
+        $this->assertEmpty($result->errors);
         $this->assertSame(1, $result->intersectionCount);
     }
 
@@ -123,7 +123,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result_short->valid);
         $this->assertNotEmpty($result_short->errors);
-        $this->assertSame($result_short->errors[0]['code'], ValidationErrors::ANSWER_TOO_SHORT);
+        $errorCodes = array_column($result_short->errors, 'code');
+        $this->assertContains(ValidationErrors::ANSWER_TOO_SHORT, $errorCodes);
 
         // 3. szó 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' (26 karakter), hibás, túl hosszú
         $long_placement = new Placement(
@@ -139,7 +140,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result_long->valid);
         $this->assertNotEmpty($result_long->errors);
-        $this->assertSame($result_long->errors[0]['code'], ValidationErrors::ANSWER_TOO_LONG);
+        $errorCodesLong = array_column($result_long->errors, 'code');
+        $this->assertContains(ValidationErrors::ANSWER_TOO_LONG, $errorCodesLong);
     }
 
     /**
@@ -165,7 +167,7 @@ class PlacementValidatorTest extends TestCase
         $result1 = $validator->validateCandidate([], $horizontal_placement);
 
         $this->assertTrue($result1->valid);
-        $this->assertSame([], $result1->errors);
+        $this->assertEmpty($result1->errors);
         $this->assertSame(0, $result1->intersectionCount);
 
         // 2. szó 'ZEBRA' függőlegesen, 1. sor, 5-9. oszlop
@@ -181,7 +183,7 @@ class PlacementValidatorTest extends TestCase
         $result2 = $validator->validateCandidate([], $vertical_placement);
 
         $this->assertTrue($result2->valid);
-        $this->assertSame([], $result2->errors);
+        $this->assertEmpty($result2->errors);
         $this->assertSame(0, $result2->intersectionCount);
     }
 
@@ -218,7 +220,7 @@ class PlacementValidatorTest extends TestCase
         $result = $validator->validateCandidate([$horizontal_placement], $vertical_placement);
 
         $this->assertTrue($result->valid);
-        $this->assertSame([], $result->errors);
+        $this->assertEmpty($result->errors);
         $this->assertSame(1, $result->intersectionCount);
     }
 
@@ -256,7 +258,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result->valid);
         $this->assertNotEmpty($result->errors);
-        $this->assertSame($result->errors[0]['code'], ValidationErrors::LETTER_CONFLICT);
+        $errorCodes = array_column($result->errors, 'code');
+        $this->assertContains(ValidationErrors::LETTER_CONFLICT, $errorCodes);
         $this->assertSame(0, $result->intersectionCount);
     }
 
@@ -294,7 +297,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result->valid);
         $this->assertNotEmpty($result->errors);
-        $this->assertSame($result->errors[0]['code'], ValidationErrors::SAME_DIRECTION_OVERLAP);
+        $errorCodes = array_column($result->errors, 'code');
+        $this->assertContains(ValidationErrors::SAME_DIRECTION_OVERLAP, $errorCodes);
         $this->assertSame(0, $result->intersectionCount);
     }
 
@@ -410,7 +414,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result_one->valid);
         $this->assertNotEmpty($result_one->errors);
-        $this->assertSame($result_one->errors[0]['code'], ValidationErrors::NEGATIVE_COORDINATE);
+        $errorCodes = array_column($result_one->errors, 'code');
+        $this->assertContains(ValidationErrors::NEGATIVE_COORDINATE, $errorCodes);
         $this->assertSame(0, $result_one->intersectionCount);
     }
 
@@ -437,7 +442,8 @@ class PlacementValidatorTest extends TestCase
         $res1 = $validator->validateCandidate([], $horizontalCandidate, 20, 20);
 
         $this->assertFalse($res1->valid);
-        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, array_column($res1->errors, 'code'));
+        $errorCodes1 = array_column($res1->errors, 'code');
+        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, $errorCodes1);
 
         // Függőleges kezdés a maximum oszlopban
         $verticalCandidate = new Placement(
@@ -452,7 +458,8 @@ class PlacementValidatorTest extends TestCase
         $res2 = $validator->validateCandidate([], $verticalCandidate, 20, 20);
 
         $this->assertFalse($res2->valid);
-        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, array_column($res2->errors, 'code'));
+        $errorCodes2 = array_column($res2->errors, 'code');
+        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, $errorCodes2);
     }
 
     /**
@@ -515,7 +522,8 @@ class PlacementValidatorTest extends TestCase
         $res1 = $validator->validateCandidate([], $horizontalCandidate, 20, 20);
 
         $this->assertFalse($res1->valid);
-        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, array_column($res1->errors, 'code'));
+        $errorCodes1 = array_column($res1->errors, 'code');
+        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, $errorCodes1);
 
         $verticalCandidate = new Placement(
             id: null,
@@ -529,7 +537,8 @@ class PlacementValidatorTest extends TestCase
         $res2 = $validator->validateCandidate([], $verticalCandidate, 20, 20);
 
         $this->assertFalse($res2->valid);
-        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, array_column($res2->errors, 'code'));
+        $errorCodes2 = array_column($res2->errors, 'code');
+        $this->assertContains(ValidationErrors::OUT_OF_BOUNDS, $errorCodes2);
     }
 
     /**
@@ -566,7 +575,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result1->valid);
         $this->assertNotEmpty($result1->errors);
-        $this->assertSame($result1->errors[0]['code'], ValidationErrors::SIDE_ADJACENCY);
+        $errorCodes1 = array_column($result1->errors, 'code');
+        $this->assertContains(ValidationErrors::SIDE_ADJACENCY, $errorCodes1);
         $this->assertSame(0, $result1->intersectionCount);
 
         // 3. szó 'ZEBRA' függőlegesen, 1. sor, 6-10. oszlop
@@ -593,7 +603,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result2->valid);
         $this->assertNotEmpty($result2->errors);
-        $this->assertSame($result2->errors[0]['code'], ValidationErrors::SIDE_ADJACENCY);
+        $errorCodes2 = array_column($result2->errors, 'code');
+        $this->assertContains(ValidationErrors::SIDE_ADJACENCY, $errorCodes2);
         $this->assertSame(0, $result2->intersectionCount);
     }
 
@@ -650,7 +661,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result1->valid);
         $this->assertNotEmpty($result1->errors);
-        $this->assertSame($result1->errors[0]['code'], ValidationErrors::BLOCKED_ENDPOINT);
+        $errorCodes1 = array_column($result1->errors, 'code');
+        $this->assertContains(ValidationErrors::BLOCKED_ENDPOINT, $errorCodes1);
         $this->assertSame(1, $result1->intersectionCount);
 
         // 5. szó 'LÁB' vízszintesen, 3. sor, 5-7. oszlop (a 7. oszlopban blokkolva van a 'ZEBRA' által)
@@ -667,7 +679,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result2->valid);
         $this->assertNotEmpty($result2->errors);
-        $this->assertSame($result2->errors[0]['code'], ValidationErrors::BLOCKED_ENDPOINT);
+        $errorCodes2 = array_column($result2->errors, 'code');
+        $this->assertContains(ValidationErrors::BLOCKED_ENDPOINT, $errorCodes2);
         $this->assertSame(1, $result2->intersectionCount);
     }
 
@@ -704,7 +717,8 @@ class PlacementValidatorTest extends TestCase
 
         $this->assertFalse($result->valid);
         $this->assertNotEmpty($result->errors);
-        $this->assertSame($result->errors[0]['code'], ValidationErrors::DISCONNECTED_ENTRY);
+        $errorCodes = array_column($result->errors, 'code');
+        $this->assertContains(ValidationErrors::DISCONNECTED_ENTRY, $errorCodes);
         $this->assertSame(0, $result->intersectionCount);
     }
 
