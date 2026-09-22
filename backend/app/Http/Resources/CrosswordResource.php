@@ -21,7 +21,6 @@ class CrosswordResource extends JsonResource
             'id' => $crossword->id,
             'title' => $crossword->title,
             'creator' => $crossword->creator?->username ?? 'Rendszer',
-            'main_solution' => $this->resource['main_solution'],
             'grid' => $this->resource['grid'],
             'words' => CrosswordClueResource::collection($crossword->getWords()),
             'width' => $this->resource['width'],

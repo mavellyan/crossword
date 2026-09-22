@@ -25,6 +25,8 @@ class PlacementValidator
      * @param Placement $candidatePlacement A jelölt elhelyezés.
      * @param int $maximumRows A rács maximális sorainak száma.
      * @param int $maximumCols A rács maximális oszlopainak száma.
+     * @param bool $requireConnection - Igaz, ha a jelölt elhelyezésnek csatlakoznia kell egy meglévő elhelyezéshez (legalább egy metszéspont).
+     *                                  Layout validáció esetén false, egyébként mindig true.
      * @return PlacementValidationResult A validáció eredménye.
      */
     public function validateCandidate(
@@ -32,6 +34,7 @@ class PlacementValidator
         Placement $candidatePlacement,
         int $maximumRows = 20,
         int $maximumCols = 20,
+        bool $requireConnection = true,
     ) : PlacementValidationResult
     {
         $errors = [];
@@ -118,7 +121,6 @@ class PlacementValidator
 
         $positionAfter = $this->coordinateKey($afterRow, $afterCol);
 
-        
         if (isset($map[$positionBefore])) {
             $errors[] = [
                 'code' => ValidationErrors::BLOCKED_ENDPOINT,
@@ -235,10 +237,16 @@ class PlacementValidator
         $errors = [];
 
         if (count($placements) < 2) {
-            $errors[] = [
-                'code' => ValidationErrors::TOO_FEW_ENTRIES,
-                'message' => 'There must be at least 2 entries in the layout.',
-            ];
+            return new PlacementValidationResult(
+                valid: false,
+                errors: [
+                    [
+                        'code' => ValidationErrors::TOO_FEW_ENTRIES,
+                        'message' => 'There must be at least 2 entries in the layout.',
+                    ]
+                ],
+                intersectionCount: 0,
+            );
         }
 
         foreach ($placements as $placement) {
@@ -247,6 +255,7 @@ class PlacementValidator
                 candidatePlacement: $placement,
                 maximumRows: $maximumRows,
                 maximumCols: $maximumCols,
+                requireConnection: false,
             );
 
             if (!$candidateResult->valid) {
@@ -310,6 +319,12 @@ class PlacementValidator
                 'message' => 'The layout is disconnected. All placements must be connected.',
             ];
         }
+
+        $errors = collect($errors)->unique(fn (array $error) => implode(':', [
+            $error['code'] instanceof ValidationErrors ? $error['code']->value : $error['code'],
+            $error['row'] ?? '',
+            $error['col'] ?? '',
+        ]))->values()->all();
 
         return new PlacementValidationResult(
             valid: empty($errors),

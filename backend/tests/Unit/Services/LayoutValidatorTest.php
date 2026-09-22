@@ -295,6 +295,7 @@ class LayoutValidatorTest extends TestCase
         $errorCodes5 = array_column($result5->errors, 'code');
         $this->assertContains(ValidationErrors::LETTER_CONFLICT, $errorCodes5);
         $errorCodes6 = array_column($result6->errors, 'code');
+        $this->assertContains(ValidationErrors::LETTER_CONFLICT, $errorCodes6);
 
         $this->assertEquals(1, $result1->intersectionCount);
         $this->assertEquals(1, $result2->intersectionCount);

@@ -12,10 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Crossword extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasFactory;
 
     protected $fillable = [
         'title',
@@ -48,7 +49,7 @@ class Crossword extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function getMainSolution(): string
+    public function getMainSolution(): ?string
     {
         return $this->main_solution;
     }

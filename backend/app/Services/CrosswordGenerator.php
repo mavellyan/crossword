@@ -7,6 +7,7 @@ use App\Models\Clue;
 use App\Models\CrosswordClue;
 use Exception;
 use Illuminate\Support\Collection;
+use LogicException;
 
 class CrosswordGenerator
 {
@@ -131,23 +132,17 @@ class CrosswordGenerator
     /**
      * Elkészíti a rácsot a már elmentett CrosswordClue sorokból.
      *
-     * @param string $mainSolution
      * @param iterable<int, CrosswordClue> $placements
      * @return array<string, mixed>
      */
-    public function generateGrid(string $mainSolution, iterable $placements): array
+    public function generateGrid(iterable $placements): array
     {
         $placements = collect($placements)
             ->where('is_main', false)
             ->values();
 
-        $mainSolution = mb_strtoupper($mainSolution);
-        $mainLetters = mb_str_split($mainSolution);
-
-        $solutionCol = $this->determineSolutionCol($placements);
-
-        $height = count($mainLetters);
-        $width = $solutionCol + 1;
+        $height = 0;
+        $width = 0;
 
         foreach ($placements as $placement) {
             $solution = mb_strtoupper($placement->getSolution());
@@ -176,33 +171,27 @@ class CrosswordGenerator
 
                 $col = $placement->getStartCol()
                     + ($direction === Direction::HORIZONTAL->value ? $i : 0);
+                
+                $letter = mb_substr($solution, $i, 1);
 
-                $grid[$row][$col] = mb_substr($solution, $i, 1);
+                if ($grid[$row][$col] !== '#' && $grid[$row][$col] !== $letter) {
+                    throw new LogicException("A rácsban ütközés történt a {$row}, {$col} koordinátánál.");
+                }
+
+                $grid[$row][$col] = $letter;
             }
         }
 
-        foreach ($mainLetters as $index => $letter) {
-            $grid[$index][$solutionCol] = $letter;
-        }
+        $publicGrid = array_map(fn (array $row) => array_map(
+            fn (string $cell) => $cell === '#' ? '#' : null,
+            $row
+        ), $grid);
 
         return [
-            'grid' => $grid,
+            'grid' => $publicGrid,
             'width' => $width,
             'height' => $height,
-            'solution_col' => $solutionCol,
-            'main_solution' => $mainSolution,
         ];
-    }
-
-    private function determineSolutionCol(Collection $placements): int
-    {
-        $firstPlacement = $placements->first();
-
-        if (!$firstPlacement) {
-            return 0;
-        }
-
-        return $firstPlacement->getStartCol() + $firstPlacement->getIntersectionIndex();
     }
 
     private function assignWordsToLetters(

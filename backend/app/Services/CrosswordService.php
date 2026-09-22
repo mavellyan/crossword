@@ -5,16 +5,20 @@ namespace App\Services;
 use App\Models\Clue;
 use App\Models\Crossword;
 use App\Models\CrosswordClue;
-use App\Models\CrosswordAttempt;
 use Illuminate\Support\Facades\DB;
 use Exception;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Collection;
+use App\Enums\Direction;
+use App\Domain\Crossword\Placement;
+use App\Services\PlacementValidator;
+use App\Exceptions\InvalidCrosswordLayout;
+use App\Enums\Difficulty;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class CrosswordService
 {
     public function __construct(
         private readonly CrosswordGenerator $generator,
+        private readonly PlacementValidator $placementValidator,
     ) {
     }
 
@@ -26,8 +30,11 @@ class CrosswordService
             'topics',
         ])->findOrFail($id);
 
+        if ($crossword->user_id !== $userId && !$crossword->is_public) {
+            throw new AuthorizationException('Nincs jogosultságod a rejtvény megtekintéséhez.');
+        }
+
         $gridData = $this->generator->generateGrid(
-            $crossword->main_solution,
             $crossword->getWords(),
         );
 
@@ -36,8 +43,6 @@ class CrosswordService
             'grid' => $gridData['grid'],
             'width' => $gridData['width'],
             'height' => $gridData['height'],
-            'solution_col' => $gridData['solution_col'],
-            'main_solution' => $gridData['main_solution'],
         ];
     }
 
@@ -81,7 +86,6 @@ class CrosswordService
             ]);
 
             $gridData = $this->generator->generateGrid(
-                $crossword->main_solution,
                 $crossword->getWords(),
             );
 
@@ -90,67 +94,134 @@ class CrosswordService
                 'grid' => $gridData['grid'],
                 'width' => $gridData['width'],
                 'height' => $gridData['height'],
-                'solution_col' => $gridData['solution_col'],
-                'main_solution' => $gridData['main_solution'],
             ];
         });
     }
 
-    public function createFromClueIds(array $data): array
+    public function create(array $data): array
     {
-        return DB::transaction(function () use ($data) {
-            $mainSolution = mb_strtoupper($data['main_solution']);
-            $clueIds = array_values($data['clue_ids']);
+        if (!empty($data['entries'])) {
+            $placements = $this->resolveExplicitPlacements($data['entries']);
 
-            if (count($clueIds) !== mb_strlen($mainSolution)) {
-                throw new Exception('Pontosan annyi szót kell választani, ahány betűből áll a főmegoldás.');
+            $validation = $this->placementValidator->validateLayout($placements);
+
+            if (!$validation->valid) {
+                throw new InvalidCrosswordLayout($validation->errors);
+            }
+        } else {
+            $placements = $this->resolveLegacyPlacements($data['main_solution'], $data['clue_ids']);
+        }
+
+        return $this->persistCrossword($data, $placements);
+    }
+
+    /**
+     * Létrehozza a Placement objektumokat a felhasználó által megadott elhelyezési adatok alapján.
+     *
+     * @param array<array<string, mixed>> $entries - A felhasználó által megadott elhelyezési adatok tömbje.
+     * @return array<Placement> - A létrehozott Placement objektumok tömbje.
+     * @throws Exception - Ha a megadott clue_id nem létezik.
+     */
+    private function resolveExplicitPlacements(array $entries): array
+    {
+        $clueIds = collect($entries)->pluck('clue_id')->map(fn($id) => (int)$id)->all();
+
+        $cluesById = Clue::query()->whereIn('id', $clueIds)->get()->keyBy('id');
+
+        return collect($entries)->map(function (array $entry) use ($cluesById) {
+            $clueId = (int) $entry['clue_id'];
+            $clue = $cluesById->get($clueId);
+
+            if (!$clue) {
+                throw new Exception('A megadott clue_id nem létezik: ' . $clueId);
             }
 
-            if (count($clueIds) !== count(array_unique($clueIds))) {
-                throw new Exception('Ugyanazt a szót nem lehet többször kiválasztani.');
+            return new Placement(
+                id: null,
+                clueId: $clue->id,
+                answer: $clue->solution,
+                direction: Direction::from($entry['direction']),
+                startRow: (int) $entry['start_row'],
+                startCol: (int) $entry['start_col'],
+            );
+        })->values()->all();
+    }
+
+    /**
+     * Legacy kód, a régi "clue_ids" mező alapján hozza létre a Placement objektumokat.
+     * 
+     * @param string $mainSolution - A főmegoldás szava.
+     * @param array<int> $clueIds - A felhasználó által megadott clue_id-k tömbje.
+     * @return array<Placement> - A létrehozott Placement objektumok tömbje.
+     * @throws Exception - Ha a megadott clue_id nem létezik, vagy ha a generatedPlacementsFixedOrder metódus hibát dob.
+     */
+    private function resolveLegacyPlacements(string $mainSolution, array $clueIds): array
+    {
+        $cluesById = Clue::query()->whereIn('id', $clueIds)->get()->keyBy('id');
+
+        $orderedClues = collect($clueIds)->map(function ($clueId) use ($cluesById) {
+            $clue = $cluesById->get((int) $clueId);
+
+            if (!$clue) {
+                throw new Exception('A megadott clue_id nem létezik: ' . $clueId);
             }
 
-            $cluesById = Clue::whereIn('id', $clueIds)
-                ->get()
-                ->keyBy('id');
+            return $clue;
+        })->values();
 
-            $clues = collect($clueIds)
-                ->map(function (int $id) use ($cluesById) {
-                    $clue = $cluesById->get($id);
+        $generated = $this->generator->generatePlacementsFixedOrder(
+            mb_strtoupper($mainSolution),
+            $orderedClues,
+        );
 
-                    if (!$clue) {
-                        throw new Exception('A kiválasztott szavak között van nem létező szó.');
-                    }
+        return collect($generated)->map(function (array $generatedPlacement) use ($cluesById) {
+            $clue = $cluesById->get((int) $generatedPlacement['clue_id']);
 
-                    return $clue;
-                })
-                ->values();
+            $direction = $generatedPlacement['direction'];
 
+            if (is_string($direction)) {
+                $direction = Direction::from($direction);
+            }
+
+            return new Placement(
+                id: null,
+                clueId: $clue->id,
+                answer: $clue->solution,
+                direction: $direction,
+                startRow: (int) $generatedPlacement['start_row'],
+                startCol: (int) $generatedPlacement['start_col'],
+            );
+        })->values()->all();
+    }
+
+    /**
+     * Menti a keresztrejtvényt és az elhelyezéseket az adatbázisba.
+     * 
+     * @param array<string, mixed> $data - A keresztrejtvény adatai.
+     * @param array<Placement> $placements - A keresztrejtvény elhelyezései.
+     * @return array<string, mixed> - A mentett keresztrejtvény és a generált rács adatai.
+     */
+    private function persistCrossword(array $data, array $placements): array
+    {
+        return DB::transaction(function () use ($data, $placements) {
             $crossword = Crossword::create([
-                'title' => $data['title'],
-                'main_solution' => $mainSolution,
-                'user_id' => $data['user_id'] ?? null,
-                'difficulty' => $data['difficulty'] ?? 'easy',
+                'title' => trim($data['title']),
+                'main_solution' => isset($data['main_solution']) ? mb_strtoupper($data['main_solution']) : null,
+                'user_id' => $data['user_id'],
+                'difficulty' => $data['difficulty'] ?? Difficulty::EASY,
                 'is_public' => $data['is_public'] ?? false,
             ]);
 
-            if (!empty($data['topic_ids'])) {
-                $crossword->topics()->attach($data['topic_ids']);
-            }
-
-            $placements = $this->generator->generatePlacementsFixedOrder(
-                $crossword->main_solution,
-                $clues,
-            );
+            $crossword->topics()->sync($data['topic_ids'] ?? []);
 
             foreach ($placements as $placement) {
-                CrosswordClue::create([
-                    'crossword_id' => $crossword->id,
-                    'clue_id' => $placement['clue_id'],
-                    'direction' => $placement['direction'],
-                    'start_row' => $placement['start_row'],
-                    'start_col' => $placement['start_col'],
-                    'intersection_index' => $placement['intersection_index'],
+                $crossword->crosswordClues()->create([
+                    'clue_id' => $placement->clueId,
+                    'direction' => $placement->direction,
+                    'start_row' => $placement->startRow,
+                    'start_col' => $placement->startCol,
+                    // Legacy kód support, el kell majd távolítani
+                    'intersection_index' => null,
                     'is_main' => false,
                 ]);
             }
@@ -161,18 +232,13 @@ class CrosswordService
                 'topics',
             ]);
 
-            $gridData = $this->generator->generateGrid(
-                $crossword->main_solution,
-                $crossword->getWords(),
-            );
+            $gridData = $this->generator->generateGrid($crossword->getWords());
 
             return [
                 'crossword' => $crossword,
                 'grid' => $gridData['grid'],
                 'width' => $gridData['width'],
                 'height' => $gridData['height'],
-                'solution_col' => $gridData['solution_col'],
-                'main_solution' => $gridData['main_solution'],
             ];
         });
     }
@@ -323,42 +389,49 @@ class CrosswordService
                 'solution' => $cc->clue->solution,
                 'definition' => $cc->clue->definition,
             ])->values(),
+            'entries' => $crossword->crosswordClues->map(fn ($entry) => [
+                'id' => $entry->id,
+                'clue_id' => $entry->clue->id,
+                'solution' => $entry->clue->solution,
+                'definition' => $entry->clue->definition,
+                'direction' => $entry->getDirection(),
+                'start_row' => $entry->start_row,
+                'start_col' => $entry->start_col,
+            ])->values(),
         ];
     }
 
     public function updateCrossword(int $id, int $userId, array $data): Crossword
     {
         return DB::transaction(function () use ($id, $userId, $data) {
-            $crossword = Crossword::withCount(['attempts' => function ($query) {
-                $query->where('status', '!=', 'not_started');
-            }])->findOrFail($id);
+            $crossword = Crossword::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($crossword->user_id !== $userId) {
                 throw new Exception('Más rejtvényét nem módosíthatod.');
             }
 
-            if ($crossword->is_public || $crossword->attempts_count > 0) {
+            $hasRealAttempts = $crossword->attempts()->where('status', '!=', 'not_started')->exists();
+
+            if ($crossword->is_public || $hasRealAttempts) {
                 throw new Exception('Ez a rejtvény már nyilvános vagy rendelkezik próbálkozásokkal, így nem módosítható.');
             }
 
-            $mainSolution = mb_strtoupper($data['main_solution']);
-            $clueIds = array_values($data['clue_ids']);
+            if (!empty($data['entries'])) {
+                $placements = $this->resolveExplicitPlacements($data['entries']);
 
-            if (count($clueIds) !== mb_strlen($mainSolution)) {
-                throw new Exception('Pontosan annyi szót kell választani, ahány betűből áll a főmegoldás.');
+                $validation = $this->placementValidator->validateLayout($placements);
+
+                if (!$validation->valid) {
+                    throw new InvalidCrosswordLayout($validation->errors);
+                }
+            } else {
+                $placements = $this->resolveLegacyPlacements($data['main_solution'], $data['clue_ids']);
             }
-
-            if (count($clueIds) !== count(array_unique($clueIds))) {
-                throw new Exception('Ugyanazt a szót nem lehet többször kiválasztani.');
-            }
-
-            $cluesById = Clue::whereIn('id', $clueIds)->get()->keyBy('id');
-            $clues = collect($clueIds)->map(fn($cid) => $cluesById->get($cid))->values();
 
             // Alapadatok frissítése
             $crossword->update([
                 'title' => $data['title'],
-                'main_solution' => $mainSolution,
+                'main_solution' => isset($data['main_solution']) ? mb_strtoupper($data['main_solution']) : null,
                 'difficulty' => $data['difficulty'] ?? 'easy',
                 'is_public' => $data['is_public'] ?? false,
             ]);
@@ -371,24 +444,23 @@ class CrosswordService
             // Régi elhelyezések törlése és újragenerálása
             $crossword->crosswordClues()->delete();
 
-            $placements = $this->generator->generatePlacementsFixedOrder(
-                $crossword->main_solution,
-                $clues
-            );
-
             foreach ($placements as $placement) {
-                CrosswordClue::create([
-                    'crossword_id' => $crossword->id,
-                    'clue_id' => $placement['clue_id'],
-                    'direction' => $placement['direction'],
-                    'start_row' => $placement['start_row'],
-                    'start_col' => $placement['start_col'],
-                    'intersection_index' => $placement['intersection_index'],
+                $crossword->crosswordClues()->create([
+                    'clue_id' => $placement->clueId,
+                    'direction' => $placement->direction,
+                    'start_row' => $placement->startRow,
+                    'start_col' => $placement->startCol,
+                    // Legacy kód support, el kell majd távolítani
+                    'intersection_index' => null,
                     'is_main' => false,
                 ]);
             }
 
-            return $crossword;
+            return $crossword->load([
+                'crosswordClues.clue',
+                'creator',
+                'topics',
+            ]);
         });
     }
 

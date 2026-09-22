@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\CrosswordService;
-use App\Models\CrosswordAttempt;
 use App\Http\Resources\CrosswordResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
-use Illuminate\Support\Facades\Log;
+use App\Exceptions\InvalidCrosswordLayout;
+use App\Http\Requests\StoreCrosswordRequest;
+use App\Http\Requests\UpdateCrosswordRequest;
 
 class CrosswordController extends Controller
 {
@@ -33,32 +34,23 @@ class CrosswordController extends Controller
         ]);
     }
 
-    public function createCrossword(Request $request): JsonResponse
+    public function createCrossword(StoreCrosswordRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => 'required|string|min:5|max:255',
-            'main_solution' => 'required|string|min:3|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
-            'clue_ids' => 'required|array|min:1',
-            'clue_ids.*' => 'required|integer|exists:clues,id',
-            'topic_ids' => 'nullable|array',
-            'topic_ids.*' => 'nullable|integer|exists:topics,id',
-            'difficulty' => 'nullable|string',
-            'is_public' => 'nullable|boolean',
-        ]);
-
-        $validated['user_id'] = $request->user()?->id;
+        $data = $request->validated();
+        $data['user_id'] = $request->user()->id;
 
         try {
-            $result = $this->crosswordService->createFromClueIds($validated);
+            $result = $this->crosswordService->create($data);
 
             return response()->json([
                 'success' => true,
                 'crossword' => new CrosswordResource($result),
             ], 201);
-        } catch (Throwable $e) {
+        } catch (InvalidCrosswordLayout $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
+                'errors' => $e->layoutErrors,
             ], 422);
         }
     }
@@ -82,7 +74,6 @@ class CrosswordController extends Controller
             return [
                 'id' => $crossword->id,
                 'title' => $crossword->title,
-                'main_solution' => $crossword->main_solution,
                 'difficulty' => $crossword->difficulty?->value ?? $crossword->difficulty,
                 'is_public' => (bool) $crossword->is_public,
                 'words_count' => $crossword->words_count,
@@ -170,7 +161,7 @@ class CrosswordController extends Controller
 
             return response()->json([
                 'success' => true,
-                'crossword' => $result,
+                'crossword' => $result,  
             ]);
         } catch (Throwable $e) {
             return response()->json([
@@ -180,24 +171,15 @@ class CrosswordController extends Controller
         }
     }
 
-    public function updateCrossword(Request $request): JsonResponse
+    public function updateCrossword(UpdateCrosswordRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'id' => 'required|integer|exists:crosswords,id',
-            'title' => 'required|string|min:5|max:255',
-            'main_solution' => 'required|string|min:3|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
-            'clue_ids' => 'required|array|min:1',
-            'clue_ids.*' => 'required|integer|exists:clues,id',
-            'topic_ids' => 'nullable|array',
-            'topic_ids.*' => 'nullable|integer|exists:topics,id',
-            'difficulty' => 'nullable|string',
-            'is_public' => 'nullable|boolean',
-        ]);
+        $data = $request->validated();
+        $data['user_id'] = $request->user()->id;
 
         $user = $request->user('sanctum');
 
         try {
-            $crossword = $this->crosswordService->updateCrossword($validated['id'], $user->id, $validated);
+            $crossword = $this->crosswordService->updateCrossword($data['id'], $user->id, $data);
 
             return response()->json([
                 'success' => true,
@@ -207,7 +189,7 @@ class CrosswordController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 422);
+            ], 409);
         }
     }
 

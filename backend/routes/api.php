@@ -42,7 +42,7 @@ Route::post('/toggleVisibility', [\App\Http\Controllers\CrosswordController::cla
 
 Route::get('/getCrosswordForEdit', [\App\Http\Controllers\CrosswordController::class, 'getCrosswordForEdit'])->middleware('auth:sanctum');
 
-Route::post('/updateCrossword', [\App\Http\Controllers\CrosswordController::class, 'updateCrossword'])->middleware('auth:sanctum');
+Route::put('/updateCrossword', [\App\Http\Controllers\CrosswordController::class, 'updateCrossword'])->middleware('auth:sanctum');
 
 Route::delete('/deleteCrossword', [\App\Http\Controllers\CrosswordController::class, 'deleteCrossword'])->middleware('auth:sanctum');
 
