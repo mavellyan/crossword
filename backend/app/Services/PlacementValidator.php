@@ -59,8 +59,6 @@ class PlacementValidator
             ];
         }
 
-        $candidateCells = $candidatePlacement->cells();
-
         if ($candidatePlacement->startRow < 0 || $candidatePlacement->startCol < 0) {
             $errors[] = [
                 'code' => ValidationErrors::NEGATIVE_COORDINATE,
@@ -139,6 +137,8 @@ class PlacementValidator
             ];
         }
 
+        $candidateCells = $candidatePlacement->cells();
+
         $intersectionCount = 0;
 
         foreach ($candidateCells as $cell) {
@@ -197,7 +197,7 @@ class PlacementValidator
             }
         }
 
-        if ($existingPlacements !== [] && $intersectionCount === 0) {
+        if ($existingPlacements !== [] && $intersectionCount === 0 && $requireConnection) {
             $errors[] = [
                 'code' => ValidationErrors::DISCONNECTED_ENTRY,
                 'row' => $candidatePlacement->startRow,

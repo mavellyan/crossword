@@ -352,6 +352,10 @@ class CrosswordService
             throw new Exception('Más rejtvényének a láthatóságát nem módosíthatod.');
         }
 
+        if (!$crossword->is_public && $crossword->main_solution === null) {
+            throw new Exception('A szabadkézi rejtvények publikálása még nem támogatott.');
+        }
+
         $crossword->is_public = !$crossword->is_public;
         $crossword->save();
 
