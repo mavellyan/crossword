@@ -222,7 +222,7 @@ export default {
                     text: 'A szó sikeresen elmentve.',
                 })
 
-                this.$emit('clue-created')
+                this.$emit('clue-created', createdClue)
                 this.closeModal()
 
             } catch (error) {

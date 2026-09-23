@@ -60,7 +60,7 @@ export async function listCreatorWords(topicIds = null) {
 
   return response.data.words.map((word) => ({
     id: word.id,
-    solution: String(word.solution ?? '').toUpperCase(),
+    solution: word.solution ?? '',
     definition: word.definition ?? '',
     length: word.length ?? String(word.solution ?? '').length,
   }))

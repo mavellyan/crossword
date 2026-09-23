@@ -7,6 +7,8 @@ import HomePage from '@/pages/HomePage.vue'
 import CrosswordListPage from '@/pages/CrosswordListPage.vue'
 import CrosswordPage from '@/pages/CrosswordPage.vue'
 import CrosswordCreator from '@/pages/CrosswordCreator.vue'
+import CrosswordGridEditor from '@/components/crossword-editor/CrosswordGridEditor.vue'
+
 import ProfilePage from '@/pages/ProfilePage.vue'
 
 import LoginPage from '@/pages/LoginPage.vue'
@@ -23,7 +25,8 @@ const routes = [
       { path: 'crosswordlist', name: 'crosswordlist', component: CrosswordListPage },
       { path: 'crossword/:id', name: 'crossword', component: CrosswordPage, props: true },
       { path: 'create', name: 'crosswordcreator', component: CrosswordCreator, meta: { requiresAuth: true } },
-      { path: 'profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } }
+      { path: 'profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
+      { path: 'editor', name: 'crosswordeditor', component: CrosswordGridEditor, meta: { requiresAuth: true } }
     ],
   },
   {

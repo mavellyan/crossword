@@ -8,12 +8,13 @@ import App from './App.vue'
 import './styles/main.scss'
 import axios from 'axios'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import 'bootstrap-icons/font/bootstrap-icons.css'
 import * as bootstrap from 'bootstrap'
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan, faSpinner, faTriangleExclamation, faFloppyDisk } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-library.add(faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan)
+library.add(faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan, faSpinner, faTriangleExclamation, faFloppyDisk)
 
 axios.defaults.baseURL = 'http://localhost:8000/api'
 

@@ -1,153 +1,59 @@
 <template>
-  <div
+  <div 
     :class="{'blur-background': isClueCreatorModalOpen || isPopupVisible}"
   >
-    <h1 class="text-center pb-5">
-      {{  isEditMode ? 'Rejtvény megtekintése / szerkesztése' : 'Hozz létre saját rejtvényt!'  }}
-    </h1>
-    <div
-      v-if="isReadOnly"
-      class="alert alert-warning text-center w-50 mx-auto mb-3 shadow-sm"
-      role="alert" 
-    >
-      <i class="bi bi-lock-fill me-2"></i>
-      Ez a rejtvény <strong>{{  isPublic ? 'nyilvános' : 'már rendelkezik megkezdett próbálkozással' }}</strong>, így nem szerkeszthető.
-    </div>
-    <div class="d-flex align-items-center justify-content-center mb-3">
-      <label class="h4 w-auto">Mi legyen a rejtvényed címe?</label>
-      <input
-        v-model="title"
-        class="form-control w-25 mx-3 border border-primary border-2"
-        minlength="5"
-        maxlength="255"
-        placeholder="pl: A világ legnehezebb rejtvénye"
-        :disabled="isReadOnly"
-      />
-    </div>
-    <p
-      v-if="hasTitle && !isTitleValid"
-      class="text-muted mb-3 alert alert-danger w-25 mx-auto mt-3 text-center pb-2 pt-2"
-    >
-      A címnek legalább 5 és legfeljebb 255 karakterből kell állnia.
-    </p>
-    <div class="d-flex align-items-center justify-content-center mb-3">
-      <label class="h4 w-auto">Mi legyen a rejtvényed főmegoldása?</label>
-      <input
-        v-model="mainSolution"
-        class="form-control w-25 mx-3 border border-primary border-2 text-uppercase"
-        maxlength="20"
-        placeholder="pl: piros"
-        :disabled="isReadOnly"
-        @input="mainSolution = mainSolution.toUpperCase()"
-      />
-    </div>
-    <p
-      v-if="hasMainSolution && !isMainSolutionValid"
-      class="text-muted mb-3 alert alert-danger w-25 mx-auto mt-3 text-center pb-2 pt-2"
-    >
-      A főmegoldás csak a magyar ábécé betűit tartalmazhatja, számok, szóköz és egyéb speciális karakterek nélkül.
-    </p>
-    <div class="d-flex align-items-center justify-content-center mb-3">
-      <label class="h4 w-auto">Mi legyen a rejtvényed témája?</label>
-      <v-select
-        v-model="selectedTopics"
-        name="topic-v-select"
-        class="w-25 mx-3 border border-primary border-2 rounded"
-        label="name"
-        :placeholder="'Válassz egy témát'"
-        :options="topics"
-        :disabled="isReadOnly"
-        multiple
-        >
-      </v-select>
-    </div>
-    <div v-if="isCrosswordVisible" class="mt-5 d-flex align-items-start">
-      <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background align-items-center">
-        <h4 class="text-center mb-4">Így fog kinézni a rejtvényed:</h4>
-        <div v-for="(row, rowIndex) in previewRows"
-          :key="rowIndex"
-          class="d-flex justify-content-center"
-        >
-          <div v-for="(cell, cellIndex) in row"
-            :key="cellIndex"
-            class="preview-cell"
-            :class="{
-              'preview-cell-main': cell.type === 'main',
-              'preview-cell-black': cell.type === 'black',
-              'preview-cell-normal': cell.type === 'normal',
-            }"
-          >
-            {{ cell.letter }}
-          </div>
-        </div>
-      </div>
-      <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background">
-        <h4 class="text-center mb-4">Válaszd ki hozzá a szavakat:</h4>
-        <p v-if="wordsLoading" class="text-muted text-center">
-          Szavak betöltése...
-        </p>
+    <div class="text-center mb-5">
+      <h2 class="fw-bold text-dark mb-3">
+        {{ isEditMode ? 'Rejtvény megtekintése / szerkesztése' : 'Hozz létre saját rejtvényt!' }}
+      </h2>
 
-        <p v-else-if="wordsError" class="alert alert-danger text-center">
-          {{ wordsError }}
-        </p>
-        <div v-else v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex">
-          <div class="d-flex mb-2 align-items-center w-100">
-            <v-select
-              v-model="selectedWords[charIndex]"
-              name="clue-v-select"
-              class="w-auto border border-primary rounded clue-select"
-              label="solution"
-              :placeholder="'Válassz egy szót'"
-              :options="getWordsForCurrentLetter(char, charIndex)"
-              :disabled="isReadOnly || !isMainSolutionValid || wordsLoading || !!wordsError"
-            >
-              <template #no-options="{ search, searching }">
-                <template v-if="searching">
-                  Sajnos a(z) "<strong>{{ search }}</strong>" keresésre nincs találat. <br>
-                  Add hozzá a <strong>+</strong> jelre kattintva!
-                </template>
-                <template v-else>
-                  A lista jelenleg üres. <br> 
-                  Adj hozzá új szavakat a <strong>+</strong> jelre kattintva!
-                </template>
-              </template>
-            </v-select>
-            <span
-              v-if="!wordExistsForLetter(char)"
-              class="text-muted mx-2"
-            >
-              Nem található szó ilyen betűvel.
-            </span>
-            <span
-              v-else
-              class="text-muted mx-2"
-            >
-              {{ getDefinitionForSelectedWord(selectedWords[charIndex]) }}
-            </span>
-          </div>
-          <div
-            v-if="!isReadOnly && selectedWords[charIndex] == null"
-            class="d-flex align-items-center justify-content-center mb-2 pointer"
-            v-tooltip.hover="'Új szó hozzáadása a listához'"
-          >
-            <font-awesome-icon
-              icon="fa-solid fa-plus"
-              class="border border-primary rounded p-1 pointer"
-              @click="showClueCreatorModal()"
-            />
-          </div>
-        </div>
+      <div
+        v-if="isReadOnly"
+        class="alert alert-warning d-inline-block px-4 py-2 shadow-sm rounded-pill"
+        role="alert" 
+      >
+        <i class="bi bi-lock-fill me-2"></i>
+        Ez a rejtvény <strong>{{ isPublic ? 'nyilvános' : 'már rendelkezik megkezdett próbálkozással' }}</strong>, így nem szerkeszthető.
       </div>
     </div>
-          <!-- Új opciók: Nehézség (3 opciós select) és Láthatósági kapcsoló (Toggle) -->
-      <div class="d-flex align-items-center justify-content-center gap-4 mb-4 mt-2">
-        <!-- Nehézség választó -->
-        <div class="d-flex align-items-center">
-          <label class="h5 mb-0 me-2">Nehézség:</label>
+
+    <div class="mx-auto input-max-width">
+      <div class="mb-4">
+        <label class="form-label fw-bold text-muted small text-uppercase">Rejtvény címe</label>
+        <input
+          v-model="title"
+          class="form-control form-control-lg bg-light"
+          minlength="5"
+          maxlength="255"
+          placeholder="pl.: A világ legnehezebb rejtvénye"
+          :disabled="isReadOnly"
+        />
+        <div v-if="hasTitle && !isTitleValid" class="text-danger small mt-2">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          A címnek legalább 5 és legfeljebb 255 karakterből kell állnia.
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-bold text-muted small text-uppercase">Rejtvény témája (opcionális)</label>
+        <v-select
+          v-model="selectedTopics"
+          name="topic-v-select"
+          class="bg-light border border-secondary rounded"
+          label="name"
+          :placeholder="'Válassz egy vagy több témát...'"
+          :options="topics"
+          :disabled="isReadOnly"
+          multiple
+        ></v-select>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <div class="col-sm-6">
+          <label class="form-label fw-bold text-muted small text-uppercase">Nehézség</label>
           <select 
             v-model="difficulty" 
-            class="form-select border-primary" 
-            style="width: 140px;"
+            class="form-select form-select-lg bg-light" 
             :disabled="isReadOnly"
           >
             <option value="easy">Könnyű</option>
@@ -156,97 +62,262 @@
           </select>
         </div>
 
-        <!-- Publikus / Privát kapcsoló -->
-        <div class="form-check form-switch d-flex align-items-center mb-0">
-          <input 
-            class="form-check-input custom-switch me-2" 
-            type="checkbox" 
-            role="switch" 
-            id="visibilityToggle"
-            v-model="setPublic"
-            :disabled="isReadOnly"
+        <div class="col-sm-6">
+          <label class="form-label fw-bold text-muted small text-uppercase">Láthatóság</label>
+          <div 
+            class="form-control form-control-lg bg-light d-flex align-items-center justify-content-between pointer"
+            :class="{ 'cursor-pointer': !isReadOnly, 'opacity-75': isReadOnly }"
+            @click="!isReadOnly && !isFreeFormMode && (setPublic = !setPublic)"
           >
-          <label class="form-check-label fw-bold" for="visibilityToggle">
-            {{ setPublic ? 'Nyilvános' : 'Privát' }}
-          </label>
+            <span class="fw-bold" :class="setPublic ? 'text-primary' : 'text-secondary'">
+              {{ setPublic ? 'Nyilvános' : 'Privát' }}
+            </span>
+            <div class="form-check form-switch mb-0 ps-0">
+              <input 
+                class="form-check-input custom-switch m-0 float-end" 
+                type="checkbox" 
+                role="switch" 
+                id="visibilityToggle"
+                v-model="setPublic"
+                :disabled="isReadOnly || isFreeFormMode"
+                @click.stop
+                style="cursor: inherit;"
+              >
+            </div>
+          </div>
         </div>
       </div>
-    <div class="row row-cols-2">
+
+      <div class="mb-4">
+        <label class="form-label fw-bold text-muted small text-uppercase">Szerkesztő mód</label>
+        <div 
+          class="form-control form-control-lg bg-light d-flex align-items-center justify-content-between pointer"
+          :class="{ 'cursor-pointer': !isReadOnly, 'opacity-75': isReadOnly }"
+          @click="toggleEditorMode"
+        >
+          <span class="fw-bold" :class="freeFormMode ? 'text-primary' : 'text-secondary'">
+            {{ freeFormMode ? 'Szabadkézi' : 'Egyszerűsített' }}
+          </span>
+          <div class="form-check form-switch mb-0 ps-0">
+            <input 
+              class="form-check-input custom-switch m-0 float-end" 
+              type="checkbox" 
+              role="switch" 
+              id="freeFormModeToggle"
+              v-model="freeFormMode"
+              :disabled="isReadOnly || isEditMode"
+              @click.stop
+              style="cursor: inherit;"
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <CrosswordGridEditor
+      v-if="freeFormMode"
+      :words="availableWords"
+      :words-loading="wordsLoading"
+      :words-error="wordsError"
+      :is-read-only="isReadOnly"
+      @add-clue="showClueCreatorModal"
+    />
+
+    <div v-else>
+      <div class="mx-auto input-max-width">
+        <div class="mb-4">
+          <label class="form-label fw-bold text-muted small text-uppercase">Mi legyen a rejtvényed főmegoldása?</label>
+          <input
+            v-model="mainSolution"
+            class="form-control form-control-lg bg-light text-uppercase"
+            maxlength="20"
+            placeholder="pl.: piros"
+            :disabled="isReadOnly"
+            @input="mainSolution = mainSolution.toUpperCase()"
+          />
+          <div v-if="hasMainSolution && !isMainSolutionValid" class="text-danger small mt-2">
+            <i class="bi bi-exclamation-circle me-1"></i>
+            A főmegoldás csak a magyar ábécé betűit tartalmazhatja, számok, szóköz és egyéb speciális karakterek nélkül.
+          </div>
+        </div>
+      </div>
+
+      <div v-if="isCrosswordVisible" class="mt-5 d-flex align-items-start">
+        <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background align-items-center">
+          <h4 class="text-center mb-4">Így fog kinézni a rejtvényed:</h4>
+          <div v-for="(row, rowIndex) in previewRows"
+            :key="rowIndex"
+            class="d-flex justify-content-center"
+          >
+            <div v-for="(cell, cellIndex) in row"
+              :key="cellIndex"
+              class="preview-cell"
+              :class="{
+                'preview-cell-main': cell.type === 'main',
+                'preview-cell-black': cell.type === 'black',
+                'preview-cell-normal': cell.type === 'normal',
+              }"
+            >
+              {{ cell.letter }}
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column border border-secondary p-3 rounded w-100 mx-5 box-background">
+          <h4 class="text-center mb-4">Válaszd ki hozzá a szavakat:</h4>
+          <p v-if="wordsLoading" class="text-muted text-center">
+            Szavak betöltése...
+          </p>
+
+          <p v-else-if="wordsError" class="alert alert-danger text-center">
+            {{ wordsError }}
+          </p>
+
+          <div v-else v-for="(char, charIndex) in mainSolutionChars" :key="charIndex" class="d-flex">
+            <div class="d-flex mb-2 align-items-center w-100">
+              <v-select
+                v-model="selectedWords[charIndex]"
+                name="clue-v-select"
+                class="w-auto border border-primary rounded clue-select"
+                label="solution"
+                :placeholder="'Válassz egy szót'"
+                :options="getWordsForCurrentLetter(char, charIndex)"
+                :disabled="isReadOnly || !isMainSolutionValid || wordsLoading || !!wordsError"
+              >
+
+                <template #no-options="{ search, searching }">
+                  <template v-if="searching">
+                    Sajnos a(z) "<strong>{{ search }}</strong>" keresésre nincs találat. <br>
+                    Add hozzá a <strong>+</strong> jelre kattintva!
+                  </template>
+                  <template v-else>
+                    A lista jelenleg üres. <br> 
+                    Adj hozzá új szavakat a <strong>+</strong> jelre kattintva!
+                  </template>
+                </template>
+
+              </v-select>
+              <span
+                v-if="!wordExistsForLetter(char)"
+                class="text-muted mx-2"
+              >
+                Nem található szó ilyen betűvel.
+              </span>
+              <span
+                v-else
+                class="text-muted mx-2"
+              >
+                {{ getDefinitionForSelectedWord(selectedWords[charIndex]) }}
+              </span>
+            </div>
+
+            <div
+              v-if="!isReadOnly && selectedWords[charIndex] == null"
+              class="d-flex align-items-center justify-content-center mb-2 pointer"
+              v-tooltip.hover="'Új szó hozzáadása a listához'"
+            >
+              <font-awesome-icon
+                icon="fa-solid fa-plus"
+                class="border border-primary rounded p-1 pointer"
+                @click="showClueCreatorModal()"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="createError" class="mx-auto mb-4 input-max-width">
+      <div class="alert alert-danger d-flex align-items-center py-2" role="alert">
+        <font-awesome-icon icon="fa-solid fa-triangle-exclamation" class="me-2" />
+        <div>{{ createError }}</div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mt-4 mb-5 mx-auto input-max-width">
       <button
-        v-if="isCrosswordVisible"
         type="button"
-        class="btn btn-primary d-block mx-auto mt-4 w-25"
-        :disabled="!canCreateCrossword || wordsLoading || !!wordsError"
+        class="btn btn-primary btn-lg px-4 flex-grow-1 fw-bold shadow-sm"
+        :disabled="!canCreateCrossword || wordsLoading || !!wordsError || creating"
         @click="submitCrossword"
       >
-        {{  creating ? 'Mentés folyamatban...' : (isEditMode ? 'Módosítások mentése' : 'Rejtvény létrehozása') }}
+
+        <template v-if="creating">
+          <font-awesome-icon icon="fa-solid fa-spinner" class="fa-spin me-2" /> Mentés folyamatban...
+        </template>
+        <template v-else>
+          <font-awesome-icon :icon="isEditMode ? 'fa-solid fa-floppy-disk' : 'fa-solid fa-check'" class="me-2" />
+          {{ isEditMode ? 'Módosítások mentése' : 'Rejtvény létrehozása' }}
+        </template>
+
       </button>
+
       <button
         v-if="isEditMode"
         type="button"
-        class="btn btn-danger d-block mx-auto mt-4 w-25"
+        class="btn btn-outline-danger btn-lg px-4 shadow-sm"
         @click="isPopupVisible = true"
       >
-        Rejtvény törlése
+        <font-awesome-icon icon="fa-solid fa-trash-can" class="me-1" /> Törlés
       </button>
     </div>
 
-    <p v-if="createError" class="alert alert-danger text-center w-75 mx-auto mt-3">
-      {{ createError }}
-    </p>
+    <div
+      v-if="isEditMode && !isLoadingEditor && isPopupVisible"
+      class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center z-3 p-3"
+      @click.self="cancelDelete"
+    >
+      <div class="card shadow-lg p-4 p-md-5 text-center" style="max-width: 520px; width: 100%;">
+        <h3 class="fw-bold mb-3">Biztosan törölni szeretnéd a rejtvényed?</h3>
+    
+        <p class="text-muted mb-3">
+          Vigyázz, ha törlöd a rejtvényt, az <strong>véglegesen</strong> eltűnik a rendszerből, és <strong>nem lehet visszaállítani</strong>.
+        </p>
+
+        <div class="d-grid gap-2 col-11 mx-auto mt-2">
+          <button 
+            type="button" 
+            class="btn btn-danger fw-bold text-uppercase shadow-sm"
+            :disabled="isDeleting"
+            @click="confirmDelete"
+          >
+            <span v-if="isDeleting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Törlés
+          </button>
+        
+          <button 
+            type="button" 
+            class="btn btn-outline-secondary fw-bold text-uppercase shadow-sm" 
+            :disabled="isDeleting"
+            @click="cancelDelete"
+          >
+            Mégsem
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
   <ClueCreatorModal
     ref="clueCreatorModal"
     :topic-options="topics"
     :selected-topics="selectedTopics"
     @closed="hideClueCreatorModal"
-    @clue-created="loadCreatorWords"
+    @clue-created="handleClueCreated"
   />
-  <div
-    v-if="isEditMode && !isLoadingEditor && isPopupVisible"
-    class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center z-3 p-3"
-    @click.self="cancelDelete"
-  >
-    <div class="card shadow-lg p-4 p-md-5 text-center" style="max-width: 520px; width: 100%;">
-      <h3 class="fw-bold mb-3">Biztosan törölni szeretnéd a rejtvényed?</h3>
-    
-      <p class="text-muted mb-3">
-        Vigyázz, ha törlöd a rejtvényt, az <strong>véglegesen</strong> eltűnik a rendszerből, és <strong>nem lehet visszaállítani</strong>.
-      </p>
-
-      <div class="d-grid gap-2 col-11 mx-auto mt-2">
-        <button 
-          type="button" 
-          class="btn btn-danger fw-bold text-uppercase shadow-sm"
-          :disabled="isDeleting"
-          @click="confirmDelete"
-        >
-          <span v-if="isDeleting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          Törlés
-        </button>
-        
-        <button 
-          type="button" 
-          class="btn btn-outline-secondary fw-bold text-uppercase shadow-sm" 
-          :disabled="isDeleting"
-          @click="cancelDelete"
-        >
-          Mégsem
-        </button>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script>
 import { createCrossword, listCreatorWords, getWordsForLetterFromList, getCrosswordForEdit, updateCrossword, deleteCrossword } from '../services/crosswordCreatorApi'
 import { listTopics } from '../services/crosswordApi'
 import ClueCreatorModal from '../components/ClueCreatorModal.vue'
+import CrosswordGridEditor from '../components/crossword-editor/CrosswordGridEditor.vue'
+import { useCrosswordEditorStore } from '../stores/crosswordEditor.js'
 
 export default {
   name: 'CrosswordCreator',
   components: {
     ClueCreatorModal,
+    CrosswordGridEditor,
   },
   data() {
     return {
@@ -370,6 +441,13 @@ export default {
        * @type {boolean}
        */
       isPopupVisible: false,
+      /**
+       * Jelzi, hogy a felhasználó szabadkézi vagy egyszerűsített szerkesztő módban van-e.
+       * 
+       * @type {boolean}
+       */
+      freeFormMode: true,
+      editorStore: useCrosswordEditorStore(),
     }
   },
   async mounted() {
@@ -382,6 +460,32 @@ export default {
     }
   },
   computed: {
+    editor() {
+      return this.editorStore
+    },
+    /**
+     * Visszaadja, hogy a felhasználó szabadkézi vagy egyszerűsített szerkesztő módban van-e.
+     * 
+     * @return {boolean} True, ha szabadkézi módban van, false ha egyszerűsített módban van.
+     */
+    isFreeFormMode() {
+      return this.freeFormMode
+    },
+    /**
+     * Átállítja a felhasználót szabadkézi vagy egyszerűsített szerkesztő módba.
+     * Mivel jelenleg még nem publikálhatóak a szabadkézi rejtvények, ezért ha a felhasználó szabadkézi módba vált, akkor automatikusan privát rejtvényt hoz létre.
+     */
+    toggleEditorMode() {
+      if (this.isReadOnly || this.isEditMode) {
+        return
+      }
+
+      this.freeFormMode = !this.freeFormMode
+
+      if (this.freeFormMode) {
+        this.setPublic = false
+      }
+    },
     /**
      * Meghatározza, hogy az oldal szerkeszthető-e, vagy csak olvasható módban van.
      * 
@@ -575,9 +679,24 @@ export default {
      * @return {boolean}
      */
     canCreateCrossword() {
-      return this.isCrosswordVisible && !this.creating &&
-        this.selectedWords.length === this.mainSolutionChars.length &&
-        this.selectedWords.every(word => word !== null) && this.isTitleValid
+      if (this.creating || !this.isTitleValid) {
+        return false
+      }
+
+      if (this.freeFormMode) {
+        return this.editorStore.layoutValidation.isValid
+      }
+
+      return this.guidedLayoutIsValid
+    },
+    /**
+     * Megvizsgálja hogy egyszerűsített szerkesztő módban a felhasználó megadott-e helyes címet és főmegoldást,
+     * valamint minden betűhöz kiválasztott-e szót, és hogy a kiválasztott szavak érvényesek-e.
+     * 
+     * @return {boolean} True, ha a rejtvény létrehozható, false egyébként.
+     */
+    guidedLayoutIsValid() {
+      return this.isCrosswordVisible && this.selectedWords.length === this.mainSolutionChars.length && this.selectedWords.every(word => word !== null)
     },
   },
   watch: {
@@ -613,22 +732,35 @@ export default {
       }
 
       this.selectedWords = []
+      this.editorStore.resetEditor()
       this.loadCreatorWords()
     },
   },
   beforeRouteLeave() {
     this.clearEditor()
   },
-  beforeRouteUpdate(to, from, next) {
-    if (to.query.id !== from.query.id) {
+  async beforeRouteUpdate(to, from, next) {
+    try {
+      if (to.query.id === from.query.id) {
+        next()
+        return
+      }
+
       this.clearEditor()
-    }
+      await this.loadTopics()
 
-    if (to.query.id) {
-      this.initEditMode(to.query.id)
-    }
+      if (to.query.id) {
+        await this.initEditMode(to.query.id)
+      } else {
+        await this.loadCreatorWords()
+      }
 
-    next()
+      next()
+    } catch (error) {
+      console.error('Hiba történt a rejtvény betöltése során:', error)
+      this.createError = 'Nem sikerült betölteni a rejtvényt szerkesztéshez. Kérlek próbáld újra később.'
+      next(error)
+    }
   },
   methods: {
     async initEditMode(id) {
@@ -650,20 +782,26 @@ export default {
         const topicIds = this.selectedTopics.map(topic => topic.id)
         await this.loadCreatorWords(topicIds.length ? topicIds : null)
 
-        this.mainSolution = data.main_solution
+        if (data.main_solution) {
+          this.freeFormMode = false
+          this.mainSolution = String(data.main_solution).toUpperCase()
+          
+          await this.$nextTick() // Várunk, hogy a mainSolutionChars frissüljön a DOM-ban
 
-        await this.$nextTick() // Várunk, hogy a mainSolutionChars frissüljön a DOM-ban
-
-        if (data.clues && Array.isArray(data.clues)) {
-          this.selectedWords = data.clues.map(clue => {
-            const matchingWord = this.availableWords.find(word => word.id === clue.id)
-            return matchingWord || {
-              id: clue.id,
-              solution: String(clue.solution ?? '').toUpperCase(),
-              definition: clue.definition ?? '',
-              length: clue.length ?? String(clue.solution ?? '').length,
-            }
-          })
+          if (data.clues && Array.isArray(data.clues)) {
+            this.selectedWords = data.clues.map(clue => {
+              const matchingWord = this.availableWords.find(word => word.id === clue.id)
+              return matchingWord || {
+                id: clue.id,
+                solution: String(clue.solution ?? '').toUpperCase(),
+                definition: clue.definition ?? '',
+                length: clue.length ?? String(clue.solution ?? '').length,
+              }
+            })
+          }
+        } else {
+          this.freeFormMode = true
+          this.editorStore.loadEntries(data.entries || [])
         }
       } catch (error) {
         console.error('Hiba történt a rejtvény betöltése során:', error)
@@ -728,11 +866,16 @@ export default {
 
       const payload = {
         title: this.title.trim(),
-        main_solution: this.normalizeMainSolution,
-        clue_ids: this.selectedWords.map(word => word.id),
-        topic_ids: this.selectedTopics?.map(topic => topic.id) || [],
+        topic_ids: this.selectedTopics.map(topic => topic.id),
         difficulty: this.difficulty,
-        is_public: this.setPublic,
+        is_public: this.freeFormMode ? false : this.setPublic,
+      }
+
+      if (this.freeFormMode) {
+        payload.entries = this.editorStore.toApiEntries()
+      } else {
+        payload.main_solution = this.normalizeMainSolution
+        payload.clue_ids = this.selectedWords.map(word => word.id)
       }
 
       try {
@@ -744,7 +887,7 @@ export default {
           result = await createCrossword(payload)
         }
 
-        if (this.setPublic) {
+        if (payload.is_public) {
           this.$router.push(`/crossword/${result.id}`)
         } else if (!this.$route.query.id) {
           this.$router.push({ name: 'crosswordcreator', query: { id: result.id } })
@@ -761,6 +904,7 @@ export default {
           })
         }
       } catch (error) {
+        this.editorStore.serverErrors = error?.response?.data?.errors ?? null
 
         this.$notify({
           type: 'error',
@@ -881,6 +1025,14 @@ export default {
       this.isClueCreatorModalOpen = false
       this.$refs.clueCreatorModal.closeModal()
     },
+    async handleClueCreated(clue) {
+      if (this.freeFormMode) {
+        this.availableWords.push(clue)
+        this.editorStore.selectClue(clue)
+      } else {
+        await this.loadCreatorWords()
+      }
+    },
     /**
      * Alaphelyzetbe állítja a rejtvénykészítő összes mezőjét, hogy új rejtvényt lehessen létrehozni.
      * Akkor lehet rá szükség, ha pl. a felhasználó a profilról egy meglévő rejtvény szerkesztésére megy,
@@ -907,6 +1059,7 @@ export default {
       this.isLoadingEditor = false
       this.isDeleting = false
       this.isPopupVisible = false
+      this.editorStore.resetEditor()
     },
     /**
      * Megerősíti a rejtvény törlését, és elküldi a backendnek a törlési kérést.
@@ -1016,5 +1169,9 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
+}
+
+.input-max-width {
+  max-width: 600px;
 }
 </style>
