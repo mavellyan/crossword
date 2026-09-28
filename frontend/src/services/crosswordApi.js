@@ -48,10 +48,10 @@ export async function listTopics() {
   return response.data.topics
 }
 
-export async function validateWordForGuest(crosswordId, wordIndex, userInput) {
-  const response = await axios.post('/validateWordForGuest', {
+export async function validateEntryForGuest(crosswordId, placementId, userInput) {
+  const response = await axios.post('/validateEntry', {
     crossword_id: crosswordId,
-    word_index: wordIndex,
+    placement_id: placementId,
     user_input: userInput,
   })
 

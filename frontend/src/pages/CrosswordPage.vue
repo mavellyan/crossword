@@ -1,77 +1,111 @@
 <template>
-  <div v-if="!isPopupShown && isPageLoaded">
+  <div v-if="!isPageLoaded" class="text-center mt-5">
+    <p v-if="isLoading" class="text-muted">
+      Betöltés...
+    </p>
+    <p v-else-if="pageError" class="alert alert-danger">
+      {{ pageError }}
+    </p>
+  </div>
+
+  <div v-if="!isPopupShown && isPageLoaded" class="container-fluid px-xl-5 px-3 mt-3">
     <h1 class="text-center mb-2">
       {{ crosswordStore.title }}
     </h1>
-    <h5 class="text-center text-muted mb-5 fst-italic">
+    <h5 class="text-center text-muted mb-4 fst-italic">
       Készítette: {{ crosswordStore.creator }}
     </h5>
-    <CrosswordGrid
-      v-if="crosswordStore.words !== null"
-      :words="crosswordStore.words"
-      :width="crosswordStore.width"
-      :is-crossword-resetting="isCrosswordResetting"
-      @start-game="startGame()"
-      @abandon-attempt="abandonAttempt()"
-    />
-    <div v-if="isLoggedIn && !isCrosswordCompleted" class="text-center mt-4">
-      Időmérő
-      <div>
-        {{  displayTime  }}
+
+    <div class="row g-1">
+      <div class="col-12 col-lg-8 col-xl-8">
+        <CrosswordGridSolver
+          v-if="!isLoading && !pageError && crosswordStore.words !== null"
+          :is-crossword-started="isCrosswordStarted"
+        />
+      </div>
+
+      <div class="col-12 col-lg-4 col-xl-4">
+        
+        <div v-if="isLoggedIn && !isCrosswordCompleted" class="text-center bg-light p-3 rounded shadow-sm mb-4">
+          <div class="fw-bold lead mb-2">Időmérő</div>
+          <div class="fs-3 fw-semibold text-primary">
+            {{ displayTime }}
+          </div>
+          <div v-if="!isCrosswordStarted" class="d-flex justify-content-around mt-3 gap-2">
+            <button
+              class="btn btn-success btn-md shadow text-uppercase fw-bold"
+              @click="startGame()"
+              :disabled="isCrosswordResetting"
+            >
+              {{ startButtonText }}
+            </button>
+            <button
+              v-if="attemptStore.status === 'in_progress'"
+              class="btn btn-danger btn-md shadow text-uppercase fw-bold"
+              @click="abandonAttempt()"
+              :disabled="isCrosswordResetting"
+              v-tooltip.hover="'Törli a korábbi próbálkozást és visszaállítja a játékot a kezdeti állapotba.'"
+            >
+              Újrakezdés
+            </button>
+          </div>
+        </div>
+
+        <div v-if="isCrosswordCompleted" class="text-center bg-success text-white p-4 rounded shadow-sm mb-4">
+          <p class="lead fw-bold mb-3">Gratulálunk, sikeresen megoldottad a rejtvényt!</p>
+          <p v-if="isLoggedIn" class="mb-1">Jelenlegi időd: <strong>{{ displayTime }}</strong></p>
+          <p v-if="isLoggedIn" class="mb-0">Legjobb időd: <strong>{{ formatBestTime }}</strong></p>
+          <button
+            class="btn btn-secondary btn-md mt-2 shadow text-uppercase fw-bold"
+            @click="isLoggedIn ? abandonAttempt() : crosswordStore.guestReset()"
+            :disabled="isCrosswordResetting"
+          >
+            {{ startButtonText }}
+          </button>
+        </div>
+
+        <div class="bg-white p-3 rounded shadow-sm">
+          <div class="text-center fw-bold lead mb-3">A legjobb próbálkozások listája:</div>
+          
+          <div class="table-responsive">
+            <table v-if="isTableVisible" class="table table-striped table-hover mb-0 text-center align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Rang</th>
+                  <th scope="col">Felhasználó</th>
+                  <th scope="col">Idő</th>
+                  <th scope="col">Dátum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(attempt, index) in attemptStore.bestAttempts" :key="index">
+                  <td><strong>{{ index + 1 }}.</strong></td>
+                  <td>{{ attempt.username }}</td>
+                  <td>{{ formatTime(attempt.elapsed_time) }}</td>
+                  <td>{{ formatDate(attempt.completed_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="text-center text-muted mt-3 mb-1">
+              Még nincs befejezett próbálkozás. Légy te az első!
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
-    <div
-      v-if="isLoggedIn && isCrosswordCompleted"
-    >
-      <div class="text-center bg-light p-4 rounded shadow w-50 mx-auto mt-5">
-        <p class="lead fw-bold">Gratulálunk, sikeresen megoldottad a rejtvényt!</p>
-        <p>Jelenlegi időd: {{ displayTime }}</p>
-        <p>Legjobb időd: {{ formatBestTime }}</p>
-      </div>
-    </div>
-    <div class="text-center mt-5">
-      <div class="fw-bold lead">A legjobb próbálkozások listája:</div>
-      <table v-if="isTableVisible" class="table table-striped w-50 mx-auto mt-3">
-        <thead>
-          <tr>
-            <th scope="col">Rang</th>
-            <th scope="col">Felhasználó</th>
-            <th scope="col">Idő</th>
-            <th scope="col">Dátum</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(attempt, index) in attemptStore.bestAttempts" :key="index">
-            <td>{{ index + 1 }}</td>
-            <td>{{ attempt.username }}</td>
-            <td>{{ formatTime(attempt.elapsed_time) }}</td>
-            <td>{{ formatDate(attempt.completed_at) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="text-muted">Még nincs befejezett próbálkozás. Légy te az első!</p>
-    </div>
   </div>
-  <div v-else class="text-center">
-    <p v-if="crosswordStore.loading">
-      Betöltés...
-    </p>
-    <p v-else-if="crosswordStore.error" class="alert alert-danger">
-      {{ crosswordStore.error }}
-    </p>
-  </div>
+
   <div
     v-if="isPopupShown && isPageLoaded"
     class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center z-3 p-3"
   >
     <div class="card shadow-lg p-4 p-md-5 text-center" style="max-width: 520px; width: 100%;">
       <h3 class="fw-bold mb-3">Szeretnéd elmenteni az eredményeid?</h3>
-    
       <p class="text-muted mb-3">
         Vendégként is játszhatsz, de bejelentkezve elérhetővé válik az 
         <strong>időmérés</strong>, a <strong>félbehagyott játékok mentése</strong>, <strong>saját rejtvények készítése</strong> és még sok más.
       </p>
-
       <div class="d-grid gap-2 col-11 mx-auto mt-2">
         <router-link to="/login" class="btn btn-primary fw-bold text-uppercase shadow-sm">
           Bejelentkezés / Regisztráció
@@ -91,14 +125,14 @@
 <script>
 import { useCrosswordStore } from '../stores/crossword';
 import { useAttemptStore } from '../stores/attempt';
-import CrosswordGrid from '../components/CrosswordGrid.vue';
 import { useAuthStore } from '../stores/auth';
 import { mapState } from 'pinia';
+import CrosswordGridSolver from '../components/crossword-solver/CrosswordGridSolver.vue';
 
 export default {
   name: 'CrosswordPage',
   components: {
-    CrosswordGrid,
+    CrosswordGridSolver,
   },
   props: {
     id: {
@@ -147,6 +181,7 @@ export default {
   },
   computed: {
     ...mapState(useAuthStore, ['isLoggedIn']),
+    ...mapState(useCrosswordStore, ['isCompleted']),
     /**
      * Elérhetővé teszi a crossword Pinia store-t az oldal számára.
      *
@@ -159,17 +194,62 @@ export default {
       return useAttemptStore()
     },
     /**
+     * Visszaadja, hogy a rejtvény vagy a próbálkozás betöltése folyamatban van-e.
+     * Ha a felhasználó nincs bejelentkezve, akkor csak a rejtvény betöltési állapotát veszi figyelembe.
+     * Ha a felhasználó be van jelentkezve, akkor a próbálkozás betöltési állapotát is figyelembe veszi.
+     *
+     * @returns {boolean} Igaz, ha valamelyik betöltése folyamatban van, hamis egyébként.
+     */
+    isLoading() {
+      if (!this.isLoggedIn) {
+        return this.crosswordStore.loading
+      } else {
+        return this.crosswordStore.loading || this.attemptStore.loading
+      }
+    },
+    /**
+     * A start gomb szövegét adja vissza a játék állapotának függvényében.
+     *
+     * @returns {string}
+     */
+    startButtonText() {
+      if (this.attemptStore.status === 'in_progress') {
+        return 'Folytatás'
+      } else if (this.attemptStore.status === 'completed' || !this.isLoggedIn) {
+        return 'Újraindítás'
+      } else {
+        return 'Játék indítása'
+      }
+    },
+    /**
+     * Visszaadja a rejtvény betöltése közben vagy a próbálkozás betöltése közben fellépő hibát.
+     * Ha a felhasználó nincs bejelentkezve, akkor csak a rejtvény betöltési hibát adja vissza.
+     * Ha a felhasználó be van jelentkezve, akkor a próbálkozás betöltési hibát is figyelembe veszi.
+     * 
+     * @returns {string|null} A hiba üzenet, vagy null ha nincs hiba.
+     */
+    pageError() {
+      if (!this.isLoggedIn) {
+        return this.crosswordStore.error
+      } else {
+        if (this.crosswordStore.error || this.attemptStore.error) {
+          return this.crosswordStore.error || this.attemptStore.error
+        } else {
+          return null
+        }
+      }
+    },
+    /**
      * Ellenőrzi, hogy a rejtvény adatai betöltődtek-e.
      * 
      * @returns {boolean} Igaz, ha a rejtvény adatai betöltődtek, hamis egyébként.
      */
     isPageLoaded() {
       if (!this.isLoggedIn) {
-        return this.crosswordStore.id !== null && !this.crosswordStore.loading && !this.crosswordStore.error && Array.isArray(this.crosswordStore.words)
+        return this.crosswordStore.id !== null && !this.isLoading && !this.pageError && Array.isArray(this.crosswordStore.words)
       } else {
         return this.crosswordStore.id !== null && this.attemptStore.id !== null &&
-          !this.crosswordStore.loading && !this.attemptStore.loading &&
-          !this.crosswordStore.error && !this.attemptStore.error &&
+          !this.isLoading && !this.pageError &&
           Array.isArray(this.crosswordStore.words)
       }
     },
@@ -182,7 +262,7 @@ export default {
      * @returns {boolean} Igaz, ha a rejtvény be van fejezve, hamis egyébként.
      */
     isCrosswordCompleted() {
-      return this.attemptStore.isCompleted || this.attemptStore.status === 'completed'
+      return this.isLoggedIn ? this.attemptStore.isCompleted : this.crosswordStore.isCompleted
     },
     /**
      * Formázza az eltelt időt órákra, percekre és másodpercekre.
@@ -247,8 +327,34 @@ export default {
         await this.attemptStore.loadAttempt(newId)
         await this.crosswordStore.loadCrossword(newId)
         await this.attemptStore.loadBestAttempts(newId)
+
+        if (this.isLoggedIn) {
+          this.crosswordStore.applyAttemptState({
+            cellInputs: this.attemptStore.cellInputs,
+            correctEntryIds: this.attemptStore.correctEntryIds,
+          })
+        } else {
+          this.crosswordStore.applyAttemptState({
+            cellInputs: {},
+            correctEntryIds: [],
+          })
+        }
       }
     },
+    /**
+     * Figyeli a rejtvény befejezését, és ha a rejtvény be van fejezve, leállítja az időzítőt és frissíti a státuszt.
+     * 
+     * @param completed - A rejtvény befejezésének állapota, amit a Pinia store-ból kapunk.
+     */
+    isCrosswordCompleted(completed) {
+      if (!completed) {
+        return
+      }
+
+      this.stopGameTimer()
+      this.isCrosswordStarted = false
+      this.isAttemptStopped = true
+    }
   },
   mounted() {
     window.addEventListener('pagehide', this.handlePageHide)
@@ -313,7 +419,7 @@ export default {
         console.error('Hiba a próbálkozás elhagyása közben:', error)
       } finally {
         this.isCrosswordStarted = false
-        this.isAttemptStopped = false
+        this.isAttemptStopped = true
         this.isCrosswordResetting = false
       }
     },
@@ -383,7 +489,6 @@ export default {
       const date = new Date(normalizedDate)
 
       if (isNaN(date.getTime())) {
-        console.log('ezaz?')
         return 'N/A'
       }
 

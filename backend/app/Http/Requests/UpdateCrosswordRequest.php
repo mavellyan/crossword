@@ -40,7 +40,6 @@ class UpdateCrosswordRequest extends FormRequest
             'topic_ids' => ['nullable', 'array'],
             'topic_ids.*' => ['integer', 'distinct', 'exists:topics,id'],
             'difficulty' => ['nullable', Rule::enum(Difficulty::class)],
-            'is_public' => ['nullable', 'boolean'],
         ];
     }
 

@@ -14,4 +14,9 @@ enum ValidationErrors: string {
     case DISCONNECTED_ENTRY = 'disconnected_entry';
     case TOO_FEW_ENTRIES = 'too_few_entries';
     case DISCONNECTED_LAYOUT = 'disconnected_layout';
+    case MISSING_CLUE = 'missing_clue';
+    case MISSING_TITLE = 'missing_title';
+    case MISSING_SOLUTION = 'missing_solution';
+    case MISSING_DEFINITION = 'missing_definition';
+    case DUPLICATE_ENTRY = 'duplicate_entry';
 }

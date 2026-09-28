@@ -13,26 +13,31 @@ use App\Services\PlacementValidator;
 use App\Exceptions\InvalidCrosswordLayout;
 use App\Enums\Difficulty;
 use Illuminate\Auth\Access\AuthorizationException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use InvalidArgumentException;
+use LogicException;
 
 class CrosswordService
 {
     public function __construct(
         private readonly CrosswordGenerator $generator,
         private readonly PlacementValidator $placementValidator,
+        private readonly CrosswordPublicationValidator $publicationValidator,
     ) {
     }
 
-    public function getById(int $id, ?int $userId = null): array
+    public function getById(int $id): array
     {
-        $crossword = Crossword::with([
-            'crosswordClues.clue',
-            'creator',
-            'topics',
-        ])->findOrFail($id);
-
-        if ($crossword->user_id !== $userId && !$crossword->is_public) {
-            throw new AuthorizationException('Nincs jogosultságod a rejtvény megtekintéséhez.');
-        }
+        $crossword = Crossword::query()
+            ->whereKey($id)
+            ->where('is_public', true)
+            ->with([
+                'crosswordClues.clue',
+                'creator',
+                'topics',
+            ])
+            ->findOrFail($id);
 
         $gridData = $this->generator->generateGrid(
             $crossword->getWords(),
@@ -54,7 +59,7 @@ class CrosswordService
                 'main_solution' => mb_strtoupper($data['main_solution']),
                 'user_id' => $data['user_id'] ?? null,
                 'difficulty' => $data['difficulty'] ?? 'easy',
-                'is_public' => $data['is_public'] ?? false,
+                'is_public' => false,
             ]);
 
             $clues = collect($data['word_pairs'])
@@ -120,7 +125,7 @@ class CrosswordService
      *
      * @param array<array<string, mixed>> $entries - A felhasználó által megadott elhelyezési adatok tömbje.
      * @return array<Placement> - A létrehozott Placement objektumok tömbje.
-     * @throws Exception - Ha a megadott clue_id nem létezik.
+     * @throws ModelNotFoundException - Ha a megadott clue_id nem létezik.
      */
     private function resolveExplicitPlacements(array $entries): array
     {
@@ -133,7 +138,7 @@ class CrosswordService
             $clue = $cluesById->get($clueId);
 
             if (!$clue) {
-                throw new Exception('A megadott clue_id nem létezik: ' . $clueId);
+                throw new ModelNotFoundException('A megadott clue_id nem létezik: ' . $clueId);
             }
 
             return new Placement(
@@ -153,6 +158,7 @@ class CrosswordService
      * @param string $mainSolution - A főmegoldás szava.
      * @param array<int> $clueIds - A felhasználó által megadott clue_id-k tömbje.
      * @return array<Placement> - A létrehozott Placement objektumok tömbje.
+     * @throws ModelNotFoundException - Ha a megadott clue_id nem létezik.
      * @throws Exception - Ha a megadott clue_id nem létezik, vagy ha a generatedPlacementsFixedOrder metódus hibát dob.
      */
     private function resolveLegacyPlacements(string $mainSolution, array $clueIds): array
@@ -163,7 +169,7 @@ class CrosswordService
             $clue = $cluesById->get((int) $clueId);
 
             if (!$clue) {
-                throw new Exception('A megadott clue_id nem létezik: ' . $clueId);
+                throw new ModelNotFoundException('A megadott clue_id nem létezik: ' . $clueId);
             }
 
             return $clue;
@@ -209,7 +215,7 @@ class CrosswordService
                 'main_solution' => isset($data['main_solution']) ? mb_strtoupper($data['main_solution']) : null,
                 'user_id' => $data['user_id'],
                 'difficulty' => $data['difficulty'] ?? Difficulty::EASY,
-                'is_public' => $data['is_public'] ?? false,
+                'is_public' => false,
             ]);
 
             $crossword->topics()->sync($data['topic_ids'] ?? []);
@@ -280,7 +286,7 @@ class CrosswordService
             $userId = $filters['userId'] ?? null;
 
             if (!$userId) {
-                throw new Exception('A státusz szűrő csak bejelentkezett felhasználók számára elérhető.');
+                throw new AuthorizationException('A státusz szűrő csak bejelentkezett felhasználók számára elérhető.');
             }
 
             switch ($filters['status']) {
@@ -300,7 +306,7 @@ class CrosswordService
                     });
                     break;
                 default:
-                    throw new Exception('Ismeretlen státusz szűrő: ' . $filters['status']); 
+                    throw new InvalidArgumentException('Ismeretlen státusz szűrő: ' . $filters['status']); 
             }
         }
 
@@ -331,35 +337,48 @@ class CrosswordService
         return $query->get();
     }
 
-    public function validateWordForGuest(int $crosswordId, int $wordIndex, string $userInput): bool
+    public function validateEntryForGuest(int $crosswordId, int $placementId, string $userInput): bool
     {
-        $crossword = Crossword::with('crosswordClues.clue')->findOrFail($crosswordId);
+        $crossword = Crossword::query()->with('crosswordClues.clue')->findOrFail($crosswordId);
 
-        $clue = $crossword->crosswordClues->where('is_main', false)->values()->get($wordIndex)?->clue;
-
-        if (!$clue) {
-            throw new Exception('A megadott szóindex nem létezik a keresztrejtvényben.');
+        if (!$crossword->is_public) {
+            throw new AuthorizationException('A rejtvény nem nyilvános, így vendégként nem próbálható ki.');
         }
+
+        $clue = $crossword->crosswordClues->findOrFail($placementId)->clue;
 
         return mb_strtoupper($userInput) === mb_strtoupper($clue->solution);
     }
 
-    public function toggleVisibility(int $crosswordId, int $userId): Crossword
+    public function setVisibility(int $crosswordId, int $userId, bool $isPublic): Crossword
     {
-        $crossword = Crossword::findOrFail($crosswordId);
+        return DB::transaction(function () use ($crosswordId, $userId, $isPublic) {
+            $crossword = Crossword::query()->whereKey($crosswordId)->lockForUpdate()->firstOrFail();
 
-        if ($crossword->user_id !== $userId) {
-            throw new Exception('Más rejtvényének a láthatóságát nem módosíthatod.');
-        }
+            if ($crossword->user_id !== $userId) {
+                throw new AuthorizationException('Más rejtvényének a láthatóságát nem módosíthatod.');
+            }
 
-        if (!$crossword->is_public && $crossword->main_solution === null) {
-            throw new Exception('A szabadkézi rejtvények publikálása még nem támogatott.');
-        }
+            if ($crossword->is_public === $isPublic) {
+                return $crossword;
+            }
 
-        $crossword->is_public = !$crossword->is_public;
-        $crossword->save();
+            $hasRealAttempts = $crossword->attempts()->where('status', '!=', 'not_started')->exists();
 
-        return $crossword;
+            if (!$isPublic && $hasRealAttempts) {
+                throw new ConflictHttpException('Ez a rejtvény már rendelkezik próbálkozásokkal, így nem tehető priváttá.');
+            }
+
+            if ($isPublic) {
+                $this->publicationValidator->assertPublishable($crossword);
+            }
+
+            $crossword->update([
+                'is_public' => $isPublic,
+            ]);
+
+            return $crossword->refresh();
+        });
     }
 
     public function getForEdit(int $id, int $userId): array
@@ -377,7 +396,7 @@ class CrosswordService
         ->findOrFail($id);
 
         if ($crossword->user_id !== $userId) {
-            throw new Exception('Nincs jogosultságod a rejtvény megtekintéséhez/szerkesztéséhez.');
+            throw new AuthorizationException('Nincs jogosultságod a rejtvény megtekintéséhez/szerkesztéséhez.');
         }
 
         return [
@@ -411,13 +430,13 @@ class CrosswordService
             $crossword = Crossword::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($crossword->user_id !== $userId) {
-                throw new Exception('Más rejtvényét nem módosíthatod.');
+                throw new AuthorizationException('Más rejtvényét nem módosíthatod.');
             }
 
             $hasRealAttempts = $crossword->attempts()->where('status', '!=', 'not_started')->exists();
 
             if ($crossword->is_public || $hasRealAttempts) {
-                throw new Exception('Ez a rejtvény már nyilvános vagy rendelkezik próbálkozásokkal, így nem módosítható.');
+                throw new ConflictHttpException('Ez a rejtvény már nyilvános vagy rendelkezik próbálkozásokkal, így nem módosítható.');
             }
 
             if (!empty($data['entries'])) {
@@ -437,7 +456,7 @@ class CrosswordService
                 'title' => $data['title'],
                 'main_solution' => isset($data['main_solution']) ? mb_strtoupper($data['main_solution']) : null,
                 'difficulty' => $data['difficulty'] ?? 'easy',
-                'is_public' => $data['is_public'] ?? false,
+                'is_public' => false,
             ]);
 
             // Témák frissítése
@@ -470,12 +489,20 @@ class CrosswordService
 
     public function deleteCrossword(int $id, int $userId): void
     {
-        $crossword = Crossword::findOrFail($id);
+        DB::transaction(function () use ($id, $userId) {
+            $crossword = Crossword::query()->whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ($crossword->user_id !== $userId) {
-            throw new Exception('Más rejtvényét nem törölheted.');
-        }
+            if ($crossword->user_id !== $userId) {
+                throw new AuthorizationException('Más rejtvényét nem törölheted.');
+            }
 
-        $crossword->delete();
+            $hasRealAttempts = $crossword->attempts()->where('status', '!=', 'not_started')->exists();
+
+            if ($crossword->is_public || $hasRealAttempts) {
+                throw new ConflictHttpException('Ez a rejtvény nyilvános vagy már rendelkezik megkezdett próbálkozásokkal, így nem törölhető.');
+            }
+
+            $crossword->delete();
+        });
     }
 }

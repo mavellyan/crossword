@@ -36,9 +36,9 @@ Route::get('/getCrossword', [\App\Http\Controllers\CrosswordController::class, '
 
 Route::post('/createCrossword', [\App\Http\Controllers\CrosswordController::class, 'createCrossword'])->middleware('auth:sanctum');
 
-Route::post('/validateWordForGuest', [\App\Http\Controllers\CrosswordController::class, 'validateWordForGuest']);
+Route::post('/validateEntry', [\App\Http\Controllers\CrosswordController::class, 'validateEntryForGuest']);
 
-Route::post('/toggleVisibility', [\App\Http\Controllers\CrosswordController::class, 'toggleVisibility'])->middleware('auth:sanctum');
+Route::patch('/setVisibility', [\App\Http\Controllers\CrosswordController::class, 'setVisibility'])->middleware('auth:sanctum');
 
 Route::get('/getCrosswordForEdit', [\App\Http\Controllers\CrosswordController::class, 'getCrosswordForEdit'])->middleware('auth:sanctum');
 

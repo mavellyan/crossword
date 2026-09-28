@@ -32,9 +32,18 @@ const app = createApp(App)
 
 app.directive('tooltip', {
     mounted(el, binding) {
+        let placement = 'top'
+        if (binding.modifiers.bottom) placement = 'bottom'
+        else if (binding.modifiers.left) placement = 'left'
+        else if (binding.modifiers.right) placement = 'right'
+        else if (binding.modifiers.top) placement = 'top'
+
+        const trigger = binding.modifiers.hover ? 'hover' : 'click'
+
         new bootstrap.Tooltip(el, {
             title: binding.value,
-            trigger: 'binding.modifiers.hover' ? 'hover' : 'click',
+            placement: placement,
+            trigger: trigger,
         })
     },
     unmounted(el) {

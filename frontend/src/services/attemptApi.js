@@ -62,10 +62,10 @@ export async function abandonAttempt(attemptId) {
 }
 
 
-export async function saveProgress(attemptId, wordInputs, stateVersion) {
+export async function saveProgress(attemptId, cellInputs, stateVersion) {
   const response = await axios.post('/saveProgress', {
     attempt_id: attemptId,
-    word_inputs: wordInputs,
+    cell_inputs: cellInputs,
     state_version: stateVersion,
   })
 
@@ -92,7 +92,7 @@ export async function listBestAttempts(crosswordId) {
   return response.data.table ?? []
 }
 
-export function saveAndStopBeacon(attemptId, wordInputs, stateVersion) {
+export function saveAndStopBeacon(attemptId, cellInputs, stateVersion) {
   return fetch(axios.defaults.baseURL + '/saveAndStopBeacon', {
     method: 'POST',
     keepalive: true,
@@ -103,7 +103,7 @@ export function saveAndStopBeacon(attemptId, wordInputs, stateVersion) {
     },
     body: JSON.stringify({
       attempt_id: attemptId,
-      word_inputs: wordInputs,
+      cell_inputs: cellInputs,
       state_version: stateVersion,
     }),
   })

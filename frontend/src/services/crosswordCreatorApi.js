@@ -78,18 +78,19 @@ export function getWordsForLetterFromList(words, letter) {
   )
 }
 
-export async function toggleVisibility(crosswordId) {
+export async function setVisibility(crosswordId, isPublic) {
   try {
-    const response = await axios.post('/toggleVisibility', { 
+    const response = await axios.patch('/setVisibility', { 
       id: crosswordId,
-     })
+      is_public: isPublic
+    })
 
     if (!response.data.success) {
       console.log('Érvénytelen API válasz:', response.data)
       throw new Error(response.data.message ?? 'Nem sikerült váltani a rejtvény láthatóságát.')
     }
 
-    return response.data.success
+    return response.data
   } catch (error) {
     console.error('Hiba a rejtvény láthatóságának váltásakor:', error)
     throw error

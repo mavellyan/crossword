@@ -5,7 +5,6 @@ import { useCrosswordStore } from '@/stores/crossword'
 
 export const useAttemptStore = defineStore('attempt', {
   state: () => ({
-    crosswordStore: useCrosswordStore(),
     /**
      * Az adott rejtvényhez tartozó próbálkozás azonosítója
      * 
@@ -13,19 +12,18 @@ export const useAttemptStore = defineStore('attempt', {
      */
     id: null,
     /**
-     * A próbálkozás során a felhasználó által beírt szavak, ahol a kulcs a szó azonosítója, az érték pedig egy tömb,
-     * amely a szó celláinak számával egyezik és a beírt karaktereket tartalmazza.
+     * A próbálkozás során a felhasználó által beírt cellák, a kulcs a cella pozíciója sor:oszlop formátumban, az érték a cellába beírt karakter.
      * 
-     * @type {Array<Array<string>>}
+     * @type {Object<string, string>}
      */
-    wordInputs: [],
+    cellInputs: {},
     /**
      * A backend által visszaadott helyes szavak elhelyezési azonosítóinak listája. Ezt a frontend a crosswordStoreban található wordStatus tömb frissítésére használja.
      * Ez alapján jelöljük a hibás és helyes szavakat a felhasználói felületen.
      * 
-     * @type {Array<string>}
+     * @type {Array<number>}
      */
-    correctWords: [],
+    correctEntryIds: [],
     /**
      * A próbálkozás státusza, lehetséges értékek: "not_started", "in_progress", "completed", "abandoned".
      * 
@@ -93,13 +91,33 @@ export const useAttemptStore = defineStore('attempt', {
      * @type {Array<Object>}
      */
     bestAttempts: [],
+    /**
+     * Jelzi, hogy a rejtvény már meg volt-e oldva, amikor betöltésre került. Ha true, akkor elhomályosítva jelenik meg a rejtvény.
+     * Friss befejezés esetén nem akarjuk rögtön elhomályosítani.
+     * 
+     * @type {boolean}
+     */
+    wasCompleted: false,
   }),
+
+  getters: {
+    /**
+     * Egy próbálkozás akkor tekintendő "éppen befejezettnek", ha az aktuális állapot szerint befejezett, de az előző állapot szerint még nem volt befejezett.
+     * Ennek segítségével döntjük el, hogy elhomályosítjuk-e a rejtvényt, vagy sem. Ha a rejtvény már betöltéskor be volt fejezve, akkor el akarjuk elhomályosítani.
+     * 
+     * @param state 
+     * @returns {boolean}
+     */
+    justFinished(state) {
+      return state.isCompleted && !state.wasCompleted
+    },
+  },
 
   actions: {
     resetState() {
       this.id = null
-      this.wordInputs = []
-      this.correctWords = []
+      this.cellInputs = {}
+      this.correctEntryIds = []
       this.status = null
       this.stateVersion = null
       this.elapsedTime = 0
@@ -111,16 +129,18 @@ export const useAttemptStore = defineStore('attempt', {
       this.modified = false
       this.saving = false
       this.bestAttempts = []
+      this.wasCompleted = false
     },
     initializeAttemptState(attempt) {
       this.id = attempt.id
-      this.wordInputs = attempt.word_inputs ?? []
-      this.correctWords = attempt.correct_words ?? []
+      this.cellInputs = attempt.cell_inputs ?? {}
+      this.correctEntryIds = attempt.correct_entry_ids ?? []
       this.status = attempt.status
       this.stateVersion = attempt.state_version
       this.elapsedTime = attempt.elapsed_time ?? 0
       this.startedAt = attempt.started_at ?? null
       this.isCompleted = attempt.status === 'completed'
+      this.wasCompleted = attempt.status === 'completed'
     },
     /**
      * Rejtvény adatot kér route id alapján, majd inicializálja a játékállapotot.
@@ -129,11 +149,12 @@ export const useAttemptStore = defineStore('attempt', {
      * @returns {Promise<void>}
      */
     async loadAttempt(id) {
+      this.resetState()
+
       if (!id || !useAuthStore().isLoggedIn) {
         return
       }
       
-      this.resetState()
       this.loading = true
     
       try {
@@ -211,14 +232,16 @@ export const useAttemptStore = defineStore('attempt', {
       if (!useAuthStore().isLoggedIn || !this.id) {
         return
       }
+
+      const crosswordStore = useCrosswordStore()
     
       try {
         const data = await abandonAttempt(this.id)
     
         if (data.success) {
-          await this.loadAttempt(this.crosswordStore.id)
-          await this.crosswordStore.loadCrossword(this.crosswordStore.id)
-          await this.loadBestAttempts(this.crosswordStore.id)
+          await this.loadAttempt(crosswordStore.id)
+          await crosswordStore.loadCrossword(crosswordStore.id)
+          await this.loadBestAttempts(crosswordStore.id)
         }
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás feladása közben:', error)
@@ -237,18 +260,19 @@ export const useAttemptStore = defineStore('attempt', {
       if (!useAuthStore().isLoggedIn || !this.id || this.status === 'completed' || this.saving || !this.modified) {
         return
       }
+      const crosswordStore = useCrosswordStore()
 
       this.saving = true
 
       try {
-        const snapshot = this.crosswordStore.createProgressPayload()
+        const snapshot = crosswordStore.createProgressPayload()
         
         const response = await saveProgress(this.id, snapshot, this.stateVersion)
 
         // Itt biztosan lennie kell már attemptnek, mivel a backend csak akkor engedi a mentést, ha van attemptId és login
         this.status = response.attempt.status
         this.stateVersion = response.attempt.state_version
-        this.correctWords = response.attempt.correct_words ?? []
+        this.correctEntryIds = response.attempt.correct_entry_ids ?? []
 
         // Ha a rejtvény befejeződött, akkor nullázzuk a startedAt értéket, és frissítjük az elapsedTime-ot a backendről
         if (this.status === 'completed') {
@@ -257,20 +281,20 @@ export const useAttemptStore = defineStore('attempt', {
           this.isCompleted = true
         }
 
-        this.crosswordStore.validateWords()
+        crosswordStore.updateEntryStatuses(this.correctEntryIds)
 
         // Ellenőrízzük, hogy a mentés közben történt-e változás a rejtvényben
         // Ha a snapshot és az új snapshot nem egyezik, akkor a rejtvény módosult a mentés óta
-        const newSnapshot = this.crosswordStore.createProgressPayload()
+        const newSnapshot = crosswordStore.createProgressPayload()
         this.modified = JSON.stringify(snapshot) !== JSON.stringify(newSnapshot)
 
         if (this.modified) {
-          this.scheduleSave()
+          crosswordStore.scheduleSave()
         }
 
         if (this.status === 'completed' && response.best_time !== undefined) {
           this.bestTime = response.best_time
-          this.loadBestAttempts(this.crosswordStore.id)
+          this.loadBestAttempts(crosswordStore.id)
         }
 
       } catch (error) {
@@ -292,7 +316,9 @@ export const useAttemptStore = defineStore('attempt', {
         return
       }
 
-      const snapshot = this.crosswordStore.createProgressPayload()
+      const crosswordStore = useCrosswordStore()
+
+      const snapshot = crosswordStore.createProgressPayload()
       saveAndStopBeacon(this.id, snapshot, this.stateVersion)
     },
     async loadBestAttempts(crosswordId) {

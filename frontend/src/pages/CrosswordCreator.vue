@@ -65,9 +65,9 @@
         <div class="col-sm-6">
           <label class="form-label fw-bold text-muted small text-uppercase">Láthatóság</label>
           <div 
-            class="form-control form-control-lg bg-light d-flex align-items-center justify-content-between pointer"
+            class="form-control form-control-lg bg-light d-flex align-items-center justify-content-between"
             :class="{ 'cursor-pointer': !isReadOnly, 'opacity-75': isReadOnly }"
-            @click="!isReadOnly && !isFreeFormMode && (setPublic = !setPublic)"
+            v-tooltip.hover.right="'A rejtvény láthatóságát a profil oldaladon tudod beállítani. Ez csak egy tájékoztató jellegű mező, a rejtvény létrehozásakor a láthatóság automatikusan privát lesz.'"
           >
             <span class="fw-bold" :class="setPublic ? 'text-primary' : 'text-secondary'">
               {{ setPublic ? 'Nyilvános' : 'Privát' }}
@@ -79,8 +79,7 @@
                 role="switch" 
                 id="visibilityToggle"
                 v-model="setPublic"
-                :disabled="isReadOnly || isFreeFormMode"
-                @click.stop
+                :disabled="true"
                 style="cursor: inherit;"
               >
             </div>
@@ -238,7 +237,7 @@
       <button
         type="button"
         class="btn btn-primary btn-lg px-4 flex-grow-1 fw-bold shadow-sm"
-        :disabled="!canCreateCrossword || wordsLoading || !!wordsError || creating"
+        :disabled="isReadOnly || !canCreateCrossword || wordsLoading || !!wordsError || creating"
         @click="submitCrossword"
       >
 
@@ -257,6 +256,7 @@
         type="button"
         class="btn btn-outline-danger btn-lg px-4 shadow-sm"
         @click="isPopupVisible = true"
+        :disabled="isReadOnly"
       >
         <font-awesome-icon icon="fa-solid fa-trash-can" class="me-1" /> Törlés
       </button>
@@ -868,7 +868,6 @@ export default {
         title: this.title.trim(),
         topic_ids: this.selectedTopics.map(topic => topic.id),
         difficulty: this.difficulty,
-        is_public: this.freeFormMode ? false : this.setPublic,
       }
 
       if (this.freeFormMode) {
@@ -887,22 +886,22 @@ export default {
           result = await createCrossword(payload)
         }
 
-        if (payload.is_public) {
-          this.$router.push(`/crossword/${result.id}`)
-        } else if (!this.$route.query.id) {
-          this.$router.push({ name: 'crosswordcreator', query: { id: result.id } })
+        if (this.isEditMode) {
           this.$notify({
             type: 'success',
             title: 'Sikeres mentés',
-            text: 'A rejtvényed sikeresen létrehozva!',
+            text: 'A rejtvényed sikeresen frissítve!',
           })
         } else {
           this.$notify({
             type: 'success',
             title: 'Sikeres mentés',
-            text: 'A rejtvényed sikeresen elmentve! Mivel privát, csak te láthatod.',
+            text: 'A rejtvényed sikeresen létrehozva!',
           })
         }
+
+        this.$router.push({ name: 'crosswordcreator', query: { id: result.id } })
+
       } catch (error) {
         this.editorStore.serverErrors = error?.response?.data?.errors ?? null
 

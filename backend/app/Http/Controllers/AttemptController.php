@@ -6,6 +6,13 @@ use App\Models\CrosswordAttempt;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\AttemptService;
+use Throwable;
+use App\Exceptions\AttemptStateConflict;
+use App\Models\Crossword;
+use App\Exceptions\CrosswordUnavailableException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class AttemptController extends Controller
 {
@@ -29,29 +36,53 @@ class AttemptController extends Controller
             ], 401);
         }
 
-        $result = $this->attemptService->getById($validated['crossword_id'], $user?->id);
+        try {
+            $result = $this->attemptService->getById($validated['crossword_id'], $user?->id);
 
-        $attempt = $result['attempt'];
+            $attempt = $result['attempt'];
 
-        return response()->json([
-            'success' => true,
-            'attempt' => $user === null ? null : [
-                'id' => $attempt->id, 
-                'status' => $attempt->status,
-                'state_version' => $attempt->state_version,
-                'word_inputs' => data_get($attempt->grid_state, 'word_inputs', []),
-                'correct_words' => data_get($attempt->grid_state, 'correct_words', []),
-                'elapsed_time' => $attempt->elapsed_time,
-                'started_at' => $attempt->started_at,
-            ],
-            'best_time' => $result['best_time'],
-        ]);
+            return response()->json([
+                'success' => true,
+                'attempt' => $user === null ? null : [
+                    'id' => $attempt->id, 
+                    'status' => $attempt->status,
+                    'state_version' => $attempt->state_version,
+                    'cell_inputs' => (object) data_get($attempt->grid_state, 'cell_inputs', []),
+                    'correct_entry_ids' => data_get($attempt->grid_state, 'correct_entry_ids', []),
+                    'elapsed_time' => $attempt->elapsed_time,
+                    'started_at' => $attempt->started_at,
+                ],
+                'best_time' => $result['best_time'],
+            ]);
+        } catch (AuthorizationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
+        } catch (CrosswordUnavailableException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A próbálkozás nem található.',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Váratlan hiba a próbálkozás lekérdezésekor', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a próbálkozás lekérdezésekor! Kérjük, próbálja meg újból!',
+            ], 500);
+        }
     }
 
     public function startAttempt(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'attempt_id' => 'nullable|integer|exists:crossword_attempts,id',
+            'attempt_id' => 'required|integer|exists:crossword_attempts,id',
         ]);
 
         $user = $request->user();
@@ -63,35 +94,42 @@ class AttemptController extends Controller
             ], 401);
         }
 
-        $attempt = CrosswordAttempt::query()
-            ->whereKey($validated['attempt_id'])
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        try {
+            $attempt = $this->attemptService->startAttempt($validated['attempt_id'], $user->id);
 
-        if ($attempt->status === 'completed') {
+            return response()->json([
+                'success' => true,
+                'attempt' => [
+                    'id' => $attempt->id,
+                    'status' => $attempt->status,
+                    'state_version' => $attempt->state_version,
+                    'elapsed_time' => $attempt->elapsed_time,
+                    'started_at' => $attempt->started_at,
+                ],
+            ]);
+        } catch (CrosswordUnavailableException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ez a próbálkozás már be van fejezve.',
+                'message' => $e->getMessage(),
+            ], 403);
+        } catch (AttemptStateConflict $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 409);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A próbálkozás nem található.',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Váratlan hiba a próbálkozás indításakor', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a próbálkozás indításakor! Kérjük, próbálja meg újból!',
+            ], 500);
         }
-
-        if ($attempt->status === 'not_started') {
-            $attempt->status = 'in_progress';
-        }
-
-        $attempt->started_at = now();
-        $attempt->save();
-
-        return response()->json([
-            'success' => true,
-            'attempt' => [
-                'id' => $attempt->id,
-                'status' => $attempt->status,
-                'state_version' => $attempt->state_version,
-                'elapsed_time' => $attempt->elapsed_time,
-                'started_at' => $attempt->started_at,
-            ],
-        ]);
     }
 
     public function stopAttempt(Request $request): JsonResponse
@@ -106,23 +144,37 @@ class AttemptController extends Controller
             return response()->json(['success' => false], 401);
         }
 
-        $attempt = CrosswordAttempt::query()
-            ->whereKey($validated['attempt_id'])
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        try {
+            $attempt = $this->attemptService->stopAttempt($validated['attempt_id'], $user->id);
 
-        if (!$attempt || $attempt->status !== 'in_progress') {
-            return response()->json(['success' => false], 409);
+            return response()->json([
+                'success' => true,
+                'attempt' => [
+                    'id' => $attempt->id,
+                    'status' => $attempt->status,
+                    'state_version' => $attempt->state_version,
+                    'elapsed_time' => $attempt->elapsed_time,
+                    'started_at' => $attempt->started_at,
+                ],
+            ]);
+        } catch (AttemptStateConflict $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 409);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A próbálkozás nem található.',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Váratlan hiba a próbálkozás leállításakor', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a próbálkozás leállításakor! Kérjük, próbálja meg újból!',
+            ], 500);
         }
-
-        if ($attempt->started_at !== null) {
-            $attempt->elapsed_time += $attempt->started_at->diffInSeconds(now());
-            $attempt->started_at = null;
-        }
-
-        $attempt->save();
-
-        return response()->json(['success' => true,]);
     }
 
     public function abandonAttempt(Request $request): JsonResponse
@@ -140,47 +192,31 @@ class AttemptController extends Controller
             ], 401);
         }
 
-        $attempt = CrosswordAttempt::query()
-            ->whereKey($validated['attempt_id'])
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-
-        if (!in_array($attempt->status, ['in_progress', 'completed'], true)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ez a próbálkozás még nincs elkezdve, vagy már el van dobva, nem lehet eldobni.',
-            ], 409);
-        }
-
-        // Ha a próbálkozás már be van fejezve, akkor nem kell semmit csinálni, csak jelezzük, hogy új próbálkozást kell indítani.
-        if ($attempt->status === 'completed') {
-            $newAttempt = CrosswordAttempt::create([
-                'user_id' => $user->id,
-                'crossword_id' => $attempt->crossword_id,
-                'status' => 'not_started',
-                'grid_state' => [
-                    'word_inputs' => [],
-                ],
-                'state_version' => 0,
-                'elapsed_time' => 0,
-            ]);
-
-            $newAttempt->save();
+        try {
+            $this->attemptService->abandonAttempt($validated['attempt_id'], $user->id);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Befejezett próbálkozás, létrehoztunk egy újat.',
-            ], 200);
+                'message' => 'Próbálkozás sikeresen törölve.',
+            ]);
+        } catch (AttemptStateConflict $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 409);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A próbálkozás nem található.',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Váratlan hiba a próbálkozás törlésekor', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a próbálkozás törlésekor! Kérjük, próbálja meg újból!',
+            ], 500);
         }
-
-        $attempt->status = 'abandoned';
-        $attempt->abandoned_at = now();
-        $attempt->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Próbálkozás sikeresen törölve.',
-        ]);
     }
 
     public function listBestAttempts(Request $request): JsonResponse
@@ -189,29 +225,30 @@ class AttemptController extends Controller
             'crossword_id' => 'required|integer|exists:crosswords,id',
         ]);
 
-        $attempts = CrosswordAttempt::query()
-            ->where('crossword_id', $validated['crossword_id'])
-            ->where('status', 'completed')
-            ->orderBy('elapsed_time', 'asc')
-            ->limit(5)
-            ->get();
-        
-        $table = [];
+        $crossword = Crossword::query()->findOrFail($validated['crossword_id']);
 
-        foreach ($attempts as $attempt) {
-            $user = $attempt->user;
-
-            $table[] = [
-                'username' => $user->username,
-                'elapsed_time' => $attempt->elapsed_time,
-                'completed_at' => $attempt->completed_at,
-            ];
+        if (!$crossword->is_public) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A rejtvény nem nyilvános, így a legjobb próbálkozások nem érhetők el.',
+            ], 403);
         }
 
-        return response()->json([
-            'success' => true,
-            'table' => $table
-        ]);
+        try {
+            $table = $this->attemptService->listBestAttempts($validated['crossword_id']);
+
+            return response()->json([
+                'success' => true,
+                'table' => $table
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Váratlan hiba a legjobb próbálkozások lekérdezésekor', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a legjobb próbálkozások lekérdezésekor! Kérjük, próbálja meg újból!',
+            ], 500);
+        }
     }
 
     public function saveProgress(Request $request): JsonResponse
@@ -219,9 +256,8 @@ class AttemptController extends Controller
         $validated = $request->validate([
             'attempt_id' => 'required|integer|exists:crossword_attempts,id',
             'state_version' => 'required|integer',
-            'word_inputs' => 'required|array',
-            'word_inputs.*' => 'required|array',
-            'word_inputs.*.*' => 'nullable|string|max:1',
+            'cell_inputs' => 'present|array',
+            'cell_inputs.*' => 'nullable|string|max:1',
         ]);
 
         $user = $request->user();
@@ -233,59 +269,57 @@ class AttemptController extends Controller
             ], 401);
         }
 
-        $attempt = CrosswordAttempt::query()
-            ->whereKey($validated['attempt_id'])
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        $submittedInputs = $validated['cell_inputs'];
 
-        if ($attempt->status !== 'in_progress') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ez a próbálkozás már be van fejezve, nem lehet menteni a folyamatot.',
-            ], 409);
-        }
-
-        if ((int) $attempt->state_version !== (int) $validated['state_version']) {
-            return response()->json([
-                'success' => false,
-                'message' => 'A próbálkozás állapota megváltozott, frissítsd az oldalt és próbáld újra.',
-            ], 409);
-        }
-
-        $submittedInputs = $validated['word_inputs'];
-
-        $attempt = $this->attemptService->updateAttemptState($attempt, $submittedInputs);
+        try {
+            $attempt = $this->attemptService->updateAttemptState($validated['attempt_id'], $user->id, $submittedInputs, $validated['state_version']);
         
-        if ($attempt->status === 'completed') {
-            $bestAttempt = CrosswordAttempt::query()
-                ->where('user_id', $user->id)
-                ->where('crossword_id', $attempt->crossword_id)
-                ->where('status', 'completed')
-                ->orderBy('elapsed_time', 'asc')
-                ->first();
+            if ($attempt->status === 'completed') {
+                $bestAttempt = CrosswordAttempt::query()
+                    ->where('user_id', $user->id)
+                    ->where('crossword_id', $attempt->crossword_id)
+                    ->where('status', 'completed')
+                    ->orderBy('elapsed_time', 'asc')
+                    ->first();
 
-            $bestTime = $bestAttempt ? $bestAttempt->elapsed_time : null;
+                $bestTime = $bestAttempt ? $bestAttempt->elapsed_time : null;
 
-            if ($bestTime === null || $attempt->elapsed_time < $bestTime) {
-                $bestTime = $attempt->elapsed_time;
+                if ($bestTime === null || $attempt->elapsed_time < $bestTime) {
+                    $bestTime = $attempt->elapsed_time;
+                }
             }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mentés sikeres!',
+                'attempt' => [
+                    'id' => $attempt->id,
+                    'status' => $attempt->status,
+                    'state_version' => $attempt->state_version,
+                    'elapsed_time' => $attempt->elapsed_time,
+                    'started_at' => $attempt->started_at,
+                    'correct_entry_ids' => $attempt->grid_state['correct_entry_ids'] ?? [],
+                ],
+                'best_time' => $bestTime ?? null,
+            ]);
+        } catch (AttemptStateConflict $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 409);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A próbálkozás nem található.',
+            ], 404);
+        } catch (Throwable $e) {
+            Log::error('Váratlan hiba a próbálkozás mentésekor', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hiba történt a próbálkozás mentésekor! Kérjük, próbálja meg újból!',
+            ], 500);
         }
-
-        $attempt->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Mentés sikeres!',
-            'attempt' => [
-                'id' => $attempt->id,
-                'status' => $attempt->status,
-                'state_version' => $attempt->state_version,
-                'elapsed_time' => $attempt->elapsed_time,
-                'started_at' => $attempt->started_at,
-                'correct_words' => $attempt->grid_state['correct_words'] ?? [],
-            ],
-            'best_time' => $bestTime ?? null,
-        ]);
     }
 
     public function saveAndStopBeacon(Request $request): JsonResponse
@@ -293,9 +327,8 @@ class AttemptController extends Controller
         $validated = $request->validate([
             'attempt_id' => 'required|integer|exists:crossword_attempts,id',
             'state_version' => 'required|integer',
-            'word_inputs' => 'required|array',
-            'word_inputs.*' => 'required|array',
-            'word_inputs.*.*' => 'nullable|string|max:1'
+            'cell_inputs' => 'present|array',
+            'cell_inputs.*' => 'nullable|string|max:1',
         ]);
 
         $user = $request->user();
@@ -304,27 +337,18 @@ class AttemptController extends Controller
             return response()->json(['success' => false], 401);
         }
 
-        $attempt = CrosswordAttempt::query()
-            ->whereKey($validated['attempt_id'])
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        $submittedInputs = $validated['cell_inputs']; 
 
-        if (!$attempt || $attempt->status !== 'in_progress') {
-            return response()->json(['success' => false], 409);
+        try {
+            $this->attemptService->updateAttemptState($validated['attempt_id'], $user->id, $submittedInputs, $validated['state_version'], true);
+
+            return response()->json(['success' => true,]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['success' => false,], 404);
+        } catch (Throwable $e) {
+            Log::error('Váratlan hiba a próbálkozás mentésekor', ['error' => $e->getMessage()]);
+
+            return response()->json(['success' => false], 500);
         }
-
-        $submittedInputs = $validated['word_inputs'];
-
-        $attempt = $this->attemptService->updateAttemptState($attempt, $submittedInputs);
-
-        // Ide kell, az updateAttemptState ezt csak akkor végzi el, ha elkészült a rejtvény, de itt minden esetben le kell állítani a próbálkozást.
-        if ($attempt->started_at !== null) {
-            $attempt->elapsed_time += $attempt->started_at->diffInSeconds(now());
-            $attempt->started_at = null;
-        }
-
-        $attempt->save();
-
-        return response()->json(['success' => true,]);
     }
 }

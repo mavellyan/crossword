@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { loadCrossword, validateWordForGuest } from '@/services/crosswordApi'
+import { loadCrossword, validateEntryForGuest } from '@/services/crosswordApi'
 import { useAttemptStore } from '@/stores/attempt'
 import { useAuthStore } from '@/stores/auth'
 
@@ -20,36 +20,6 @@ function normalizeLetter(value) {
   return Array.from(normalized)[0] ?? ''
 }
 
-/**
- * Létrehozza az input mátrixot az összes szóhoz.
- * Minden szó kap egy tömböt, ami a cellaszámával egyezik.
- *
- * @param {Array<{ cells: Array<unknown> }>|null|undefined} words Rejtvény szavak.
- * @param {Object<string, string[]>} savedWordInputs Mentett szóinputok, hogyha van korábbi próbálkozás.
- * @returns {string[][]} Szavankénti felhasználói input tömbök. Lehetnek üres stringek, ha a felhasználó még nem írt be karaktert.
- */
-function createWordInputs(words, savedWordInputs = {}) {
-  return (words ?? []).map((word) => {
-    const placementId = String(word.placement_id)
-
-    const savedCells = Array.isArray(savedWordInputs[placementId]) ? savedWordInputs[placementId] : []
-
-    return Array.from({ length: word.cells.length }, (_, index) => {
-      return normalizeLetter(savedCells[index] ?? '')
-    })
-  })
-}
-
-/**
- * Létrehozza az ellenőrzési állapot objektumokat minden szóhoz.
- *
- * @param {Array<unknown>|null|undefined} words Rejtvény szavak.
- * @returns {Array<{ filled: boolean, correct: boolean }>} Kezdeti szó állapot lista.
- */
-function createWordStatus(words) {
-  return (words ?? []).map(() => ({ filled: false, correct: false, pending: false }))
-}
-
 export const useCrosswordStore = defineStore('crossword', {
   state: () => ({
     /**
@@ -58,8 +28,6 @@ export const useCrosswordStore = defineStore('crossword', {
      * A rejtvény betöltésekor a loadCrossword() hívás után az initializePlayState() metódus inicializálja a store-t a backendről érkező adatokkal.
      */
 
-    attemptStore: useAttemptStore(),
-    authStore: useAuthStore(),
     /**
      * A rejtvény azonosítója
      * 
@@ -109,31 +77,52 @@ export const useCrosswordStore = defineStore('crossword', {
      */
     height: null,
     /**
-     * A felhasználó által beírt karakterek minden szóhoz. Minden szóhoz tartozik egy tömb, amely a szó celláinak számával egyezik.
+     * A felhasználó által beírt karakterek minden szóhoz. Az eltárolt adatok "sor:oszlop" : "karakter" formátumban vannak.
+     * Pl. { '2:1': 'A', '2:2': 'L' }
      * 
-     * @type {Array<Array<string>>}
+     * @type {Object<string, string>}
      */
-    wordInputs: [],
+    cellInputs: {},
     /**
-     * A felhasználó által beírt karakterek állapota minden szóhoz. Minden szóhoz tartozik egy objektum, amely jelzi,
-     * hogy a szó teljesen ki van-e töltve, helyes-e, és van-e folyamatban lévő mentés.
+     * A rejtvényben található szavak id-je és állapotai, amelyek jelzi, hogy a szó teljesen ki van-e töltve, helyes-e, vagy éppen ellenőrzés alatt áll.
+     * Pl. { '12': { filled: true, correct: false, pending: false } }
      * 
-     * @type {Array<{ filled: boolean, correct: boolean, pending: boolean }>}
+     * @type {Object<string, { filled: boolean, correct: boolean, pending: boolean }>}
      */
-    wordStatus: [],
-
+    entryStatus: {},
     /**
-     * Az aktív szó indexe a words tömbben.
+     * Az éppen aktuális szó indexe, amelyre a felhasználó fókuszál. Ha nincs aktív szó, akkor null.
      * 
-     * @type {number|null}
+     * @type {string|null}
      */
-    activeWordIndex: null,
+    activeEntryId: null,
     /**
-     * Az aktív cella indexe minden szóhoz. Minden szóhoz tartozik egy szám, amely az aktív cella indexét jelzi a szó celláinak tömbjében.
+     * Az éppen aktív cella indexe. Ha nincs aktív cella, akkor null. Formátuma: "sor:oszlop".
      * 
-     * @type {Array<number>}
+     * @type {string|null}
      */
-    activeCellByWord: [],
+    activeCellKey: null,
+    /**
+     * Az éppen aktív irány, amely meghatározza, hogy a felhasználó vízszintesen vagy függőlegesen írja-e be a karaktereket. Ha nincs aktív irány, akkor null.
+     * 
+     * @type {'horizontal'|'vertical'|null}
+     */
+    activeDirection: null,
+    /**
+     * A rejtvény celláinak tartalmazott szavai, ahol a kulcs a cella koordinátája "sor:oszlop" formátumban,
+     * az érték pedig az adott cellában található szó vagy szavak id-je, amennyiben az egy metszéspont.
+     * Pl. { '2:2' : [12, 17] }
+     * 
+     * @type {Object<string, Array<number>>}
+     */
+    cellEntries: {},
+    /**
+     * A rejtvény szavainak adatai, ahol a kulcs a szó id-je, az érték pedig a szó objektuma.
+     * Pl. { '12': entryObject, '17': entryObject }
+     * 
+     * @type {Object<string, Entry>}
+     */
+    entriesById: {},
     /**
      * A mentés ütemezéséhez használt timer azonosítója. Ha null, akkor nincs ütemezett mentés.
      * Módosítás esetén 1,5 másodperces debounce timer indul, ha közben újabb módosítás történik, akkor a timer újraindul.
@@ -150,18 +139,20 @@ export const useCrosswordStore = defineStore('crossword', {
      */
     loading: false,
     /**
-     * Jelzi, hogy a rejtvény mentése folyamatban van-e. Ha true, akkor a komponensek mentési állapotot jelenítenek meg.
-     * 
-     * @type {boolean}
-     */
-    saving: false,
-    /**
      * Hibaüzenet, ha a rejtvény betöltése vagy mentése közben hiba történt. Ha null, akkor nincs hiba.
      * 
      * @type {string|null}
      */
     error: null,
   }),
+
+  getters: {
+    isCompleted(state) {
+      return Array.isArray(state.words) &&
+        state.words.length >0 &&
+        state.words.every(entry => state.entryStatus[String(entry.placement_id)]?.correct) === true
+    }
+  },
 
   actions: {
     /**
@@ -170,6 +161,12 @@ export const useCrosswordStore = defineStore('crossword', {
      * @returns {void}
      */
     resetState() {
+      if (this.saveTimer !== null) {
+        clearTimeout(this.saveTimer)
+      }
+
+      this.saveTimer = null
+
       this.id = null
       this.grid = null
       this.title = null
@@ -179,16 +176,30 @@ export const useCrosswordStore = defineStore('crossword', {
       this.width = null
       this.height = null
 
-      this.wordInputs = []
-      this.wordStatus = []
+      this.cellInputs = {}
+      this.cellEntries = {}
+      this.entriesById = {}
+      this.entryStatus = {}
 
-      this.activeWordIndex = null
-      this.activeCellByWord = []
-
-      this.saveTimer = null
+      this.activeEntryId = null
+      this.activeCellKey = null
+      this.activeDirection = null
 
       this.loading = false
       this.error = null
+    },
+
+    /**
+     * Visszaállítja a vendég felhasználó játékállapotát, azaz törli a cella inputokat és a szavak állapotát.
+     * 
+     * @returns {void}
+     */
+    guestReset() {
+      this.cellInputs = {}
+      this.entryStatus = {}
+      this.activeEntryId = null
+      this.activeCellKey = null
+      this.activeDirection = null
     },
 
     /**
@@ -208,137 +219,377 @@ export const useCrosswordStore = defineStore('crossword', {
       this.width = crossword.width ?? null
       this.height = crossword.height ?? null
 
-      this.wordInputs = createWordInputs(this.words, this.attemptStore.wordInputs ?? {})
-      this.wordStatus = createWordStatus(this.words)
-
-      // Validálni kell, mivel lehet, hogy volt korábbi próbálkozás már
-      this.validateWords()
-
-      this.activeWordIndex = this.words?.length ? 0 : null
-      this.activeCellByWord = this.wordInputs.map(() => 0)
+      this.buildEntryMaps()
     },
 
     /**
-     * Frissít egy adott cellát egy szóban.
-     * Érvénytelen indexeket biztonságosan figyelmen kívül hagy.
+     * A rejtvény szavainak adataiból felépíti az entriesById és cellEntries objektumokat.
+     * Ez a metódus a rejtvény betöltésekor hívódik meg, hogy a store-ban tárolt adatokból gyorsan elérhető legyen, hogy melyik cellában melyik szó található.
      *
-     * @param {number} wordIndex A cél szó indexe.
-     * @param {number} cellIndex A cél cella indexe a szóban.
-     * @param {unknown} value UI inputból érkező nyers érték.
      * @returns {void}
      */
-    updateWordCell(wordIndex, cellIndex, value) {
-      if (!this.wordInputs[wordIndex]) {
-        return
+    buildEntryMaps() {
+      this.entriesById = Object.fromEntries(
+        this.words.map(entry => [
+          String(entry.placement_id),
+          entry,
+        ])
+      )
+
+      const cellEntries = {}
+
+      this.words.forEach(entry => {
+        entry.cells.forEach(cell => {
+          const key = this.cellKey(cell.row, cell.col)
+
+          if (!cellEntries[key]) {
+            cellEntries[key] = []
+          }
+
+          cellEntries[key].push(String(entry.placement_id))
+        })
+      })
+
+      this.cellEntries = cellEntries
+    },
+    /**
+     * Létrehoz egy kulcsot a cella pozíciója alapján.
+     * 
+     * @param {number} row 
+     * @param {number} col 
+     * @returns {string}
+     */
+    cellKey(row, col) {
+      return `${row}:${col}`
+    },
+    /**
+     * Egy adott cella értékét adja vissza.
+     * 
+     * @param {number} row 
+     * @param {number} col 
+     * @returns {string}
+     */
+    getCellValue(row, col) {
+      return this.cellInputs[this.cellKey(row, col)] ?? ''
+    },
+    /**
+     * Egy adott szó adatait adja vissza.
+     * 
+     * @param {string} entryId 
+     * @returns {object|null}
+     */
+    getEntryById(entryId) {
+      return this.entriesById[String(entryId)] ?? null
+    },
+    /**
+     * Egy adott cellához tartozó szavak id-jeit adja vissza. Ha a cella nem tartozik egyetlen szóhoz sem, üres tömböt ad vissza.
+     * 
+     * @param {number} row 
+     * @param {number} col 
+     * @returns {Array}
+     */
+    getEntriesForCell(row, col) {
+      return this.cellEntries[this.cellKey(row, col)] ?? []
+    },
+    /**
+     * Visszaállítja a próbálkozás állapotát a backendről érkező adatok alapján. A cella inputokat és a helyes bejegyzések id-jeit frissíti.
+     * 
+     * @param {Object} param0 
+     */
+    applyAttemptState({ cellInputs = {}, correctEntryIds = [] }) {
+      const validCellKeys = new Set(Object.keys(this.cellEntries))
+
+      this.cellInputs = Object.fromEntries(
+        Object.entries(cellInputs)
+          .filter(([key]) => validCellKeys.has(key))
+          .map(([key, values]) => [
+            key,
+            normalizeLetter(values),
+          ])
+      )
+
+      this.updateEntryStatuses(correctEntryIds)
+    },
+    /**
+     * Visszaadja egy adott szóhoz tartozó cellákból összerakott felhasználói inputot. Ha a szó nem található, üres stringet ad vissza.
+     * 
+     * @param {string} entryId 
+     * @returns {string}
+     */
+    getEntryInput(entryId) {
+      const entry = this.getEntryById(String(entryId))
+
+      if (!entry) {
+        return ''
       }
 
-      if (cellIndex < 0 || cellIndex >= this.wordInputs[wordIndex].length) {
-        return
-      }
+      return entry.cells.map(cell => this.getCellValue(cell.row, cell.col)).join('')
+    },
+    /**
+     * Frissíti a szavak állapotát a helyes bejegyzések alapján.
+     * 
+     * @param {Array<number>} correctEntryIds 
+     */
+    updateEntryStatuses(correctEntryIds) {
+      const correctSet = new Set(correctEntryIds.map(id => String(id)))
 
-      this.wordInputs[wordIndex][cellIndex] = normalizeLetter(value)
-      this.attemptStore.modified = true
+      this.entryStatus = Object.fromEntries(
+        this.words.map(entry => {
+          const values = entry.cells.map(cell => this.getCellValue(cell.row, cell.col))
 
-      if (this.wordInputs[wordIndex].join('').length === this.words[wordIndex].cells.length) {
-        this.wordStatus[wordIndex].pending = true
+          return [
+            String(entry.placement_id),
+            {
+              filled: values.every(value => value !== ''),
+              correct: correctSet.has(String(entry.placement_id)),
+              pending: false,
+            }
+          ]
+        })
+      )
+    },
+    /**
+     * Egy adott cellához tartozó szavak állapotát frissíti a cella pozíciója alapján. A szavak állapotát a cellák értékei alapján határozza meg.
+     * 
+     * @param {number} row 
+     * @param {number} col 
+     */
+    refreshEntriesAtCell(row, col) {
+      this.getEntriesForCell(row, col).forEach(entryId => {
+        const entry = this.getEntryById(entryId)
 
-        if (this.authStore.isLoggedIn) {
-          this.attemptStore.saveProgress()
-        } else {
-          this.validateGuestWord(wordIndex)
+        if (!entry) {
+          return
         }
-      }
 
-      this.scheduleSave()
-    },
+        const values = entry.cells.map(cell => this.getCellValue(cell.row, cell.col))
 
-    /**
-     * Törli a karaktert egy adott szó cellájából.
-     * Érvénytelen indexeket biztonságosan figyelmen kívül hagy.
-     *
-     * @param {number} wordIndex A cél szó indexe.
-     * @param {number} cellIndex A cél cella indexe a szóban.
-     * @returns {void}
-     */
-    deleteWordCell(wordIndex, cellIndex) {
-      if (!this.wordInputs[wordIndex]) {
-        return
-      }
+        const key = String(entryId)
 
-      if (cellIndex < 0 || cellIndex >= this.wordInputs[wordIndex].length) {
-        return
-      }
-
-      this.wordInputs[wordIndex][cellIndex] = ''
-
-      if (this.wordInputs[wordIndex].join('').length < this.words[wordIndex].cells.length) {
-        this.wordStatus[wordIndex].filled = false
-      }
-
-      this.attemptStore.modified = true
-      this.scheduleSave()
-    },
-
-    /**
-     * Backenden validáljuk a megoldásokat, és visszaadjuk a helyesen kitöltött szavak indexeit. Frontenden ez alapján jelöljük a hibás és helyes szavakat.
-     * Egy szó csak akkor lehet helyesnek vagy hibásnak jelölve, ha teljesen ki van töltve.
-     *
-     * @returns {void}
-     */
-    validateWords() {
-      this.words.forEach((word, wordIndex) => {
-        const isCorrect = this.attemptStore.correctWords.includes(word.placement_id)
-
-        this.wordStatus[wordIndex] = {
-          filled: this.wordInputs[wordIndex].every(cell => cell !== ''),
-          correct: isCorrect,
-          pending: false,
+        this.entryStatus[key] = {
+          filled: values.every(value => value !== ''),
+          correct: false,
+          pending: values.every(value => value !== ''),
         }
       })
     },
-
     /**
-     * Beállítja az aktuálisan aktív szót a kiemeléshez és a billentyűzet logikához.
-     *
-     * @param {number} wordIndex Az aktiválandó szó indexe.
+     * Frissíti egy adott cella tartalmát.
+     * 
+     * @param {number} row 
+     * @param {number} col 
+     * @param {string} value 
      * @returns {void}
      */
-    setActiveWord(wordIndex) {
-      if (!Number.isInteger(wordIndex)) {
+    updateCell(row, col, value) {
+      const key = this.cellKey(row, col)
+
+      if (!(key in this.cellEntries)) {
         return
       }
 
-      if (wordIndex < 0 || wordIndex >= (this.words?.length ?? 0)) {
+      this.cellInputs[key] = normalizeLetter(value)
+      this.refreshEntriesAtCell(row, col)
+
+      const authStore = useAuthStore()
+
+      if (!authStore.isLoggedIn) {
+        const entries = this.getEntriesForCell(row, col)
+
+        entries.forEach(entryId => {
+          if (this.entryStatus[String(entryId)]?.filled && !this.entryStatus[String(entryId)]?.correct) {
+            this.validateGuestEntry(entryId).catch(error => {
+              console.error('Hiba a szó ellenőrzése közben:', error)
+            })
+          }
+        })
         return
       }
 
-      this.activeWordIndex = wordIndex
+      const attemptStore = useAttemptStore()
+      attemptStore.modified = true
 
-      if (!Number.isInteger(this.activeCellByWord[wordIndex])) {
-        this.activeCellByWord[wordIndex] = 0
+      this.scheduleSave()
+    },
+    /**
+     * Törli egy adott cella tartalmát.
+     * 
+     * @param {number} row 
+     * @param {number} col 
+     * @returns {void}
+     */
+    deleteCell(row, col) {
+      const key = this.cellKey(row, col)
+
+      if (!(key in this.cellEntries)) {
+        return
+      }
+      
+      this.cellInputs[key] = ''
+      this.refreshEntriesAtCell(row, col)
+
+      if (!useAuthStore().isLoggedIn) {
+        return
+      }
+
+      const attemptStore = useAttemptStore()
+      attemptStore.modified = true
+
+      this.scheduleSave()
+    },
+    /**
+     * Kijelöli a megadott szót.
+     * 
+     * @param {string} entryId 
+     * @returns 
+     */
+    selectEntry(entryId) {
+      const normalizedEntryId = String(entryId)
+
+      const entry = this.getEntryById(normalizedEntryId)
+
+      if (!entry) {
+        return
+      }
+
+      this.activeEntryId = normalizedEntryId
+      this.activeDirection = entry.direction
+    },
+    /**
+     * Kijelöli a megadott cellát.
+     * 
+     * @param {number} row 
+     * @param {number} col 
+     * @returns 
+     */
+    selectCell(row, col) {
+      const entryIds = this.getEntriesForCell(row, col)
+
+      if (!entryIds.length) {
+        return
+      }
+
+      this.activeCellKey = this.cellKey(row, col)
+
+      if (!entryIds.includes(this.activeEntryId)) {
+        this.selectEntry(entryIds[0])
       }
     },
-
     /**
-     * Eltárolja, hogy egy szón belül melyik cella az aktív.
-     * Az érték érvényes tartományra van clampelve.
-     *
-     * @param {number} wordIndex A szó indexe.
-     * @param {number} cellIndex A kívánt cella index.
+     * A metszéspontban lévő szavak között váltogat az aktív cella alapján. Ha nincs aktív cella, vagy a cellában csak egy szó van, akkor nem történik semmi.
+     * 
      * @returns {void}
      */
-    setActiveCellInWord(wordIndex, cellIndex) {
-      if (!Number.isInteger(wordIndex) || !Number.isInteger(cellIndex)) {
+    toggleEntryAtActiveCell() {
+      if (!this.activeCellKey) {
         return
       }
 
-      const cells = this.wordInputs[wordIndex]
-      if (!cells) {
+      const entryIds = this.cellEntries[this.activeCellKey] ?? []
+
+      if (entryIds.length < 2) {
         return
       }
+      
+      const currentIndex = entryIds.indexOf(this.activeEntryId)
+      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % entryIds.length
 
-      const clamped = Math.min(Math.max(cellIndex, 0), cells.length - 1)
-      this.activeCellByWord[wordIndex] = clamped
+      this.selectEntry(entryIds[nextIndex])
+    },
+    /**
+     * Megváltoztatja az aktív irányt, hogyha a megadott sor és oszlop cellája több szót is tartalmaz. Ha a cellában csak egy szó van, akkor nem történik semmi.
+     * 
+     * @param {number} row A sor indexe, amely alapján meghatározzuk, hogy a cella több szót tartalmaz-e.
+     * @param {number} col Az oszlop indexe, amely alapján meghatározzuk, hogy a cella több szót tartalmaz-e. 
+     */
+    switchDirection(row, col) {
+      if (this.getEntriesForCell(row, col).length > 1) {
+        this.toggleEntryAtActiveCell()
+      }
+    },
+    /**
+     * Visszaadja a megadott cella indexét a megadott szóban.
+     *
+     * @param {string} entryId A szó azonosítója.
+     * @param {string} cellKey A cella kulcsa.
+     * @returns {number} A cella indexe a szóban, vagy -1, ha nem található.
+     */
+    getCellIndexInEntry(entryId, cellKey) {
+      const entry = this.getEntryById(String(entryId))
+
+      if (!entry) {
+        return -1
+      }
+
+      return entry.cells.findIndex(cell => this.cellKey(cell.row, cell.col) === cellKey)
+    },
+    /**
+     * Visszaadja a megadott szó következő cellájának kulcsát.
+     *
+     * @param {string} entryId A szó azonosítója.
+     * @param {string} currentCellKey A jelenlegi cella kulcsa.
+     * @returns {{ row: number, col: number }|null} A következő cella koordinátái, vagy null, ha nincs következő cella.
+     */
+    getNextCellInEntry(entryId, currentCellKey) {
+      const entry = this.getEntryById(String(entryId))
+
+      if (!entry) {
+        return null
+      }
+
+      const currentIndex = this.getCellIndexInEntry(String(entryId), currentCellKey)
+
+      if (currentIndex === -1 || currentIndex === entry.cells.length - 1) {
+        return null
+      }
+
+      const nextCell = entry.cells[currentIndex + 1]
+      return { row: nextCell.row, col: nextCell.col }
+    },
+    /**
+     * Visszaadja a megadott szó előző cellájának kulcsát.
+     *
+     * @param {string} entryId A szó azonosítója.
+     * @param {string} currentCellKey A jelenlegi cella kulcsa.
+     * @returns {{ row: number, col: number }|null} Az előző cella koordinátái, vagy null, ha nincs előző cella.
+     */
+    getPreviousCellInEntry(entryId, currentCellKey) {
+      const entry = this.getEntryById(String(entryId))
+
+      if (!entry) {
+        return null
+      }
+
+      const currentIndex = this.getCellIndexInEntry(String(entryId), currentCellKey)
+
+      if (currentIndex <= 0) {
+        return null
+      }
+
+      const previousCell = entry.cells[currentIndex - 1]
+      return { row: previousCell.row, col: previousCell.col }
+    },
+    /**
+     * Visszaadja a megadott szó első üres cellájának kulcsát.
+     *
+     * @param {string} entryId A szó azonosítója.
+     * @returns {{ row: number, col: number }|null} Az első üres cella koordinátái, vagy null, ha nincs üres cella.
+     */
+    getFirstEmptyCellInEntry(entryId) {
+      const entry = this.getEntryById(String(entryId))
+
+      if (!entry) {
+        return null
+      }
+      
+      for (const cell of entry.cells) {
+        const key = this.cellKey(cell.row, cell.col)
+
+        if (!(key in this.cellInputs) || this.cellInputs[key] === '') {
+          return { row: cell.row, col: cell.col }
+        }
+      }
+      return null
     },
 
     /**
@@ -364,17 +615,12 @@ export const useCrosswordStore = defineStore('crossword', {
     },
 
     /**
-     * Elkészíti a mentési payloadot a backendnek a szóinputokból. Csak akkor van jelentősége, ha a user be van jelentkezve.
+     * Elkészíti a mentési payloadot a backendnek a cellainputokból. Csak akkor van jelentősége, ha a user be van jelentkezve.
      * 
-     * @returns {Object<string, string[]>} Mentési payload a backendnek
+     * @returns {Object} Mentési payload a backendnek.
      */
     createProgressPayload() {
-      return Object.fromEntries(
-        (this.words ?? []).map((word, index) => [
-          String(word.placement_id),
-          [...(this.wordInputs[index] ?? [])],
-        ]),
-      )
+      return { ...this.cellInputs }
     },
     /**
      * Ütemezi a rejtvény mentését 1,5 másodperccel a legutóbbi változtatás után.
@@ -382,37 +628,60 @@ export const useCrosswordStore = defineStore('crossword', {
      * @returns {void}
      */
     scheduleSave() {
-      if (!this.authStore.isLoggedIn) {
+      const authStore = useAuthStore()
+
+      if (!authStore.isLoggedIn) {
         return
       }
 
-      if (this.saveTimer) {
+      if (this.saveTimer !== null) {
         clearTimeout(this.saveTimer)
       }
       
       this.saveTimer = setTimeout(() => {
-        this.attemptStore.saveProgress()
+        this.saveTimer = null
+        useAttemptStore().saveProgress()
       }, 1500)
     },
     /**
-     * Nem bejelentkezett felhasználók számára validálja a szavakat, de nem ment.
+     * A vendégek számára validálja a szavakat.
      * 
-     * @param {number} wordIndex - A szó indexe, amelyet validálni szeretnénk a vendég felhasználó számára.
-     * @returns {Promise<void>} - Egy Promise, amely a validálás befejeződését jelzi.
-     * @throws {Error} - Ha a validálás során hiba történik, akkor egy Error objektumot dob.
+     * @param {string} entryId A szó azonosítója.
+     * @returns {Promise<void>}
      */
-    async validateGuestWord(wordIndex) {
-      const userInput = this.wordInputs[wordIndex].join('')
+    async validateGuestEntry(entryId) {
+      const key = String(entryId)
+      const userInput = this.getEntryInput(key)
+
+      if (!this.entryStatus[key]?.filled) {
+        return
+      }
+
+      const submittedInput = userInput
+
+      this.entryStatus[key].pending = true
 
       try {
-        const isCorrect = await validateWordForGuest(this.id, wordIndex, userInput)
+        const isCorrect = await validateEntryForGuest(this.id, key, submittedInput)
 
-        this.wordStatus[wordIndex].correct = isCorrect
-        this.wordStatus[wordIndex].filled = true
+        // Ha a felhasználó közben megváltoztatta a cellák értékét, akkor nem frissítjük az állapotot, mert az már nem releváns.
+        if (this.getEntryInput(key) !== submittedInput) {
+          return
+        }
+
+        this.entryStatus[key] = {
+          filled: true,
+          correct: isCorrect,
+          pending: false,
+        }
         
-        this.wordStatus[wordIndex].pending = false
       } catch (error) {
-        console.log('Hiba a vendég szó validálásakor:', error)
+        if (this.getEntryInput(key) === submittedInput) {
+          this.entryStatus[key].pending = false
+        }
+
+        console.error('Hiba a szó ellenőrzése közben:', error)
+        throw new Error(error?.message ?? 'Nem sikerült ellenőrizni a szót.')
       }
     },
   },

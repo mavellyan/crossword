@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="!isPageLoaded" class="d-flex justify-center items-center h-screen">
+    <div v-if="profileStore.loading" class="d-flex justify-center items-center h-screen">
       <div>Betöltés folyamatban...</div>
     </div>
 
@@ -142,17 +142,18 @@
       <div class="d-grid gap-2 col-11 mx-auto mt-2">
         <button 
           type="button" 
-          class="btn btn-primary fw-bold text-uppercase shadow-sm" 
+          class="btn btn-primary fw-bold text-uppercase shadow-sm"
+          :disabled="targetCrossword?.is_updating"
           @click="confirmPublish"
         >
-          <span v-if="targetCrossword?.isUpdating" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span v-if="targetCrossword?.is_updating" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
           Publikálás
         </button>
         
         <button 
           type="button" 
           class="btn btn-outline-secondary fw-bold text-uppercase shadow-sm" 
-          :disabled="targetCrossword?.isUpdating"
+          :disabled="targetCrossword?.is_updating"
           @click="cancelPublish"
         >
           Mégsem
@@ -253,7 +254,7 @@ export default {
      * 
      * @param crossword - a rejtvény amelyet nyilvánossá/priváttá kíván tenni a felhasználó
      */
-    onToggleClick(crossword) {
+    async onToggleClick(crossword) {
       if (crossword.is_public && crossword.attempts_count > 0) {
         return
       }
@@ -264,15 +265,36 @@ export default {
         return;
       }
 
-      this.profileStore.toggleVisibility(crossword)
+      const success = await this.profileStore.setVisibility(crossword, !crossword.is_public)
+
+      if (!success) {
+        this.$notify({
+          type: 'error',
+          title: 'Sikertelen láthatóság váltás',
+          text: this.profileStore.visibilityError,
+        })
+      }
     },
     /**
-     * A felhasználó megerősítette, hogy nyilvánossá szeretné tenni a rejtvényt. Meghívja a store toggleVisibility metódusát, majd bezárja a popup-ot.
+     * A felhasználó megerősítette, hogy biztosan nyilvánossá szeretné-e tenni a rejtvényét. Meghívja a store setVisibility metódusát, majd bezárja a popup-ot.
      */
     async confirmPublish() {
-      if (this.targetCrossword) {
-        await this.profileStore.toggleVisibility(this.targetCrossword)
+      if (!this.targetCrossword) {
+        return
       }
+
+      const success = await this.profileStore.setVisibility(this.targetCrossword, true)
+
+      if (!success) {
+        this.$notify({
+          type: 'error',
+          title: 'Sikertelen láthatóság váltás',
+          text: this.profileStore.visibilityError,
+        })
+
+        return
+      }
+
       this.isPopupVisible = false
       this.targetCrossword = null
     },

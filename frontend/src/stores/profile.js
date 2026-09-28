@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { getProfile } from '@/services/userApi'
-import { toggleVisibility } from '@/services/crosswordCreatorApi'
+import { setVisibility } from '@/services/crosswordCreatorApi'
 
 export const useProfileStore = defineStore('profile', {
   state: () => ({
@@ -25,6 +25,10 @@ export const useProfileStore = defineStore('profile', {
      * A profil betöltése során fellépő hibaüzenet. Ha null, akkor nincs hiba.
      */
     error: null,
+    /**
+     * A rejtvény láthatóságának váltása során fellépő hibaüzenet. Ha null, akkor nincs hiba.
+     */
+    visibilityError: null,
   }),
 
   actions: {
@@ -32,6 +36,8 @@ export const useProfileStore = defineStore('profile', {
      * Betölti a felhasználói profilt és a hozzá tartozó rejtvényeket az API-ból.
      */
     async getProfile() {
+      this.loading = true
+      this.error = null
 
       try {
         const data = await getProfile()
@@ -47,18 +53,18 @@ export const useProfileStore = defineStore('profile', {
         this.loading = false
       }
     },
-    async toggleVisibility(crossword) {
-      const prevState = crossword.is_public
-      crossword.is_public = !prevState
+    async setVisibility(crossword, isPublic) {
       crossword.is_updating = true
+      this.visibilityError = null
 
       try {
-        const response = await toggleVisibility(crossword.id)
+        const response = await setVisibility(crossword.id, isPublic)
+        crossword.is_public = response.is_public
+        return true
 
       } catch (error) {
-        // Hiba esetén visszaállítjuk az előző állapotot
-        crossword.is_public = prevState
-        console.error('Hiba a rejtvény láthatóságának váltásakor:', error)
+        this.visibilityError = error?.response?.data?.message ?? 'Hiba történt a rejtvény láthatóságának váltásakor.'
+        return false
 
       } finally {
         crossword.is_updating = false
