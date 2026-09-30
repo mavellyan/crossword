@@ -4,7 +4,6 @@ export async function createCrossword(payload) {
   const response = await axios.post('/createCrossword', payload)
 
   if (!response.data.success || !response.data.crossword) {
-    console.log('Érvénytelen API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült létrehozni a rejtvényt.')
   }
 
@@ -17,7 +16,6 @@ export async function getCrosswordForEdit(crosswordId) {
   })
 
   if (!response.data.success || !response.data.crossword) {
-    console.log('Érvénytelen API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült betölteni a rejtvényt szerkesztéshez.')
   }
 
@@ -28,7 +26,6 @@ export async function updateCrossword(crosswordId, payload) {
   const response = await axios.post('/updateCrossword', { id: crosswordId, ...payload })
 
   if (!response.data.success || !response.data.crossword) {
-    console.log('Érvénytelen API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült frissíteni a rejtvényt.')
   }
 
@@ -39,7 +36,6 @@ export async function createClue(payload) {
   const response = await axios.post('/createClue', payload)
 
   if (!response.data.success || !response.data.clue) {
-    console.log('Érvénytelen API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült létrehozni a szót.')
   }
 
@@ -54,7 +50,6 @@ export async function listCreatorWords(topicIds = null) {
   })
 
   if (!response.data.success || !Array.isArray(response.data.words)) {
-    console.log('Érvénytelen válasz:', response.data)
     throw new Error('Nem sikerült betölteni a választható szavakat.')
   }
 
@@ -86,7 +81,6 @@ export async function setVisibility(crosswordId, isPublic) {
     })
 
     if (!response.data.success) {
-      console.log('Érvénytelen API válasz:', response.data)
       throw new Error(response.data.message ?? 'Nem sikerült váltani a rejtvény láthatóságát.')
     }
 
@@ -104,7 +98,6 @@ export async function deleteCrossword(crosswordId) {
     })
 
     if (!response.data.success) {
-      console.log('Érvénytelen API válasz:', response.data)
       throw new Error(response.data.message ?? 'Nem sikerült törölni a rejtvényt.')
     }
 

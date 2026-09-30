@@ -83,7 +83,7 @@ export default {
   },
   methods: {
     /**
-     * TODO: Regisztrációs api meghívása
+     * Regisztrációs api meghívása
      */
     async onSubmit() {
       this.fieldErrors = {}

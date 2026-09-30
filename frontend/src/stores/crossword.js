@@ -607,7 +607,6 @@ export const useCrosswordStore = defineStore('crossword', {
 
         this.initializePlayState(crossword)
       } catch (error) {
-        console.log('error: ', error)
         this.error = error?.message ?? 'Hiba a rejtvény betöltése közben.'
       } finally {
         this.loading = false

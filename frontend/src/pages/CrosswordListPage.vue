@@ -319,7 +319,6 @@ export default {
             status: this.selectedStatus,
           })
         } catch (error) {
-          console.log('crossword list error:', error)
           this.error = error?.message ?? 'Hiba a rejtvények betöltése közben.'
           this.crosswords = []
         } finally {

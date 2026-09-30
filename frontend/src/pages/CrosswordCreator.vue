@@ -826,7 +826,6 @@ export default {
       try {
         this.availableWords = await listCreatorWords(topicIds)
       } catch (error) {
-        console.log('creator words error:', error)
         this.wordsError = error?.message ?? 'Nem sikerült betölteni a választható szavakat.'
         this.availableWords = []
       } finally {
@@ -840,7 +839,6 @@ export default {
       try {
         this.topics = await listTopics()
       } catch (error) {
-        console.log('load topics error:', error)
 
         this.$notify({
           type: 'error',

@@ -15,7 +15,6 @@ export async function loadAttempt(id) {
   const bestTime = response.data.best_time
 
   if (!attempt) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error('Hibás API válasz a rejtvény betöltésekor.')
   }
 
@@ -28,7 +27,6 @@ export async function startAttempt(attemptId) {
   })
 
   if (!response.data.success) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült elindítani a rejtvény próbálkozást.')
   }
 
@@ -41,7 +39,6 @@ export async function stopAttempt(attemptId) {
   })
   
   if (!response.data.success) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült leállítani a rejtvény próbálkozást.')
   }
   
@@ -54,7 +51,6 @@ export async function abandonAttempt(attemptId) {
   })
   
   if (!response.data.success) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült feladni a rejtvény próbálkozást.')
   }
   
@@ -70,7 +66,6 @@ export async function saveProgress(attemptId, cellInputs, stateVersion) {
   })
 
   if (!response.data.success) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error(response.data.message ?? 'Hiba a rejtvény mentése közben.')
   }
 
@@ -85,7 +80,6 @@ export async function listBestAttempts(crosswordId) {
   })
 
   if (!response.data.success) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error(response.data.message ?? 'Hiba a legjobb próbálkozások lekérése közben.')
   }
 

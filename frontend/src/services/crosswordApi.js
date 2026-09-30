@@ -14,7 +14,6 @@ export async function loadCrossword(id) {
   const crossword = response.data.crossword
 
   if (!crossword || !Array.isArray(crossword.grid)) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error('Hibás API válasz a rejtvény betöltésekor.')
   }
 
@@ -29,7 +28,6 @@ export async function listCrosswords(params = {}) {
   })
 
   if (!response.data.success || !Array.isArray(response.data.crosswords)) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error('Hibás API válasz a rejtvénylista betöltésekor.')
   }
 
@@ -41,7 +39,6 @@ export async function listTopics() {
   const response = await axios.get('/topics')
 
   if (!response.data.success || !Array.isArray(response.data.topics)) {
-    console.log('Érvénytelen API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült betölteni a témákat.')
   }
 
@@ -56,7 +53,6 @@ export async function validateEntryForGuest(crosswordId, placementId, userInput)
   })
 
   if (!response.data.success) {
-    console.log('Hibás API válasz:', response.data)
     throw new Error(response.data.message ?? 'Nem sikerült ellenőrizni a szót.')
   }
 

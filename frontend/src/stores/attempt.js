@@ -173,7 +173,6 @@ export const useAttemptStore = defineStore('attempt', {
 
         return true
       } catch (error) {
-        console.log('error: ', error)
         const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
         this.loadError = 'Hiba a rejtvény betöltése közben: ' + errorMsg
 
@@ -205,7 +204,6 @@ export const useAttemptStore = defineStore('attempt', {
     
         return true
       } catch (error) {
-        console.log('Hiba a rejtvény próbálkozás elindítása közben:', error)
         const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
         this.displayError = 'Hiba a rejtvény próbálkozás elindítása közben: ' + errorMsg
     
@@ -239,7 +237,6 @@ export const useAttemptStore = defineStore('attempt', {
 
         return true
       } catch (error) {
-        console.log('Hiba a rejtvény próbálkozás leállítása közben:', error)
         const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
         this.displayError = 'Hiba a rejtvény próbálkozás leállítása közben: ' + errorMsg
 
@@ -271,7 +268,6 @@ export const useAttemptStore = defineStore('attempt', {
 
         return true
       } catch (error) {
-        console.log('Hiba a rejtvény próbálkozás feladása közben:', error)
         const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
         this.displayError = 'Hiba a rejtvény próbálkozás feladása közben: ' + errorMsg
 
