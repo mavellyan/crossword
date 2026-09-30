@@ -81,18 +81,4 @@ class Clue extends Model
     {
         return $this->solution;
     }
-
-    /**
-     * Debug segítség, minta:
-     * Tanulóidőszak: inasév (általános, 6)
-     *
-     * @return string
-     */
-    public function getDebug(): string
-    {
-        return $this->definition . ': ' .
-            $this->solution . ' (' .
-            $this->getTopic() . ', ' .
-            $this->getLength() . ')';
-    }
 }

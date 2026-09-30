@@ -333,6 +333,117 @@ class PlacementValidator
         );
     }
 
+    public function validateGuidedLayout(
+        array $placements,
+        string $mainSolution,
+        int $maximumRows = 20,
+        int $maximumCols = 20,
+    ): PlacementValidationResult
+    {
+        $mainSolution = mb_strtoupper($mainSolution);
+        $mainLetters = mb_str_split($mainSolution);
+
+        $placements = array_values($placements);
+
+        usort($placements, function (Placement $a, Placement $b) {
+            return $a->startRow <=> $b->startRow;
+        });
+
+        if (count($placements) !== count($mainLetters)) {
+            return new PlacementValidationResult(
+                valid: false,
+                errors: [
+                    [
+                        'code' => ValidationErrors::MAIN_SOLUTION_MISMATCH,
+                        'message' => 'The number of placements must match the length of the main solution.',
+                    ]
+                ],
+                intersectionCount: 0,
+            );
+        }
+
+        $errors = [];
+
+        $mainColIndexes = [];
+
+        foreach ($placements as $index => $placement) {
+            $expectedLetter = $mainLetters[$index];
+            $solution = mb_strtoupper($placement->answer);
+
+            $intersectionIndex = mb_strpos($solution, $expectedLetter);
+
+            if ($intersectionIndex === false) {
+                $errors[] = [
+                    'code' => ValidationErrors::MAIN_SOLUTION_MISMATCH,
+                    'row' => $placement->startRow,
+                    'col' => $placement->startCol,
+                    'message' => 'The placement answer "' . $solution . '" does not contain the expected letter "' . $expectedLetter . '" from the main solution.',
+                ];
+            } else {
+                $mainCol = $placement->startCol + $intersectionIndex;
+                $mainColIndexes[] = $mainCol;
+            }
+
+            if ($placement->direction !== Direction::HORIZONTAL) {
+                $errors[] = [
+                    'code' => ValidationErrors::GUIDED_LAYOUT_DIRECTION_MISMATCH,
+                    'row' => $placement->startRow,
+                    'col' => $placement->startCol,
+                    'message' => 'All placements must be horizontal for a guided layout.',
+                ];
+            }
+
+            if ($placement->startRow < 0 || $placement->startRow >= $maximumRows) {
+                $errors[] = [
+                    'code' => ValidationErrors::OUT_OF_BOUNDS,
+                    'row' => $placement->startRow,
+                    'col' => $placement->startCol,
+                    'message' => 'Placement starts outside the grid boundaries.',
+                ];
+            }
+
+            if ($placement->startRow !== $index) {
+                $errors[] = [
+                    'code' => ValidationErrors::GUIDED_LAYOUT_POSITION_MISMATCH,
+                    'row' => $placement->startRow,
+                    'col' => $placement->startCol,
+                    'message' => 'The placement at index ' . $index . ' must start at row ' . $index . '.',
+                ];
+            }
+
+            if ($placement->startCol < 0 || $placement->startCol >= $maximumCols) {
+                $errors[] = [
+                    'code' => ValidationErrors::OUT_OF_BOUNDS,
+                    'row' => $placement->startRow,
+                    'col' => $placement->startCol,
+                    'message' => 'Placement starts outside the grid boundaries.',
+                ];
+            }
+
+            if ($placement->startCol + mb_strlen($solution) > $maximumCols) {
+                $errors[] = [
+                    'code' => ValidationErrors::OUT_OF_BOUNDS,
+                    'row' => $placement->startRow,
+                    'col' => $placement->startCol,
+                    'message' => 'Placement ends outside the grid boundaries.',
+                ];
+            }
+        }
+
+        if (count(array_unique($mainColIndexes)) !== 1) {
+            $errors[] = [
+                'code' => ValidationErrors::GUIDED_LAYOUT_MAIN_COLUMN_MISMATCH,
+                'message' => 'All placements must intersect the main solution in the same column.',
+            ];
+        }
+
+        return new PlacementValidationResult(
+            valid: empty($errors),
+            errors: $errors,
+            intersectionCount: count($mainColIndexes),
+        );
+    }
+
     /**
      * Ellenőrzi, hogy két elhelyezés metszik-e egymást. Két elhelyezés akkor metszi egymást,
      * ha van legalább egy cellájuk, amely ugyanazon a soron és oszlopon van, ugyanaz a betűjük, és az irányuk különböző (azaz az egyik vízszintes, a másik függőleges).

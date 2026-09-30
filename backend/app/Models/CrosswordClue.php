@@ -12,7 +12,6 @@ class CrosswordClue extends Model
         'crossword_id',
         'clue_id',
         'direction',
-        'intersection_index',
         'start_row',
         'start_col',
         'is_main',
@@ -70,41 +69,6 @@ class CrosswordClue extends Model
     {
         return (int) $this->start_row;
     }
-    
-    /**
-     * @param int $startCol
-     * @return void
-     */
-    public function setStartCol(int $startCol): void
-    {
-        $this->start_col = $startCol;
-    }
-
-    /**
-     * @param int $startRow
-     * @return void
-     */
-    public function setStartRow(int $startRow): void
-    {
-        $this->start_row = $startRow;
-    }
-
-    /**
-    * @return int
-    */
-    public function getIntersectionIndex(): int
-    {
-        return (int) $this->intersection_index;
-    }
-
-    /**
-     * @param int $intersectionIndex
-     * @return void
-     */
-    public function setIntersectionIndex(int $intersectionIndex): void
-    {
-        $this->intersection_index = $intersectionIndex;
-    }
 
     /**
      * @return string
@@ -131,15 +95,6 @@ class CrosswordClue extends Model
     }
 
     /**
-     * @param bool $isMain
-     * @return void
-     */
-    public function setMain(bool $isMain): void
-    {
-        $this->is_main = $isMain;
-    }
-
-    /**
      * @return string
      */
     public function getDirection(): string
@@ -149,17 +104,6 @@ class CrosswordClue extends Model
         }
 
         return (string) $this->direction;
-    }
-
-    /**
-     * @param Direction $direction
-     * @return void
-     */
-    public function setDirection(Direction|string $direction): void
-    {
-        $this->direction = $direction instanceof Direction
-            ? $direction
-            : Direction::from($direction);
     }
 
     public function getCellsAttribute(): array
@@ -186,21 +130,5 @@ class CrosswordClue extends Model
         }
 
         return $cells;
-    }
-
-    /**
-     * Debug segítség, minta:
-     * Tanulóidőszak: inasév (általános, 6) (direction: horizontal, x:1, y:1)
-     *
-     * @return string
-     */
-    public function getDebug(): string
-    {
-        return $this->definition . ': ' .
-            $this->solution . ' (' .
-            $this->length . ') ' .
-            '(direction: ' . $this->getDirection() .
-            ', x: ' . $this->getStartCol() .
-            ', y: ' . $this->getStartRow() . ')';
     }
 }

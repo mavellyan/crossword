@@ -93,7 +93,11 @@ final class CrosswordPublicationValidator
             ]);
         }
 
-        $result = $this->placementValidator->validateLayout($placements);
+        if ($crossword->main_solution === null || trim((string) $crossword->main_solution) === '') {
+            $result = $this->placementValidator->validateLayout($placements);
+        } else {
+            $result = $this->placementValidator->validateGuidedLayout($placements, mb_strtoupper((string) $crossword->main_solution));
+        }
 
         if (!$result->valid) {
             throw new InvalidCrosswordLayout($result->errors);

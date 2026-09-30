@@ -69,7 +69,6 @@ class TestCrosswordSeeder extends Seeder
                 'crossword_id' => $crossword->id,
                 'clue_id' => $mainClue->id,
                 'direction' => Direction::VERTICAL,
-                'intersection_index' => 0,
                 'start_row' => 0,
                 'start_col' => 3,
                 'is_main' => true,
@@ -81,35 +80,30 @@ class TestCrosswordSeeder extends Seeder
                     'solution' => 'sáp',
                     'start_row' => 0,
                     'start_col' => 1,
-                    'intersection_index' => 2, // P
                 ],
                 [
                     'definition' => 'Idős rokon',
                     'solution' => 'dédi',
                     'start_row' => 1,
                     'start_col' => 0,
-                    'intersection_index' => 3, // I
                 ],
                 [
                     'definition' => 'Feljáró',
                     'solution' => 'rámpa',
                     'start_row' => 2,
                     'start_col' => 3,
-                    'intersection_index' => 0, // R
                 ],
                 [
                     'definition' => 'Fr. író (Emile)',
                     'solution' => 'zola',
                     'start_row' => 3,
                     'start_col' => 2,
-                    'intersection_index' => 1, // O
                 ],
                 [
                     'definition' => 'A Duna romániai mellékfolyója',
                     'solution' => 'zsil',
                     'start_row' => 4,
                     'start_col' => 2,
-                    'intersection_index' => 1, // S
                 ],
             ];
 
@@ -125,7 +119,6 @@ class TestCrosswordSeeder extends Seeder
                     'crossword_id' => $crossword->id,
                     'clue_id' => $clue->id,
                     'direction' => Direction::HORIZONTAL,
-                    'intersection_index' => $testClue['intersection_index'],
                     'start_row' => $testClue['start_row'],
                     'start_col' => $testClue['start_col'],
                     'is_main' => false,

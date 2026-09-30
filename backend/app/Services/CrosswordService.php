@@ -226,8 +226,6 @@ class CrosswordService
                     'direction' => $placement->direction,
                     'start_row' => $placement->startRow,
                     'start_col' => $placement->startCol,
-                    // Legacy kód support, el kell majd távolítani
-                    'intersection_index' => null,
                     'is_main' => false,
                 ]);
             }
@@ -473,8 +471,6 @@ class CrosswordService
                     'direction' => $placement->direction,
                     'start_row' => $placement->startRow,
                     'start_col' => $placement->startCol,
-                    // Legacy kód support, el kell majd távolítani
-                    'intersection_index' => null,
                     'is_main' => false,
                 ]);
             }

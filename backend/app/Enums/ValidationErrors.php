@@ -19,4 +19,8 @@ enum ValidationErrors: string {
     case MISSING_SOLUTION = 'missing_solution';
     case MISSING_DEFINITION = 'missing_definition';
     case DUPLICATE_ENTRY = 'duplicate_entry';
+    case MAIN_SOLUTION_MISMATCH = 'main_solution_mismatch';
+    case GUIDED_LAYOUT_DIRECTION_MISMATCH = 'guided_layout_direction_mismatch';
+    case GUIDED_LAYOUT_POSITION_MISMATCH = 'guided_layout_position_mismatch';
+    case GUIDED_LAYOUT_MAIN_COLUMN_MISMATCH = 'guided_layout_main_column_mismatch';
 }

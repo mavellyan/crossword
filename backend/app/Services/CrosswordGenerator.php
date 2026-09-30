@@ -12,69 +12,7 @@ use LogicException;
 class CrosswordGenerator
 {
     /**
-     * AUTOMATA ELHELYEZÉS
-     * 
-     * Kiszámolja, hogy a clue-k hova kerüljenek a rejtvényben. Ha a user nem kézileg akarja elrendezni a szavakat, hanem a rendszerre bízza.
-     *
-     * @param string $mainSolution
-     * @param Collection<int, Clue>|array<int, Clue> $clues
-     * @return array<int, array<string, mixed>>
-     * @throws Exception
-     */
-    public function generatePlacementsAutomatically(string $mainSolution, Collection|array $clues): array
-    {
-        $clues = collect($clues)->values();
-        $mainSolution = mb_strtolower($mainSolution);
-        $mainLetters = mb_str_split(mb_strtoupper($mainSolution));
-
-        if ($clues->isEmpty()) {
-            throw new Exception('Nem adtál meg szavakat.');
-        }
-
-        if ($clues->count() !== count($mainLetters)) {
-            throw new Exception('A szavak számának meg kell egyeznie a főmegoldás hosszával.');
-        }
-
-        $assignment = $this->assignWordsToLetters($mainLetters, $clues);
-
-        if (!$assignment['valid']) {
-            throw new Exception('A megadott szavakból nem állítható össze rejtvény.');
-        }
-
-        $solutionCol = max($assignment['horizontal_positions']);
-
-        $placements = [];
-
-        foreach ($clues as $index => $clue) {
-            $intersectionIndex = $assignment['horizontal_positions'][$index];
-            $row = $assignment['vertical_positions'][$index];
-            $col = $solutionCol - $intersectionIndex;
-
-            $placements[] = [
-                'clue_id' => $clue->id,
-                'direction' => Direction::HORIZONTAL,
-                'start_row' => $row,
-                'start_col' => $col,
-                'intersection_index' => $intersectionIndex,
-                'is_main' => false,
-            ];
-        }
-
-        usort($placements, function (array $a, array $b) {
-            return $a['start_row'] <=> $b['start_row'];
-        });
-
-        return $placements;
-    }
-
-    /**
-     * FIX SORRENDES ELHELYEZÉS
-     *
-     * Ezt használja a jelenlegi CrosswordCreator.
-     * A frontend által küldött szavak sorrendje megmarad:
-     * selectedWords[0] -> mainSolution[0]
-     * selectedWords[1] -> mainSolution[1]
-     * stb.
+     * A rásegítéses rejtvény készítés esetén ez rendeli a szavakat a főmegoldás betűihez.
      *
      * @param string $mainSolution
      * @param Collection<int, Clue>|array<int, Clue> $clues
@@ -96,7 +34,7 @@ class CrosswordGenerator
             throw new Exception('A szavak számának meg kell egyeznie a főmegoldás hosszával.');
         }
 
-        $placements = [];
+        $matches = [];
 
         foreach ($clues as $index => $clue) {
             $mainLetter = $mainLetters[$index];
@@ -111,19 +49,25 @@ class CrosswordGenerator
                 );
             }
 
-            $placements[] = [
+            $matches[] = [
                 'clue_id' => $clue->id,
-                'direction' => Direction::HORIZONTAL,
-                'start_row' => $index,
-                'intersection_index' => $intersectionIndex,
-                'is_main' => false,
+                'row' => $index,
+                'offset' => $intersectionIndex,
             ];
         }
 
-        $solutionCol = max(array_column($placements, 'intersection_index'));
+        $placements = [];
 
-        foreach ($placements as $index => $placement) {
-            $placements[$index]['start_col'] = $solutionCol - $placement['intersection_index'];
+        $solutionCol = max(array_column($matches, 'offset'));
+
+        foreach ($matches as $index => $match) {
+            $placements[$index] = [
+                'clue_id' => $match['clue_id'],
+                'direction' => Direction::HORIZONTAL,
+                'start_row' => $match['row'],
+                'start_col' => $solutionCol - $match['offset'],
+                'is_main' => false,
+            ];
         }
 
         return $placements;

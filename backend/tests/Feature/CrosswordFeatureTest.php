@@ -265,7 +265,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 8,
             'start_col' => 2,
-            'intersection_index' => null,
             'is_main' => false,
         ]);
 
@@ -322,7 +321,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 8,
             'start_col' => 2,
-            'intersection_index' => null,
             'is_main' => false,
         ]);
 
@@ -504,7 +502,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 1,
             'start_col' => 0,
-            'intersection_index' => null,
             'is_main' => false,
         ]);
 
