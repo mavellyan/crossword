@@ -68,11 +68,11 @@ export const useAttemptStore = defineStore('attempt', {
      */
     loading: false,
     /**
-     * Hibaüzenet, ha a próbálkozás betöltése vagy mentése közben hiba történt. Ha null, akkor nincs hiba.
+     * Hibaüzenet, ha a próbálkozás betöltése közben hiba történt. Ha null, akkor nincs hiba.
      * 
      * @type {string|null}
      */
-    error: null,
+    loadError: null,
     /**
      * Jelzi, hogy a próbálkozás módosult-e a legutóbbi mentés óta.
      * 
@@ -98,6 +98,12 @@ export const useAttemptStore = defineStore('attempt', {
      * @type {boolean}
      */
     wasCompleted: false,
+    /**
+     * Hibaüzenet, amit megjelenítünk a felhasználónak, ha a próbálkozás mentése/feladása/egyéb művelet közben hiba történt. Ha null, akkor nincs hiba.
+     * 
+     * @type {string|null}
+     */
+    displayError: null,
   }),
 
   getters: {
@@ -125,7 +131,8 @@ export const useAttemptStore = defineStore('attempt', {
       this.isCompleted = false
       this.bestTime = null
       this.loading = false
-      this.error = null
+      this.loadError = null
+      this.displayError = null
       this.modified = false
       this.saving = false
       this.bestAttempts = []
@@ -156,15 +163,21 @@ export const useAttemptStore = defineStore('attempt', {
       }
       
       this.loading = true
+      this.loadError = null
     
       try {
         const { attempt, bestTime } = await loadAttempt(id)
     
         this.bestTime = bestTime
         this.initializeAttemptState(attempt)
+
+        return true
       } catch (error) {
         console.log('error: ', error)
-        this.error = error?.message ?? 'Hiba a rejtvény betöltése közben.'
+        const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
+        this.loadError = 'Hiba a rejtvény betöltése közben: ' + errorMsg
+
+        return false
       } finally {
         this.loading = false
       }
@@ -176,8 +189,10 @@ export const useAttemptStore = defineStore('attempt', {
      */
     async startAttempt() {
       if (!useAuthStore().isLoggedIn || !this.id) {
-        return
+        return false
       }
+
+      this.displayError = null
     
       try {
         const data = await startAttempt(this.id)
@@ -191,7 +206,8 @@ export const useAttemptStore = defineStore('attempt', {
         return true
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás elindítása közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás elindítása közben.'
+        const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
+        this.displayError = 'Hiba a rejtvény próbálkozás elindítása közben: ' + errorMsg
     
         return false
       }
@@ -199,16 +215,18 @@ export const useAttemptStore = defineStore('attempt', {
     /**
      * Leállítja a rejtvény próbálkozást. Ha nincs bejelentkezett felhasználó, vagy nincs attemptId, akkor nem történik semmi.
      * 
-     * @returns {Promise<void>}
+     * @returns {Promise<boolean>} Sikeres volt-e a próbálkozás leállítása.
      */
     async stopAttempt() {
       if (!useAuthStore().isLoggedIn || !this.id) {
-        return
+        return false
       }
     
       if (this.status === 'completed' || !this.startedAt) {
-        return
+        return true
       }
+
+      this.displayError = null
     
       try {
         const data = await stopAttempt(this.id)
@@ -218,9 +236,14 @@ export const useAttemptStore = defineStore('attempt', {
           this.elapsedTime = data.attempt.elapsed_time ?? this.elapsedTime
           this.startedAt = null
         }
+
+        return true
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás leállítása közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás leállítása közben.'
+        const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
+        this.displayError = 'Hiba a rejtvény próbálkozás leállítása közben: ' + errorMsg
+
+        return false
       }
     },
     /**
@@ -230,8 +253,10 @@ export const useAttemptStore = defineStore('attempt', {
      */
     async abandonAttempt() {
       if (!useAuthStore().isLoggedIn || !this.id) {
-        return
+        return false
       }
+
+      this.displayError = null
 
       const crosswordStore = useCrosswordStore()
     
@@ -243,9 +268,14 @@ export const useAttemptStore = defineStore('attempt', {
           await crosswordStore.loadCrossword(crosswordStore.id)
           await this.loadBestAttempts(crosswordStore.id)
         }
+
+        return true
       } catch (error) {
         console.log('Hiba a rejtvény próbálkozás feladása közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény próbálkozás feladása közben.'
+        const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
+        this.displayError = 'Hiba a rejtvény próbálkozás feladása közben: ' + errorMsg
+
+        return false
       }
     },
     /**
@@ -253,16 +283,20 @@ export const useAttemptStore = defineStore('attempt', {
      * Ha nincs bejelentkezett felhasználó, nincs attemptId, vagy a rejtvény már be van fejezve,
      * nem történt módosítás, vagy van jelenleg futó mentés, akkor nem történik semmi.
      * 
-     * @returns {Promise<void>}
+     * @returns {Promise<{status: string, recovered?: boolean}>} A mentés állapota: "saved", "skipped", "failed", "conflict".
+     *                                                           Ha a státusz "conflict", akkor a recovered mező jelzi, hogy sikerült-e az újratöltés a konfliktus után.
      */
     async saveProgress() {
       // Ha a felhasználó nincs belentkezve, nincs attemptId, a rejtvény már be van fejezve, vagy éppen mentés folyik, akkor nem csinálunk semmit
       if (!useAuthStore().isLoggedIn || !this.id || this.status === 'completed' || this.saving || !this.modified) {
-        return
+        return {
+          status: 'skipped',
+        }
       }
       const crosswordStore = useCrosswordStore()
 
       this.saving = true
+      this.displayError = null
 
       try {
         const snapshot = crosswordStore.createProgressPayload()
@@ -297,13 +331,61 @@ export const useAttemptStore = defineStore('attempt', {
           this.loadBestAttempts(crosswordStore.id)
         }
 
+        this.displayError = null
+
+        return {
+          status: 'saved',
+        }
       } catch (error) {
+        const isConflict = error?.response?.status === 409 || error?.response?.data?.save_status === 'conflict'
 
-        console.log('Hiba a rejtvény mentése közben:', error)
-        this.error = error?.response?.data?.message ?? error?.message ?? 'Hiba a rejtvény mentése közben.'
+        if (isConflict) {
+          crosswordStore.cancelScheduledSave()
 
+          const recovered = await this.reloadAfterConflict(crosswordStore)
+
+          this.displayError = recovered ? 'A próbálkozás egy másik lapon módosult. A legfrissebb mentett állapotot betöltöttük.'
+            : 'Ütközés történt mentésnél. Frissítsd az oldalt a folytatáshoz.'
+          
+          return {
+            status: 'conflict',
+            recovered,
+          }
+        }
+        
+        this.modified = true
+        this.displayError = error?.response?.data?.message ?? error?.message ?? 'Ismeretlen hiba történt a próbálkozás mentése közben.'
+
+        return {
+          status: 'failed',
+        }
       } finally {
         this.saving = false
+      }
+    },
+    /**
+     * Újratölti a próbálkozást a konfliktus után.
+     * 
+     * @param crosswordStore 
+     * @returns {Promise<boolean>} Sikeres volt-e az újratöltés.
+     */
+    async reloadAfterConflict(crosswordStore) {
+      try {
+        const { attempt, bestTime } = await loadAttempt(crosswordStore.id)
+
+        this.bestTime = bestTime
+        this.initializeAttemptState(attempt)
+        this.modified = false
+
+        crosswordStore.applyAttemptState({
+          cellInputs: this.cellInputs,
+          correctEntryIds: this.correctEntryIds,
+        })
+
+        return true
+      } catch (error) {
+        console.error('Nem sikerült újratölteni a próbálkozást a konfliktus után:', error)
+        return false
       }
     },
     /**
@@ -326,11 +408,19 @@ export const useAttemptStore = defineStore('attempt', {
         return
       }
 
+      this.displayError = null
+
       try {
         const response = await listBestAttempts(crosswordId)
         this.bestAttempts = response
+
+        return true
       } catch (error) {
         console.error('Hiba a legjobb próbálkozások betöltésekor:', error)
+        const errorMsg = error?.response?.data?.message ?? error?.message ?? ''
+        this.displayError = 'Hiba a legjobb próbálkozások betöltésekor: ' + errorMsg
+
+        return false
       }
     },
   },

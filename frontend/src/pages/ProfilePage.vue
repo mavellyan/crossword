@@ -34,7 +34,14 @@
                   <div>
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                       <h5 class="card-title fs-6">{{ crossword.title }}</h5>
-                      <div class="form-check form-switch mb-0" @click.stop>
+                      <div
+                        class="form-check form-switch mb-0"
+                        @click.stop
+                        v-tooltip.hover="crossword.is_public && crossword.attempts_count > 0 ?
+                          'A rejtvény nyilvános és tartozik hozzá valós (megkezdett/befejezett) próbálkozás, ezért nem tehető vissza priváttá.' :
+                          ''
+                        "
+                      >
                         <input
                           class="form-check-input pointer"
                           :class="crossword.is_public ? 'bg-success' : 'bg-danger'"

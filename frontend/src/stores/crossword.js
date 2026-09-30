@@ -644,6 +644,17 @@ export const useCrosswordStore = defineStore('crossword', {
       }, 1500)
     },
     /**
+     * Törli az ütemezett mentést, ha van. Ha nincs ütemezett mentés, akkor nem történik semmi.
+     * 
+     * @returns {void}
+     */
+    cancelScheduledSave() {
+      if (this.saveTimer !== null) {
+        clearTimeout(this.saveTimer)
+        this.saveTimer = null
+      }
+    },
+    /**
      * A vendégek számára validálja a szavakat.
      * 
      * @param {string} entryId A szó azonosítója.

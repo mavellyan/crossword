@@ -291,6 +291,7 @@ class AttemptController extends Controller
 
             return response()->json([
                 'success' => true,
+                'save_status' => 'saved',
                 'message' => 'Mentés sikeres!',
                 'attempt' => [
                     'id' => $attempt->id,
@@ -305,11 +306,13 @@ class AttemptController extends Controller
         } catch (AttemptStateConflict $e) {
             return response()->json([
                 'success' => false,
+                'save_status' => 'conflict',
                 'message' => $e->getMessage(),
             ], 409);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
+                'save_status' => 'failed',
                 'message' => 'A próbálkozás nem található.',
             ], 404);
         } catch (Throwable $e) {
@@ -317,6 +320,7 @@ class AttemptController extends Controller
 
             return response()->json([
                 'success' => false,
+                'save_status' => 'failed',
                 'message' => 'Hiba történt a próbálkozás mentésekor! Kérjük, próbálja meg újból!',
             ], 500);
         }

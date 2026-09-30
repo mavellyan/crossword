@@ -9,6 +9,23 @@
   </div>
 
   <div v-if="!isPopupShown && isPageLoaded" class="container-fluid px-xl-5 px-3 mt-3">
+    <div
+      v-if="isLoggedIn && attemptStore.displayError"
+      class="alert alert-warning mb-3 d-flex align-items-center justify-content-center"
+      role="alert"
+    >
+      {{ attemptStore.displayError }}
+
+      <button
+        v-if="attemptStore.modified"
+        type="button"
+        class="btn btn-sm btn-outline-dark ms-2"
+        :disabled="attemptStore.saving"
+        @click="retrySave"
+      >
+        Mentés újrapróbálása
+      </button>
+    </div>
     <h1 class="text-center mb-2">
       {{ crosswordStore.title }}
     </h1>
@@ -232,8 +249,8 @@ export default {
       if (!this.isLoggedIn) {
         return this.crosswordStore.error
       } else {
-        if (this.crosswordStore.error || this.attemptStore.error) {
-          return this.crosswordStore.error || this.attemptStore.error
+        if (this.crosswordStore.error || this.attemptStore.loadError) {
+          return this.crosswordStore.error || this.attemptStore.loadError
         } else {
           return null
         }
@@ -324,9 +341,32 @@ export default {
           await this.stopGame()
         }
 
-        await this.attemptStore.loadAttempt(newId)
+        let attemptLoadSuccess = true
+
+        if (this.isLoggedIn) {
+          attemptLoadSuccess = await this.attemptStore.loadAttempt(newId)
+
+          if (!attemptLoadSuccess) {
+            this.$notify({
+              type: 'error',
+              title: 'Hiba a próbálkozás betöltésekor',
+              text: this.attemptStore.loadError || 'Ismeretlen hiba történt a próbálkozás betöltésekor.',
+            })
+          }
+        } else {
+          this.attemptStore.resetState()
+        }
+
         await this.crosswordStore.loadCrossword(newId)
-        await this.attemptStore.loadBestAttempts(newId)
+        const bestAttemptsLoadSuccess = await this.attemptStore.loadBestAttempts(newId)
+
+        if (!bestAttemptsLoadSuccess) {
+          this.$notify({
+            type: 'error',
+            title: 'Hiba a legjobb próbálkozások betöltésekor',
+            text: this.attemptStore.displayError || 'Ismeretlen hiba történt a legjobb próbálkozások betöltésekor.',
+          })
+        }
 
         if (this.isLoggedIn) {
           this.crosswordStore.applyAttemptState({
@@ -375,6 +415,12 @@ export default {
       const started = await this.attemptStore.startAttempt()
       
       if (!started) {
+        this.$notify({
+          type: 'error',
+          title: 'Hiba a próbálkozás indításakor',
+          text: this.attemptStore.displayError || 'Ismeretlen hiba történt a próbálkozás indításakor.',
+        })
+
         return
       }
 
@@ -397,8 +443,31 @@ export default {
       this.stopGameTimer()
 
       try {
-        await this.attemptStore.saveProgress()
-        await this.attemptStore.stopAttempt()
+        const saveResult = await this.attemptStore.saveProgress()
+
+        if (saveResult.status === 'conflict' && saveResult.recovered && !this.attemptStore.startedAt) {
+          this.stopGameTimer()
+          this.isCrosswordStarted = false
+          this.isAttemptStopped = true
+        }
+
+        if (saveResult.status === 'failed') {
+          this.$notify({
+            type: 'error',
+            title: 'Sikertelen mentés',
+            text: this.attemptStore.displayError || 'Ismeretlen hiba történt a próbálkozás mentésekor.',
+          })
+        }
+
+        const stopSuccess = await this.attemptStore.stopAttempt()
+
+        if (!stopSuccess) {
+          this.$notify({
+            type: 'error',
+            title: 'Hiba a próbálkozás leállításakor',
+            text: this.attemptStore.displayError || 'Ismeretlen hiba történt a próbálkozás leállításakor.',
+          })
+        }
       } finally {
         this.isCrosswordStarted = false
       }
@@ -414,13 +483,34 @@ export default {
       this.isCrosswordResetting = true
 
       try {
-        await this.attemptStore.abandonAttempt()
-      } catch (error) {
-        console.error('Hiba a próbálkozás elhagyása közben:', error)
+        const abandonSuccess = await this.attemptStore.abandonAttempt()
+
+        if (!abandonSuccess) {
+          this.$notify({
+            type: 'error',
+            title: 'Hiba a próbálkozás eldobásakor',
+            text: this.attemptStore.displayError || 'Ismeretlen hiba történt a próbálkozás eldobásakor.',
+          })
+        }
       } finally {
         this.isCrosswordStarted = false
         this.isAttemptStopped = true
         this.isCrosswordResetting = false
+      }
+    },
+    /**
+     * Megpróbálja újra elmenteni a próbálkozás állapotát. Ha sikeres, értesítést küld a felhasználónak.
+     * Ha sikertelen, a hibát a próbálkozás store-ban tárolja, és a felhasználó értesítést kap a hibáról.
+     */
+    async retrySave() {
+      const result = await this.attemptStore.saveProgress()
+
+      if (result.status === 'saved') {
+        this.$notify({
+          type: 'success',
+          title: 'Mentés sikeres',
+          text: 'A próbálkozás állapota sikeresen elmentésre került.',
+        })
       }
     },
     /**
