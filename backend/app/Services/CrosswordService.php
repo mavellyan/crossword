@@ -51,58 +51,6 @@ class CrosswordService
         ];
     }
 
-    public function createAutomatically(array $data): array
-    {
-        return DB::transaction(function () use ($data) {
-            $crossword = Crossword::create([
-                'title' => $data['title'],
-                'main_solution' => mb_strtoupper($data['main_solution']),
-                'user_id' => $data['user_id'] ?? null,
-                'difficulty' => $data['difficulty'] ?? 'easy',
-                'is_public' => false,
-            ]);
-
-            $clues = collect($data['word_pairs'])
-                ->map(function (array $pair) {
-                    return Clue::firstOrCreate(
-                        [
-                            'definition' => $pair['definition'],
-                            'solution' => mb_strtoupper($pair['solution']),
-                        ]
-                    );
-                })
-                ->values();
-
-            $placements = $this->generator->generatePlacementsAutomatically(
-                $crossword->main_solution,
-                $clues,
-            );
-
-            foreach ($placements as $placement) {
-                $placement['crossword_id'] = $crossword->id;
-
-                CrosswordClue::create($placement);
-            }
-
-            $crossword->load([
-                'crosswordClues.clue',
-                'creator',
-                'topics',
-            ]);
-
-            $gridData = $this->generator->generateGrid(
-                $crossword->getWords(),
-            );
-
-            return [
-                'crossword' => $crossword,
-                'grid' => $gridData['grid'],
-                'width' => $gridData['width'],
-                'height' => $gridData['height'],
-            ];
-        });
-    }
-
     public function create(array $data): array
     {
         if (!empty($data['entries'])) {
