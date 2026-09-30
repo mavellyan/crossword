@@ -29,6 +29,7 @@
  * @property {string} DISCONNECTED_ENTRY - A szó nem kapcsolódik egyetlen már elhelyezett szóhoz sem.
  * @property {string} TOO_FEW_ENTRIES - A rejtvényben túl kevés szó (<2) van elhelyezve.
  * @property {string} DISCONNECTED_LAYOUT - A rejtvényben elhelyezett szavak nem kapcsolódnak egymáshoz.
+ * @property {string} CLUE_TOPIC_MISMATCH - A szó nem illeszkedik a rejtvény témájához.
  */
 const Errors = {
   LETTER_CONFLICT: 'letter_conflict',
@@ -42,6 +43,7 @@ const Errors = {
   DISCONNECTED_ENTRY: 'disconnected_entry',
   TOO_FEW_ENTRIES: 'too_few_entries',
   DISCONNECTED_LAYOUT: 'disconnected_layout',
+  CLUE_TOPIC_MISMATCH: 'clue_topic_mismatch',
 }
 
 /**

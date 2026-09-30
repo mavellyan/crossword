@@ -23,7 +23,7 @@ export async function getCrosswordForEdit(crosswordId) {
 }
 
 export async function updateCrossword(crosswordId, payload) {
-  const response = await axios.post('/updateCrossword', { id: crosswordId, ...payload })
+  const response = await axios.put('/updateCrossword', { id: crosswordId, ...payload })
 
   if (!response.data.success || !response.data.crossword) {
     throw new Error(response.data.message ?? 'Nem sikerült frissíteni a rejtvényt.')

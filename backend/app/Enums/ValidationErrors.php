@@ -23,4 +23,5 @@ enum ValidationErrors: string {
     case GUIDED_LAYOUT_DIRECTION_MISMATCH = 'guided_layout_direction_mismatch';
     case GUIDED_LAYOUT_POSITION_MISMATCH = 'guided_layout_position_mismatch';
     case GUIDED_LAYOUT_MAIN_COLUMN_MISMATCH = 'guided_layout_main_column_mismatch';
+    case CLUE_TOPIC_MISMATCH = 'clue_topic_mismatch';
 }

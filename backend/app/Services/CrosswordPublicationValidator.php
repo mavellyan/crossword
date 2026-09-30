@@ -14,6 +14,7 @@ final class CrosswordPublicationValidator
     public function __construct(
         private readonly PlacementValidator $placementValidator,
         private readonly CrosswordGenerator $crosswordGenerator,
+        private readonly CrosswordTopicConsistencyValidator $topicConsistencyValidator,
     ) {
     }
 
@@ -102,6 +103,14 @@ final class CrosswordPublicationValidator
         if (!$result->valid) {
             throw new InvalidCrosswordLayout($result->errors);
         }
+
+        $this->topicConsistencyValidator->assertValid(
+            array_map(
+                fn ($placement) => $placement->clueId,
+                $placements
+            ),
+            $crossword->topics()->pluck('topics.id')->all(),
+        );
 
         $grid = $this->crosswordGenerator->generateGrid($crossword->getWords());
 

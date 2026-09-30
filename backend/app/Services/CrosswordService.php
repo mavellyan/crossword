@@ -22,6 +22,7 @@ class CrosswordService
         private readonly CrosswordGenerator $generator,
         private readonly PlacementValidator $placementValidator,
         private readonly CrosswordPublicationValidator $publicationValidator,
+        private readonly CrosswordTopicConsistencyValidator $topicConsistencyValidator,
     ) {
     }
 
@@ -52,6 +53,11 @@ class CrosswordService
     public function create(array $data): array
     {
         if (!empty($data['entries'])) {
+            $clueIds = array_column($data['entries'] ?? [], 'clue_id');
+            $topic_ids = $data['topic_ids'] ?? [];
+
+            $this->topicConsistencyValidator->assertValid($clueIds, $topic_ids);
+
             $placements = $this->resolveExplicitPlacements($data['entries']);
 
             $validation = $this->placementValidator->validateLayout($placements);
@@ -60,6 +66,11 @@ class CrosswordService
                 throw new InvalidCrosswordLayout($validation->errors);
             }
         } else {
+            $clueIds = $data['clue_ids'] ?? [];
+            $topic_ids = $data['topic_ids'] ?? [];
+
+            $this->topicConsistencyValidator->assertValid($clueIds, $topic_ids);
+
             $placements = $this->resolveLegacyPlacements($data['main_solution'], $data['clue_ids']);
         }
 
@@ -384,6 +395,11 @@ class CrosswordService
             }
 
             if (!empty($data['entries'])) {
+                $clueIds = array_column($data['entries'] ?? [], 'clue_id');
+                $topic_ids = $data['topic_ids'] ?? [];
+
+                $this->topicConsistencyValidator->assertValid($clueIds, $topic_ids);
+
                 $placements = $this->resolveExplicitPlacements($data['entries']);
 
                 $validation = $this->placementValidator->validateLayout($placements);
@@ -392,6 +408,11 @@ class CrosswordService
                     throw new InvalidCrosswordLayout($validation->errors);
                 }
             } else {
+                $clueIds = $data['clue_ids'] ?? [];
+                $topic_ids = $data['topic_ids'] ?? [];
+
+                $this->topicConsistencyValidator->assertValid($clueIds, $topic_ids);
+                
                 $placements = $this->resolveLegacyPlacements($data['main_solution'], $data['clue_ids']);
             }
 
