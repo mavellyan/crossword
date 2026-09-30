@@ -46,7 +46,7 @@ class PlacementValidator
                 'code' => ValidationErrors::ANSWER_TOO_LONG,
                 'row' => $candidatePlacement->startRow,
                 'col' => $candidatePlacement->startCol,
-                'message' => 'Answer is too long. It can\'t exceed 20 characters.',
+                'message' => 'A válasz túl hosszú. Nem lehet hosszabb, mint 20 karakter.',
             ];
         }
 
@@ -55,7 +55,7 @@ class PlacementValidator
                 'code' => ValidationErrors::ANSWER_TOO_SHORT,
                 'row' => $candidatePlacement->startRow,
                 'col' => $candidatePlacement->startCol,
-                'message' => 'Answer is too short. It must be at least 2 characters long.',
+                'message' => 'A válasz túl rövid. Legalább 2 karakter hosszú kell legyen.',
             ];
         }
 
@@ -64,7 +64,7 @@ class PlacementValidator
                 'code' => ValidationErrors::NEGATIVE_COORDINATE,
                 'row' => $candidatePlacement->startRow,
                 'col' => $candidatePlacement->startCol,
-                'message' => 'Placement starts at a negative coordinate.',
+                'message' => 'A kezdő koordináták nem lehetnek negatívak.',
             ];
         }
 
@@ -73,7 +73,7 @@ class PlacementValidator
                 'code' => ValidationErrors::OUT_OF_BOUNDS,
                 'row' => $candidatePlacement->startRow,
                 'col' => $candidatePlacement->startCol,
-                'message' => 'Placement starts outside the grid boundaries.',
+                'message' => 'A kezdő koordináták a rács határain kívül esnek.',
             ];
         }
 
@@ -85,7 +85,7 @@ class PlacementValidator
                 'code' => ValidationErrors::OUT_OF_BOUNDS,
                 'row' => $endRow,
                 'col' => $endCol,
-                'message' => 'Placement ends outside the grid boundaries.',
+                'message' => 'Az elhelyezés vége a rács határain kívül esik.',
             ];
         }
 
@@ -124,7 +124,7 @@ class PlacementValidator
                 'code' => ValidationErrors::BLOCKED_ENDPOINT,
                 'row' => $beforeRow,
                 'col' => $beforeCol,
-                'message' => 'Blocked endpoint at ' . $beforeRow . ', col ' . $beforeCol . '.'
+                'message' => 'Zárt végpont a(z) ' . $beforeRow . '. sor, ' . $beforeCol . '. oszlopban.'
             ];
         }
 
@@ -133,7 +133,7 @@ class PlacementValidator
                 'code' => ValidationErrors::BLOCKED_ENDPOINT,
                 'row' => $afterRow,
                 'col' => $afterCol,
-                'message' => 'Blocked endpoint at ' . $afterRow . ', col ' . $afterCol . '.'
+                'message' => 'Zárt végpont a(z) ' . $afterRow . '. sor, ' . $afterCol . '. oszlopban.'
             ];
         }
 
@@ -161,7 +161,7 @@ class PlacementValidator
                         'code' => ValidationErrors::LETTER_CONFLICT,
                         'row' => $cell['row'],
                         'col' => $cell['col'],
-                        'message' => 'Letter conflict at row ' . $cell['row'] . ', col ' . $cell['col'] . '.',
+                        'message' => 'Betűk ütközése a(z) ' . $cell['row'] . '. sor, ' . $cell['col'] . '. oszlopban.',
                     ];
                 }
 
@@ -170,7 +170,7 @@ class PlacementValidator
                         'code' => ValidationErrors::SAME_DIRECTION_OVERLAP,
                         'row' => $cell['row'],
                         'col' => $cell['col'],
-                        'message' => 'Same direction overlap at row ' . $cell['row'] . ', col ' . $cell['col'] . '.',
+                        'message' => 'Egyirányú átfedés a(z) ' . $cell['row'] . '. sor, ' . $cell['col'] . '. oszlopban.',
                     ];
                 }
             }
@@ -181,7 +181,7 @@ class PlacementValidator
                     'code' => ValidationErrors::SIDE_ADJACENCY,
                     'row' => $cell['row'],
                     'col' => $cell['col'],
-                    'message' => 'Side adjacency at row ' . $cell['row'] . ', col ' . $cell['col'] . '.',
+                    'message' => 'Oldalsó szomszédos cella a(z) ' . $cell['row'] . '. sor, ' . $cell['col'] . '. oszlopban.',
                 ];
             }
 
@@ -202,7 +202,7 @@ class PlacementValidator
                 'code' => ValidationErrors::DISCONNECTED_ENTRY,
                 'row' => $candidatePlacement->startRow,
                 'col' => $candidatePlacement->startCol,
-                'message' => 'Disconnected entry at row ' . $candidatePlacement->startRow . ', col ' . $candidatePlacement->startCol . '.',
+                'message' => 'Leválasztott elhelyezés a(z) ' . $candidatePlacement->startRow . '. sor, ' . $candidatePlacement->startCol . '. oszlopban.',
             ];
         }
 
@@ -242,7 +242,7 @@ class PlacementValidator
                 errors: [
                     [
                         'code' => ValidationErrors::TOO_FEW_ENTRIES,
-                        'message' => 'There must be at least 2 entries in the layout.',
+                        'message' => 'A rejtvénynek legalább 2 elhelyezést kell tartalmaznia a közzétételhez.',
                     ]
                 ],
                 intersectionCount: 0,
@@ -316,7 +316,7 @@ class PlacementValidator
         if (count($visited) !== count($placements)) {
             $errors[] = [
                 'code' => ValidationErrors::DISCONNECTED_LAYOUT,
-                'message' => 'The layout is disconnected. All placements must be connected.',
+                'message' => 'A rejtvény elrendezése nem összekapcsolt, azaz nem minden elhelyezés kapcsolódik egymáshoz.',
             ];
         }
 
@@ -355,7 +355,7 @@ class PlacementValidator
                 errors: [
                     [
                         'code' => ValidationErrors::MAIN_SOLUTION_MISMATCH,
-                        'message' => 'The number of placements must match the length of the main solution.',
+                        'message' => 'A rejtvény elhelyezéseinek száma nem egyezik meg a fő megoldás hosszúságával.',
                     ]
                 ],
                 intersectionCount: 0,
@@ -377,7 +377,7 @@ class PlacementValidator
                     'code' => ValidationErrors::MAIN_SOLUTION_MISMATCH,
                     'row' => $placement->startRow,
                     'col' => $placement->startCol,
-                    'message' => 'The placement answer "' . $solution . '" does not contain the expected letter "' . $expectedLetter . '" from the main solution.',
+                    'message' => 'A(z) ' . $placement->startRow . '. sor, ' . $placement->startCol . '. oszlopban a(z) "' . $solution . '" megoldás nem tartalmazza a fő megoldásból várható "' . $expectedLetter . '" betűt.',
                 ];
             } else {
                 $mainCol = $placement->startCol + $intersectionIndex;
@@ -389,7 +389,7 @@ class PlacementValidator
                     'code' => ValidationErrors::GUIDED_LAYOUT_DIRECTION_MISMATCH,
                     'row' => $placement->startRow,
                     'col' => $placement->startCol,
-                    'message' => 'All placements must be horizontal for a guided layout.',
+                    'message' => 'Az egyszerűsített elrendezésben minden elhelyezésnek vízszintesnek kell lennie.',
                 ];
             }
 
@@ -398,7 +398,7 @@ class PlacementValidator
                     'code' => ValidationErrors::OUT_OF_BOUNDS,
                     'row' => $placement->startRow,
                     'col' => $placement->startCol,
-                    'message' => 'Placement starts outside the grid boundaries.',
+                    'message' => 'Az elhelyezés kezdő sora a rács határain kívül esik.',
                 ];
             }
 
@@ -407,7 +407,7 @@ class PlacementValidator
                     'code' => ValidationErrors::GUIDED_LAYOUT_POSITION_MISMATCH,
                     'row' => $placement->startRow,
                     'col' => $placement->startCol,
-                    'message' => 'The placement at index ' . $index . ' must start at row ' . $index . '.',
+                    'message' => 'Az elhelyezésnek a(z) ' . $index . '. sorban kell kezdődnie, de a(z) ' . $placement->startRow . '. sorban kezdődik.',
                 ];
             }
 
@@ -416,7 +416,7 @@ class PlacementValidator
                     'code' => ValidationErrors::OUT_OF_BOUNDS,
                     'row' => $placement->startRow,
                     'col' => $placement->startCol,
-                    'message' => 'Placement starts outside the grid boundaries.',
+                    'message' => 'Az elhelyezés kezdő oszlopa a rács határain kívül esik.',
                 ];
             }
 
@@ -425,7 +425,7 @@ class PlacementValidator
                     'code' => ValidationErrors::OUT_OF_BOUNDS,
                     'row' => $placement->startRow,
                     'col' => $placement->startCol,
-                    'message' => 'Placement ends outside the grid boundaries.',
+                    'message' => 'Az elhelyezés vége a rács határain kívül esik.',
                 ];
             }
         }
@@ -433,7 +433,7 @@ class PlacementValidator
         if (count(array_unique($mainColIndexes)) !== 1) {
             $errors[] = [
                 'code' => ValidationErrors::GUIDED_LAYOUT_MAIN_COLUMN_MISMATCH,
-                'message' => 'All placements must intersect the main solution in the same column.',
+                'message' => 'Az elhelyezéseknek mind a fő megoldással ugyanabban az oszlopban kell metsződni.',
             ];
         }
 

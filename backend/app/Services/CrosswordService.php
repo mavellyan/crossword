@@ -74,6 +74,8 @@ class CrosswordService
             $placements = $this->resolveLegacyPlacements($data['main_solution'], $data['clue_ids']);
         }
 
+        $placements = $this->normalizePlacements($placements);
+
         return $this->persistCrossword($data, $placements);
     }
 
@@ -412,9 +414,11 @@ class CrosswordService
                 $topic_ids = $data['topic_ids'] ?? [];
 
                 $this->topicConsistencyValidator->assertValid($clueIds, $topic_ids);
-                
+
                 $placements = $this->resolveLegacyPlacements($data['main_solution'], $data['clue_ids']);
             }
+
+            $placements = $this->normalizePlacements($placements);
 
             // Alapadatok frissítése
             $crossword->update([
@@ -467,5 +471,40 @@ class CrosswordService
 
             $crossword->delete();
         });
+    }
+
+    /**
+     * Normalizálja az elhelyezések koordinátáit úgy, hogy a legkisebb sor- és oszlopszám 0 legyen.
+     * 
+     * @param array<Placement> $placements - Az elhelyezések tömbje.
+     * @return array<Placement> - A normalizált elhelyezések tömbje.
+     */
+    private function normalizePlacements(array $placements): array
+    {
+        if ($placements === []) {
+            return [];
+        } // placementet atadni
+
+        $minRow = min(array_map(
+            fn (Placement $placement): int => $placement->startRow,
+            $placements,
+        ));
+
+        $minCol = min(array_map(
+            fn (Placement $placement): int => $placement->startCol,
+            $placements,
+        ));
+
+        return array_map(
+            fn (Placement $placement): Placement => new Placement(
+                id: $placement->id,
+                clueId: $placement->clueId,
+                answer: $placement->answer,
+                direction: $placement->direction,
+                startRow: $placement->startRow - $minRow,
+                startCol: $placement->startCol - $minCol,
+            ),
+            $placements,
+        );
     }
 }

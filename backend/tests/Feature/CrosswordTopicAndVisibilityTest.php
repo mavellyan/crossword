@@ -86,6 +86,9 @@ class CrosswordTopicAndVisibilityTest extends TestCase
         $firstTopic = Topic::query()->create(['name' => 'Földrajz', 'description' => 'Földrajzi téma']);
         $secondTopic = Topic::query()->create(['name' => 'Nyelvek', 'description' => 'Nyelvi téma']);
 
+        $this->hello->topics()->attach($firstTopic->id);
+        $this->world->topics()->attach($secondTopic->id);
+
         $response = $this
             ->actingAs($this->user)
             ->postJson('/api/createCrossword', [
@@ -110,6 +113,18 @@ class CrosswordTopicAndVisibilityTest extends TestCase
     {
         $oldTopic = Topic::query()->create(['name' => 'Régi téma', 'description' => 'Korábbi téma']);
         $newTopic = Topic::query()->create(['name' => 'Új téma', 'description' => 'Újonnan választott téma']);
+
+        $this->hello->topics()->attach([
+            $oldTopic->id,
+            $newTopic->id,
+        ]);
+
+        $this->world->topics()->attach([
+            $oldTopic->id,
+            $newTopic->id,
+        ]);
+
+
         $crossword = $this->createPrivateCrossword();
         $crossword->topics()->attach($oldTopic->id);
 
