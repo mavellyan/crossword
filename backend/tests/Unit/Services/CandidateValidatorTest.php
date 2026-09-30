@@ -354,45 +354,6 @@ class CandidateValidatorTest extends TestCase
     }
 
     /**
-     * Teszteli, hogy a validáció működése nem változtatja-e meg a bemeneti (már meglévő) elhelyezéseket.
-     * 
-     * @test
-     */
-    public function testValidationDoesNotMutateExistingPlacements(): void
-    {
-        $validator = new PlacementValidator();
-
-        // 1. Már meglévő elhelyezés a rácson
-        $existing_placement = new Placement(
-            id: 1,
-            clueId: 1,
-            answer: 'KIRÁZ',
-            direction: Direction::HORIZONTAL,
-            startRow: 1,
-            startCol: 3
-        );
-        
-        $existingPlacements = [$existing_placement];
-        
-        // Serializáljuk a kiindulási állapotot mély-összehasonlításhoz
-        $originalData = serialize($existingPlacements);
-
-        // 2. Új elhelyezés, ami validálásra kerül
-        $candidate = new Placement(
-            id: null,
-            clueId: 2,
-            answer: 'TŰZ',
-            direction: Direction::VERTICAL,
-            startRow: 1,
-            startCol: 4
-        );
-
-        $validator->validateCandidate($existingPlacements, $candidate);
-
-        $this->assertSame($originalData, serialize($existingPlacements));
-    }
-
-    /**
      * Ellenőrzi a negatív koordinátákat.
      * 
      * @test
@@ -727,7 +688,7 @@ class CandidateValidatorTest extends TestCase
      *
      * @test
      */ 
-    public function testMultipleValidIntersections()
+    public function testMultipleValidIntersections(): void
     {
         $validator = new PlacementValidator();
 

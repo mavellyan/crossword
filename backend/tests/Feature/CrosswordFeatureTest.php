@@ -8,6 +8,7 @@ use App\Models\Crossword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Enums\Direction;
+use App\Enums\ValidationErrors;
 
 class CrosswordFeatureTest extends TestCase
 {
@@ -78,8 +79,8 @@ class CrosswordFeatureTest extends TestCase
     }
 
     /**
-     * Leteszteli, hogyha különböző sorrendben küldjük a clue-kat, ugyanazt a layoutot kapjuk-e.
-     * 
+     * Ellenőrzi, hogy a fordított kérési sorrendben küldött bejegyzések is a megfelelő koordinátákkal mentődnek el.
+     *
      * @test
      */
     public function testCreatingTheSameLayoutInDifferentRequestOrder(): void
@@ -87,15 +88,38 @@ class CrosswordFeatureTest extends TestCase
         $payload = [
             'title' => 'Different Order Crossword',
             'entries' => [
-                // Fordított sorrendben küldjük
                 ['clue_id' => $this->clueWorld->id, 'direction' => Direction::VERTICAL, 'start_row' => 0, 'start_col' => 4],
                 ['clue_id' => $this->clueHello->id, 'direction' => Direction::HORIZONTAL, 'start_row' => 1, 'start_col' => 0],
             ],
         ];
 
-        $response = $this->actingAs($this->user)->postJson('/api/createCrossword', $payload);
+        $response = $this
+            ->actingAs($this->user)
+            ->postJson('/api/createCrossword', $payload)
+            ->assertCreated();
 
-        $response->assertStatus(201);
+        $crosswordId = $response->json('crossword.id');
+
+        $this->assertDatabaseHas('crossword_clues', [
+            'crossword_id' => $crosswordId,
+            'clue_id' => $this->clueWorld->id,
+            'direction' => Direction::VERTICAL->value,
+            'start_row' => 0,
+            'start_col' => 4,
+        ]);
+
+        $this->assertDatabaseHas('crossword_clues', [
+            'crossword_id' => $crosswordId,
+            'clue_id' => $this->clueHello->id,
+            'direction' => Direction::HORIZONTAL->value,
+            'start_row' => 1,
+            'start_col' => 0,
+        ]);
+
+        $this->assertSame(
+            2,
+            Crossword::query()->findOrFail($crosswordId)->crosswordClues()->count(),
+        );
     }
 
     /**
@@ -118,7 +142,7 @@ class CrosswordFeatureTest extends TestCase
 
         $response->assertStatus(422)
                  ->assertJsonFragment(['success' => false])
-                 ->assertJsonStructure(['errors']);
+                 ->assertJsonPath('errors.0.code', ValidationErrors::LETTER_CONFLICT->value);
     }
 
     /**
@@ -138,7 +162,9 @@ class CrosswordFeatureTest extends TestCase
 
         $response = $this->actingAs($this->user)->postJson('/api/createCrossword', $payload);
 
-        $response->assertStatus(422);
+        $response->assertUnprocessable()
+                 ->assertJsonPath('success', false)
+                 ->assertJsonPath('errors.0.code', ValidationErrors::DISCONNECTED_LAYOUT->value);
     }
 
     /**
@@ -229,8 +255,8 @@ class CrosswordFeatureTest extends TestCase
     }
 
     /**
-     * Legacy kód teszt, ami a régi clue_ids tömbbel hoz létre rejtvényt, hogy biztosítsa a visszafelé kompatibilitást.
-     * 
+     * Ellenőrzi, hogy a legacy clue_ids létrehozás elmenti, igazítja és publikálhatóvá teszi a generált bejegyzéseket.
+     *
      * @test
      */
     public function testLegacyClueIdsCreationStillWorks(): void
@@ -245,10 +271,50 @@ class CrosswordFeatureTest extends TestCase
             ],
         ];
 
-        $response = $this->actingAs($this->user)->postJson('/api/createCrossword', $payload);
+        $response = $this
+            ->actingAs($this->user)
+            ->postJson('/api/createCrossword', $payload)
+            ->assertCreated();
 
-        $response->assertStatus(201);
-        $this->assertDatabaseHas('crosswords', ['title' => 'Legacy Crossword', 'main_solution' => 'LOL']);
+        $crosswordId = $response->json('crossword.id');
+        $crossword = Crossword::query()->findOrFail($crosswordId);
+        $entries = $crossword->crosswordClues()
+            ->where('is_main', false)
+            ->orderBy('start_row')
+            ->get();
+
+        $this->assertSame('LOL', $crossword->main_solution);
+        $this->assertCount(3, $entries);
+        $this->assertSame([0, 1, 2], $entries->pluck('start_row')->all());
+        $this->assertSame([1, 2, 0], $entries->pluck('start_col')->all());
+
+        foreach ($entries as $entry) {
+            $this->assertSame(Direction::HORIZONTAL->value, $entry->getDirection());
+        }
+
+        $intersectionOffsets = [
+            $this->clueHello->id => mb_strpos('HELLO', 'L'),
+            $this->clueDork->id => mb_strpos('DORK', 'O'),
+            $this->clueWorld->id => mb_strpos('WORLD', 'L'),
+        ];
+
+        $mainColumns = $entries
+            ->map(fn ($entry) => $entry->start_col + $intersectionOffsets[$entry->clue_id])
+            ->unique()
+            ->values();
+
+        $this->assertSame([3], $mainColumns->all());
+
+        $this
+            ->actingAs($this->user)
+            ->patchJson('/api/setVisibility', [
+                'id' => $crosswordId,
+                'is_public' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('is_public', true);
+
+        $this->assertTrue($crossword->fresh()->is_public);
     }
 
     /**
@@ -316,7 +382,7 @@ class CrosswordFeatureTest extends TestCase
     {
         $crossword = Crossword::factory()->create(['user_id' => $this->user->id, 'title' => 'Original Title', 'is_public' => false]);
 
-        $oldEntry = $crossword->crosswordClues()->create([
+        $entry1 = $crossword->crosswordClues()->create([
             'clue_id' => $this->clueDork->id,
             'direction' => Direction::HORIZONTAL,
             'start_row' => 8,
@@ -324,11 +390,28 @@ class CrosswordFeatureTest extends TestCase
             'is_main' => false,
         ]);
 
+        $entry2 = [
+            'clue_id' => $this->clueHello->id,
+            'direction' => Direction::VERTICAL,
+            'start_row' => 1,
+            'start_col' => 0,
+            'is_main' => false,
+        ];
+
+        $entry3 = [
+            'clue_id' => $this->clueWorld->id,
+            'direction' => Direction::VERTICAL,
+            'start_row' => 0,
+            'start_col' => 4,
+            'is_main' => false,
+        ];
+
         $payload = [
             'id' => $crossword->id,
             'title' => 'Updated Title',
             'entries' => [
-                ['clue_id' => $this->clueHello->id, 'direction' => Direction::HORIZONTAL, 'start_row' => 1, 'start_col' => 0],
+                $entry2,
+                $entry3,
             ],
         ];
 
@@ -338,12 +421,12 @@ class CrosswordFeatureTest extends TestCase
         $this->assertDatabaseHas('crosswords', ['id' => $crossword->id, 'title' => 'Original Title']); // A cím nem változott
 
         $this->assertDatabaseMissing('crossword_clues', [
-            'id' => $this->clueHello->id,
+            'clue_id' => $entry2['clue_id'],
         ]);
 
         $this->assertDatabaseHas('crossword_clues', [
             'crossword_id' => $crossword->id,
-            'clue_id' => $this->clueDork->id,
+            'clue_id' => $entry1->clue_id,
             'start_row' => 8,
             'start_col' => 2,
         ]);
@@ -374,8 +457,8 @@ class CrosswordFeatureTest extends TestCase
         $response = $this->actingAs($this->user)->putJson('/api/updateCrossword', $payload);
 
 
-        // A kontroller Exception-t kap és 409-es választ dob rá
-        $response->assertStatus(409)
+        // A kontroller AuthorizationException-t kap és 403-as választ dob rá
+        $response->assertForbidden()
                  ->assertJsonPath('success', false);
     }
 
@@ -395,11 +478,11 @@ class CrosswordFeatureTest extends TestCase
 
         $this->actingAs($this->user)
             ->getJson('/api/getCrossword?id=' . $crossword->id)
-            ->assertForbidden();
+            ->assertNotFound();
         
         // Vendég felhasználó sem nyithatja meg a privát rejtvényt
         $this->getJson('/api/getCrossword?id=' . $crossword->id)
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     /**

@@ -375,42 +375,43 @@ class AttemptStateTest extends TestCase
     }
 
     /**
-     * Ellenőrzi, hogy az elavult beacon a frissebb grid állapotot megőrzi, de a started_at mezőt nullázza.
-     * 
+     * Ellenőrzi, hogy az elavult beacon megőrzi a frissebb rácsot, de hozzáadja az aktív időszakot és leállítja az időmérőt.
+     *
      * @test
      */
     public function testStaleBeaconPreservesNewerGridStateButClearsStartedAt(): void
     {
+        $fixedNow = Carbon::parse('2026-01-10 12:00:00');
+        $this->travelTo($fixedNow);
+
         $fixture = $this->createAttemptFixture();
-        
-        // A szerveren már van egy frissebb (5-ös) verzió a saját értékeivel
+
         $fixture['attempt']->update([
             'state_version' => 5,
             'grid_state' => [
                 'schema_version' => 2,
-                'cell_inputs' => ['2:1' => 'A'], 
+                'cell_inputs' => ['2:1' => 'A'],
                 'correct_entry_ids' => [],
-            ]
+            ],
+            'started_at' => now()->copy()->subSeconds(30),
+            'elapsed_time' => 10,
         ]);
 
-        // Érkezik egy beacon elavult (1-es) verzióval és eltérő adatokkal
-        $response = $this
+        $this
             ->actingAs($fixture['user'])
             ->postJson('/api/saveAndStopBeacon', [
                 'attempt_id' => $fixture['attempt']->id,
                 'state_version' => 1,
-                'cell_inputs' => ['2:1' => 'Z'], 
-            ]);
+                'cell_inputs' => ['2:1' => 'Z'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
 
-        $response->assertOk(); // Beacon nem dob 409-et
+        $attempt = CrosswordAttempt::query()->findOrFail($fixture['attempt']->id);
 
-        $attempt = CrosswordAttempt::find($fixture['attempt']->id);
-        
-        // A grid adatai és a state_version NE változzanak meg a régi adatokra
-        $this->assertEquals(5, $attempt->state_version);
-        $this->assertEquals('A', $attempt->grid_state['cell_inputs']['2:1']);
-        
-        // Viszont a started_at-et nulláznia kell, azaz stopActiveInterval() lefutott
+        $this->assertSame(5, $attempt->state_version);
+        $this->assertSame('A', $attempt->grid_state['cell_inputs']['2:1']);
+        $this->assertSame(40, $attempt->elapsed_time);
         $this->assertNull($attempt->started_at);
     }
 

@@ -192,7 +192,7 @@ class LayoutValidatorTest extends TestCase
 
         $this->assertFalse($result->valid);
         $errorCodes = array_column($result->errors, 'code');
-        $this->assertContains(ValidationErrors::DISCONNECTED_ENTRY, $errorCodes);
+        $this->assertContains(ValidationErrors::DISCONNECTED_LAYOUT, $errorCodes);
         $this->assertEquals(1, $result->intersectionCount);
     }
 

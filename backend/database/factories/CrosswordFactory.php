@@ -23,7 +23,7 @@ class CrosswordFactory extends Factory
             // Létrehoz vagy hozzárendel egy usert, ha nem adunk meg explicit
             'user_id' => User::factory(), 
             'difficulty' => Difficulty::EASY,
-            'is_public' => false,
+            'is_public' => true,
         ];
     }
 }

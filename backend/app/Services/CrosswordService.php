@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Clue;
 use App\Models\Crossword;
-use App\Models\CrosswordClue;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use App\Enums\Direction;
@@ -16,7 +15,6 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use InvalidArgumentException;
-use LogicException;
 
 class CrosswordService
 {

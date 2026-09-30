@@ -347,6 +347,8 @@ class AttemptController extends Controller
             $this->attemptService->updateAttemptState($validated['attempt_id'], $user->id, $submittedInputs, $validated['state_version'], true);
 
             return response()->json(['success' => true,]);
+        } catch (AttemptStateConflict $e) {
+            return response()->json(['success' => false,], 409);
         } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false,], 404);
         } catch (Throwable $e) {

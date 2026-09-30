@@ -143,7 +143,7 @@ class CrosswordController extends Controller
         $validated = $request->validate([
             'crossword_id' => 'required|integer|exists:crosswords,id',
             'placement_id' => 'required|integer|min:0',
-            'user_input' => 'required|string|min:1|max:20|regex:/^[A-ZÁÉÍÓÖŐÚÜŰ]+$/u',
+            'user_input' => 'required|string|min:1|max:20|regex:/^[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+$/u',
         ]);
 
         try {
