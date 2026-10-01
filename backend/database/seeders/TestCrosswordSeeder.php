@@ -17,22 +17,13 @@ class TestCrosswordSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
-            $user = User::firstOrCreate(
-                ['email' => 'test@example.com'],
-                [
-                    'username' => 'Teszt Felhasználó',
-                    'password' => Hash::make('password'),
-                    'role' => 'user',
-                    'profile_picture_path' => null,
-                ]
-            );
 
             $crossword = Crossword::updateOrCreate(
                 [
                     'title' => 'Teszt rejtvény - piros',
                 ],
                 [
-                    'user_id' => $user->id,
+                    'user_id' => null,
                     'main_solution' => 'piros',
 
                     'difficulty' => Difficulty::EASY,
