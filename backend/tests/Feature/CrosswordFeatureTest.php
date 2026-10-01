@@ -279,7 +279,6 @@ class CrosswordFeatureTest extends TestCase
         $crosswordId = $response->json('crossword.id');
         $crossword = Crossword::query()->findOrFail($crosswordId);
         $entries = $crossword->crosswordClues()
-            ->where('is_main', false)
             ->orderBy('start_row')
             ->get();
 
@@ -331,7 +330,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 8,
             'start_col' => 2,
-            'is_main' => false,
         ]);
 
         $oldEntry->save();
@@ -387,7 +385,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 8,
             'start_col' => 2,
-            'is_main' => false,
         ]);
 
         $entry2 = [
@@ -395,7 +392,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::VERTICAL,
             'start_row' => 1,
             'start_col' => 0,
-            'is_main' => false,
         ];
 
         $entry3 = [
@@ -403,7 +399,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::VERTICAL,
             'start_row' => 0,
             'start_col' => 4,
-            'is_main' => false,
         ];
 
         $payload = [
@@ -585,7 +580,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 1,
             'start_col' => 0,
-            'is_main' => false,
         ]);
 
         // Teszteljük a GetCrossword végpontot, ami a frontenden a kitöltőnek (solver) jelenik meg
@@ -634,7 +628,6 @@ class CrosswordFeatureTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 1,
             'start_col' => 0,
-            'is_main' => false,
         ]);
 
         $response = $this->actingAs($this->user)->getJson('/api/getCrosswordForEdit?id=' . $crossword->id);

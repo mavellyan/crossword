@@ -62,7 +62,6 @@ class TestCrosswordSeeder extends Seeder
                 'direction' => Direction::VERTICAL,
                 'start_row' => 0,
                 'start_col' => 3,
-                'is_main' => true,
             ]);
 
             $testClues = [
@@ -112,7 +111,6 @@ class TestCrosswordSeeder extends Seeder
                     'direction' => Direction::HORIZONTAL,
                     'start_row' => $testClue['start_row'],
                     'start_col' => $testClue['start_col'],
-                    'is_main' => false,
                 ]);
             }
         });

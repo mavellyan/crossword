@@ -49,7 +49,6 @@ class CrosswordPublicationTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 1,
             'start_col' => 0,
-            'is_main' => false,
         ]);
 
         $crossword->crosswordClues()->create([
@@ -57,7 +56,6 @@ class CrosswordPublicationTest extends TestCase
             'direction' => Direction::VERTICAL,
             'start_row' => 0,
             'start_col' => 4,
-            'is_main' => false,
         ]);
 
         return $crossword;
@@ -109,7 +107,6 @@ class CrosswordPublicationTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 1,
             'start_col' => 0,
-            'is_main' => false,
         ]);
 
         $response = $this

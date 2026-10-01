@@ -9,7 +9,6 @@ class Topic extends Model
 {
     protected $fillable = [
         'name',
-        'description',
     ];
 
     public function clues(): BelongsToMany

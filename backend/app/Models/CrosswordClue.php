@@ -14,11 +14,9 @@ class CrosswordClue extends Model
         'direction',
         'start_row',
         'start_col',
-        'is_main',
     ];
 
     protected $casts = [
-        'is_main' => 'boolean',
         'direction' => Direction::class,
     ];
 
@@ -84,14 +82,6 @@ class CrosswordClue extends Model
     public function getDefinition(): string
     {
         return (string) $this->definition;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isMain(): bool
-    {
-        return (bool) $this->is_main;
     }
 
     /**

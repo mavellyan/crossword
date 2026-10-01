@@ -32,7 +32,6 @@ final class CrosswordPublicationValidator
         }
 
         $placements = $crossword->crosswordClues
-            ->where('is_main', false)
             ->map(function (CrosswordClue $entry) {
                 if (!$entry->clue) {
                     throw new InvalidCrosswordLayout([

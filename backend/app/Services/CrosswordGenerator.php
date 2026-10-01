@@ -66,7 +66,6 @@ class CrosswordGenerator
                 'direction' => Direction::HORIZONTAL,
                 'start_row' => $match['row'],
                 'start_col' => $solutionCol - $match['offset'],
-                'is_main' => false,
             ];
         }
 
@@ -82,7 +81,6 @@ class CrosswordGenerator
     public function generateGrid(iterable $placements): array
     {
         $placements = collect($placements)
-            ->where('is_main', false)
             ->values();
 
         $height = 0;

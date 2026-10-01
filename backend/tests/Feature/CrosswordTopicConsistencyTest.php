@@ -43,7 +43,6 @@ class CrosswordTopicConsistencyTest extends TestCase
     {
         return Topic::query()->create([
             'name' => $name,
-            'description' => $name . ' témakör',
         ]);
     }
 
@@ -83,7 +82,6 @@ class CrosswordTopicConsistencyTest extends TestCase
         foreach ($this->validEntries() as $entry) {
             $crossword->crosswordClues()->create([
                 ...$entry,
-                'is_main' => false,
             ]);
         }
 

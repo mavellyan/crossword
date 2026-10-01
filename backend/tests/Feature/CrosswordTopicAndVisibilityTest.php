@@ -69,7 +69,6 @@ class CrosswordTopicAndVisibilityTest extends TestCase
         foreach ($this->validEntries() as $entry) {
             $crossword->crosswordClues()->create([
                 ...$entry,
-                'is_main' => false,
             ]);
         }
 
@@ -83,8 +82,8 @@ class CrosswordTopicAndVisibilityTest extends TestCase
      */
     public function testCreatingCrosswordAttachesSelectedTopics(): void
     {
-        $firstTopic = Topic::query()->create(['name' => 'Földrajz', 'description' => 'Földrajzi téma']);
-        $secondTopic = Topic::query()->create(['name' => 'Nyelvek', 'description' => 'Nyelvi téma']);
+        $firstTopic = Topic::query()->create(['name' => 'Földrajz']);
+        $secondTopic = Topic::query()->create(['name' => 'Nyelvek']);
 
         $this->hello->topics()->attach($firstTopic->id);
         $this->world->topics()->attach($secondTopic->id);
@@ -111,8 +110,8 @@ class CrosswordTopicAndVisibilityTest extends TestCase
      */
     public function testUpdatingCrosswordReplacesPreviousTopics(): void
     {
-        $oldTopic = Topic::query()->create(['name' => 'Régi téma', 'description' => 'Korábbi téma']);
-        $newTopic = Topic::query()->create(['name' => 'Új téma', 'description' => 'Újonnan választott téma']);
+        $oldTopic = Topic::query()->create(['name' => 'Régi téma']);
+        $newTopic = Topic::query()->create(['name' => 'Új téma']);
 
         $this->hello->topics()->attach([
             $oldTopic->id,
@@ -151,7 +150,7 @@ class CrosswordTopicAndVisibilityTest extends TestCase
      */
     public function testClearingTopicsDetachesPreviousAssociations(): void
     {
-        $topic = Topic::query()->create(['name' => 'Törlendő téma', 'description' => 'Eltávolítandó téma']);
+        $topic = Topic::query()->create(['name' => 'Törlendő téma']);
         $crossword = $this->createPrivateCrossword();
         $crossword->topics()->attach($topic->id);
 

@@ -126,8 +126,7 @@ class AdminController extends Controller
         $crosswords = Crossword::query()
             ->with('creator:id,username')
             ->withCount([
-                'crosswordClues as words_count' => fn ($query) =>
-                    $query->where('is_main', false),
+                'crosswordClues as words_count',
                 'attempts',
             ])
             ->when($search !== '', function ($query) use ($search) {

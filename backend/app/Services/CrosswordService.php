@@ -185,7 +185,6 @@ class CrosswordService
                     'direction' => $placement->direction,
                     'start_row' => $placement->startRow,
                     'start_col' => $placement->startCol,
-                    'is_main' => false,
                 ]);
             }
 
@@ -211,9 +210,7 @@ class CrosswordService
         $query = Crossword::query()
             ->with('creator')
             ->withCount([
-                'crosswordClues as words_count' => function ($query) {
-                    $query->where('is_main', false);
-                },
+                'crosswordClues as words_count',
             ])
             ->where('is_public', true);
 
@@ -342,9 +339,7 @@ class CrosswordService
     {
         $crossword = Crossword::with([
             'topics:id,name',
-            'crosswordClues' => function ($query) {
-                $query->where('is_main', false)->orderBy('start_row', 'asc');
-            },
+            'crosswordClues',
             'crosswordClues.clue:id,solution,definition'
         ])
         ->withCount(['attempts' => function ($query) {
@@ -442,7 +437,6 @@ class CrosswordService
                     'direction' => $placement->direction,
                     'start_row' => $placement->startRow,
                     'start_col' => $placement->startCol,
-                    'is_main' => false,
                 ]);
             }
 

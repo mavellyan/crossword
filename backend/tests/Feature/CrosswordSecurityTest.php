@@ -41,7 +41,6 @@ class CrosswordSecurityTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 1,
             'start_col' => 0,
-            'is_main' => false,
         ]);
 
         return [

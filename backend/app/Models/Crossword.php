@@ -49,7 +49,6 @@ class Crossword extends Model
         }
 
         return $this->crosswordClues
-            ->where('is_main', false)
             ->sortBy('start_row')
             ->values();
     }

@@ -47,7 +47,6 @@ class AttemptLifecycleTest extends TestCase
             'direction' => Direction::HORIZONTAL,
             'start_row' => 2,
             'start_col' => 1,
-            'is_main' => false,
         ]);
 
         $vertical = $crossword->crosswordClues()->create([
@@ -55,7 +54,6 @@ class AttemptLifecycleTest extends TestCase
             'direction' => Direction::VERTICAL,
             'start_row' => 1,
             'start_col' => 2,
-            'is_main' => false,
         ]);
 
         return compact('user', 'crossword', 'horizontal', 'vertical');
