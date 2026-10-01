@@ -322,7 +322,7 @@ export default {
             isFilled: Boolean(status?.filled),
             isCorrect: Boolean(status?.correct),
             isPending: Boolean(status?.pending),
-            isLocked: entryIds.some(entryId => this.crosswordStore.entryStatus[entryId]?.correct),
+            isLocked: this.crosswordStore.isCellLocked(row, col),
             value: this.crosswordStore.getCellValue(row, col),
           })
         }

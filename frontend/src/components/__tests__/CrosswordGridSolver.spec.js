@@ -105,4 +105,54 @@ describe('CrosswordGridSolver', () => {
     expect(store.getEntryInput('12')).toBe('L')
     expect(store.activeCellKey).toBe('2:3')
   })
+
+  it('gépeléskor átugorja a helyes keresztező szó zárolt celláját', () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    const store = useCrosswordStore()
+    store.initializePlayState(crosswordFixture())
+
+    // A vízszintes bejegyzés már helyes, ezért annak minden cellája,
+    // köztük a 2:2 metszéspont is zárolt.
+    store.updateEntryStatuses([11])
+
+    // A függőleges bejegyzést fejtjük.
+    store.selectEntry('12')
+    store.selectCell(1, 2)
+
+    const wrapper = shallowMount(CrosswordGridSolver, {
+      props: {
+        isCrosswordStarted: true,
+      },
+      global: {
+        plugins: [pinia],
+        stubs: {
+          SolverCell: true,
+          ClueList: true,
+        },
+      },
+    })
+
+    vi.spyOn(wrapper.vm, 'focusInput').mockImplementation(() => {})
+
+    wrapper.vm.onCellModelValueUpdate('1:2', 'E')
+
+    // A 2:2 cellát átugorja, és közvetlenül a 3:2 cellára lép.
+    expect(store.activeCellKey).toBe('3:2')
+    expect(wrapper.vm.focusInput).toHaveBeenCalledWith(3, 2)
+  })
+
+  it('visszafelé navigálva is átugorja a zárolt cellát', () => {
+    const store = useCrosswordStore()
+    store.initializePlayState(crosswordFixture())
+    store.updateEntryStatuses([11])
+
+    expect(
+      store.getPreviousCellInEntry('12', '3:2'),
+    ).toEqual({
+      row: 1,
+      col: 2,
+    })
+  })
 })

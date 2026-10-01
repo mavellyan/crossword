@@ -384,7 +384,7 @@ export const useCrosswordStore = defineStore('crossword', {
     updateCell(row, col, value) {
       const key = this.cellKey(row, col)
 
-      if (!(key in this.cellEntries)) {
+      if (!(key in this.cellEntries) || this.isCellLocked(row, col)) {
         return
       }
 
@@ -431,7 +431,7 @@ export const useCrosswordStore = defineStore('crossword', {
     deleteCell(row, col) {
       const key = this.cellKey(row, col)
 
-      if (!(key in this.cellEntries)) {
+      if (!(key in this.cellEntries) || this.isCellLocked(row, col)) {
         return
       }
       
@@ -486,6 +486,19 @@ export const useCrosswordStore = defineStore('crossword', {
       }
     },
     /**
+     * Ellenőrzi, hogy a megadott cella zárolt-e.
+     * Egy cella akkor zárolt, ha valamelyik hozzá tartozó bejegyzés már helyes.
+     *
+     * @param {number} row A cella sora.
+     * @param {number} col A cella oszlopa.
+     * @returns {boolean} Igaz, ha a cella nem módosítható.
+     */
+    isCellLocked(row, col) {
+      return this.getEntriesForCell(row, col).some(entryId => {
+        return this.entryStatus[String(entryId)]?.correct === true
+      })
+    },
+    /**
      * A metszéspontban lévő szavak között váltogat az aktív cella alapján. Ha nincs aktív cella, vagy a cellában csak egy szó van, akkor nem történik semmi.
      * 
      * @returns {void}
@@ -534,7 +547,8 @@ export const useCrosswordStore = defineStore('crossword', {
       return entry.cells.findIndex(cell => this.cellKey(cell.row, cell.col) === cellKey)
     },
     /**
-     * Visszaadja a megadott szó következő cellájának kulcsát.
+     * Visszaadja az aktív bejegyzés következő szerkeszthető celláját.
+     * A már helyes bejegyzésekhez tartozó zárolt cellákat átugorja.
      *
      * @param {string} entryId A szó azonosítója.
      * @param {string} currentCellKey A jelenlegi cella kulcsa.
@@ -549,15 +563,23 @@ export const useCrosswordStore = defineStore('crossword', {
 
       const currentIndex = this.getCellIndexInEntry(String(entryId), currentCellKey)
 
-      if (currentIndex === -1 || currentIndex === entry.cells.length - 1) {
+      if (currentIndex === -1) {
         return null
       }
 
-      const nextCell = entry.cells[currentIndex + 1]
-      return { row: nextCell.row, col: nextCell.col }
+      for (let index = currentIndex + 1; index < entry.cells.length; index++) {
+        const cell = entry.cells[index]
+
+        if (!this.isCellLocked(cell.row, cell.col)) {
+          return { row: cell.row, col: cell.col }
+        }
+      }
+
+      return null
     },
     /**
-     * Visszaadja a megadott szó előző cellájának kulcsát.
+     * Visszaadja az aktív bejegyzés előző szerkeszthető celláját.
+     * A már helyes bejegyzésekhez tartozó zárolt cellákat átugorja.
      *
      * @param {string} entryId A szó azonosítója.
      * @param {string} currentCellKey A jelenlegi cella kulcsa.
@@ -572,12 +594,19 @@ export const useCrosswordStore = defineStore('crossword', {
 
       const currentIndex = this.getCellIndexInEntry(String(entryId), currentCellKey)
 
-      if (currentIndex <= 0) {
+      if (currentIndex === -1) {
         return null
       }
 
-      const previousCell = entry.cells[currentIndex - 1]
-      return { row: previousCell.row, col: previousCell.col }
+      for (let index = currentIndex - 1; index >= 0; index--) {
+        const cell = entry.cells[index]
+
+        if (!this.isCellLocked(cell.row, cell.col)) {
+          return { row: cell.row, col: cell.col }
+        }
+      }
+
+      return null
     },
     /**
      * Visszaadja a megadott szó első üres cellájának kulcsát.
