@@ -31,26 +31,68 @@
 
         <div class="mb-2">
           <label for="password" class="form-label">Jelszó</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            class="form-control"
-            :class="{ 'is-invalid': fieldErrors.password }"
-          />
-          <p v-if="fieldErrors.password" class="invalid-feedback">{{ fieldErrors.password }}</p>
+
+          <div class="input-group">
+            <input
+              id="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              class="form-control"
+              :class="{ 'is-invalid': fieldErrors.password }"
+              autocomplete="new-password"
+            />
+
+            <button
+              type="button"
+              class="btn border text-secondary"
+              :aria-label="showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
+            >
+              <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />
+            </button>
+          </div>
+
+          <p
+            v-if="fieldErrors.password"
+            class="invalid-feedback d-block"
+          >
+            {{ fieldErrors.password }}
+          </p>
         </div>
 
         <div class="mb-3">
-          <label for="password-confirm" class="form-label">Jelszó megerősítése</label>
-          <input
-            id="password-confirm"
-            v-model="passwordConfirm"
-            type="password"
-            class="form-control"
-            :class="{ 'is-invalid': fieldErrors.passwordConfirm }"
-          />
-          <p v-if="fieldErrors.passwordConfirm" class="invalid-feedback">{{ fieldErrors.passwordConfirm }}</p>
+          <label for="password-confirm" class="form-label">
+            Jelszó megerősítése
+          </label>
+
+          <div class="input-group">
+            <input
+              id="password-confirm"
+              v-model="passwordConfirm"
+              :type="showPasswordConfirm ? 'text' : 'password'"
+              class="form-control"
+              :class="{ 'is-invalid': fieldErrors.passwordConfirm }"
+              autocomplete="new-password"
+            />
+
+            <button
+              type="button"
+              class="btn border text-secondary"
+              :aria-label="showPasswordConfirm ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'"
+              :aria-pressed="showPasswordConfirm"
+              @click="showPasswordConfirm = !showPasswordConfirm"
+            >
+              <font-awesome-icon :icon="showPasswordConfirm ? 'eye-slash' : 'eye'" />
+            </button>
+          </div>
+
+          <p
+            v-if="fieldErrors.passwordConfirm"
+            class="invalid-feedback d-block"
+          >
+            {{ fieldErrors.passwordConfirm }}
+          </p>
         </div>
 
         <button type="submit" class="btn btn-primary w-100">Regisztráció</button>
@@ -70,6 +112,8 @@ export default {
       email: '',
       password: '',
       passwordConfirm: '',
+      showPassword: false,
+      showPasswordConfirm: false,
       fieldErrors: {},
       generalError: null,
     }

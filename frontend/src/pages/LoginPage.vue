@@ -19,13 +19,27 @@
 
         <div class="mb-3">
           <label for="password" class="form-label">Jelszó</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            class="form-control"
-            :class="{ 'is-invalid': isInputWrong('invalid-login') }"
-          />
+
+          <div class="input-group">
+            <input
+              id="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              class="form-control"
+              :class="{ 'is-invalid': isInputWrong('invalid-login') }"
+              autocomplete="current-password"
+            />
+
+            <button
+              type="button"
+              class="btn border text-secondary"
+              :aria-label="showPassword ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'"
+              :aria-pressed="showPassword"
+              @click="showPassword = !showPassword"
+            >
+              <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />
+            </button>
+          </div>
         </div>
 
         <button type="submit" class="btn btn-primary w-100">Belépés</button>
@@ -47,6 +61,7 @@ export default {
     return {
       email: '',
       password: '',
+      showPassword: false,
       fieldErrors: [],
     }
   },
@@ -69,7 +84,7 @@ export default {
         await this.auth.login(this.email.trim(), this.password.trim())
         this.$router.push('/')
       } catch (error) {
-        if (error.response.status === 401) {
+        if (error?.response?.status === 401) {
           this.fieldErrors.push({
             field: 'invalid-login',
             message: 'Hibás email cím vagy jelszó, vagy a felhasználó fiókja inaktív!'

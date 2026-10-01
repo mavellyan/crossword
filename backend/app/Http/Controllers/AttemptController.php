@@ -70,7 +70,12 @@ class AttemptController extends Controller
                 'message' => 'A próbálkozás nem található.',
             ], 404);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a próbálkozás lekérdezésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a próbálkozás lekérdezésekor',
+                exception: $e,
+                context: ['crossword_id' => $validated['crossword_id']],
+            );
 
             return response()->json([
                 'success' => false,
@@ -113,6 +118,8 @@ class AttemptController extends Controller
                 'message' => $e->getMessage(),
             ], 403);
         } catch (AttemptStateConflict $e) {
+            $this->logStateConflict($request, 'indításakor', $validated['attempt_id'], $e);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -123,7 +130,12 @@ class AttemptController extends Controller
                 'message' => 'A próbálkozás nem található.',
             ], 404);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a próbálkozás indításakor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a próbálkozás indításakor',
+                exception: $e,
+                context: ['attempt_id' => $validated['attempt_id']],
+            );
 
             return response()->json([
                 'success' => false,
@@ -158,6 +170,8 @@ class AttemptController extends Controller
                 ],
             ]);
         } catch (AttemptStateConflict $e) {
+            $this->logStateConflict($request, 'leállításakor', $validated['attempt_id'], $e);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -168,7 +182,12 @@ class AttemptController extends Controller
                 'message' => 'A próbálkozás nem található.',
             ], 404);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a próbálkozás leállításakor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a próbálkozás leállításakor',
+                exception: $e,
+                context: ['attempt_id' => $validated['attempt_id']],
+            );
 
             return response()->json([
                 'success' => false,
@@ -200,6 +219,8 @@ class AttemptController extends Controller
                 'message' => 'Próbálkozás sikeresen törölve.',
             ]);
         } catch (AttemptStateConflict $e) {
+            $this->logStateConflict($request, 'feladásakor', $validated['attempt_id'], $e);
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -210,7 +231,12 @@ class AttemptController extends Controller
                 'message' => 'A próbálkozás nem található.',
             ], 404);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a próbálkozás törlésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a próbálkozás feladásakor',
+                exception: $e,
+                context: ['attempt_id' => $validated['attempt_id']],
+            );
 
             return response()->json([
                 'success' => false,
@@ -242,7 +268,12 @@ class AttemptController extends Controller
                 'table' => $table
             ]);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a legjobb próbálkozások lekérdezésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a legjobb próbálkozások lekérdezésekor',
+                exception: $e,
+                context: ['crossword_id' => $validated['crossword_id']],
+            );
 
             return response()->json([
                 'success' => false,
@@ -304,6 +335,14 @@ class AttemptController extends Controller
                 'best_time' => $bestTime ?? null,
             ]);
         } catch (AttemptStateConflict $e) {
+            $this->logStateConflict(
+                request: $request,
+                operation: 'mentésekor',
+                attemptId: $validated['attempt_id'],
+                exception: $e,
+                stateVersion: $validated['state_version'],
+            );
+
             return response()->json([
                 'success' => false,
                 'save_status' => 'conflict',
@@ -316,7 +355,15 @@ class AttemptController extends Controller
                 'message' => 'A próbálkozás nem található.',
             ], 404);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a próbálkozás mentésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a próbálkozás mentésekor',
+                exception: $e,
+                context: [
+                    'attempt_id' => $validated['attempt_id'],
+                    'state_version' => $validated['state_version'],
+                ],
+            );
 
             return response()->json([
                 'success' => false,
@@ -352,9 +399,53 @@ class AttemptController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['success' => false,], 404);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a próbálkozás mentésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a próbálkozás háttérben történő mentésekor',
+                exception: $e,
+                context: [
+                    'attempt_id' => $validated['attempt_id'],
+                    'state_version' => $validated['state_version'],
+                ],
+            );
 
             return response()->json(['success' => false], 500);
         }
+    }
+
+    /**
+     * Naplózza a kezelt, de váratlan vezérlőhibát teljes kivétel-információval.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function logUnexpectedFailure(
+        Request $request,
+        string $operation,
+        Throwable $exception,
+        array $context = [],
+    ): void {
+        Log::error('Váratlan hiba ' . $operation . '.', [
+            'user_id' => $request->user('sanctum')?->getAuthIdentifier(),
+            ...$context,
+            'exception' => $exception,
+        ]);
+    }
+
+    /**
+     * Naplózza az optimista zárolás vagy érvénytelen állapotátmenet miatti ütközést.
+     */
+    private function logStateConflict(
+        Request $request,
+        string $operation,
+        int $attemptId,
+        AttemptStateConflict $exception,
+        ?int $stateVersion = null,
+    ): void {
+        Log::warning('Próbálkozás-állapotütközés ' . $operation . '.', [
+            'user_id' => $request->user('sanctum')?->getAuthIdentifier(),
+            'attempt_id' => $attemptId,
+            'client_state_version' => $stateVersion,
+            'reason' => $exception->getMessage(),
+        ]);
     }
 }

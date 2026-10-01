@@ -11,10 +11,10 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import * as bootstrap from 'bootstrap'
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan, faSpinner, faTriangleExclamation, faFloppyDisk } from '@fortawesome/free-solid-svg-icons'
+import { faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan, faSpinner, faTriangleExclamation, faFloppyDisk, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-library.add(faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan, faSpinner, faTriangleExclamation, faFloppyDisk)
+library.add(faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan, faSpinner, faTriangleExclamation, faFloppyDisk, faEye, faEyeSlash)
 
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 

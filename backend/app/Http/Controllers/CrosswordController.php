@@ -67,7 +67,16 @@ class CrosswordController extends Controller
                 'message' => 'Hiba történt a rejtvény létrehozásakor: ' . $e->getMessage(),
             ], 422);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a rejtvény létrehozásakor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a rejtvény létrehozásakor',
+                exception: $e,
+                context: [
+                    'user_id' => $request->user()?->getAuthIdentifier(),
+                    'entry_count' => count($data['entries'] ?? $data['clue_ids'] ?? []),
+                    'topic_ids' => $data['topic_ids'] ?? [],
+                ],
+            );
 
             return response()->json([
                 'success' => false,
@@ -101,7 +110,16 @@ class CrosswordController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a rejtvények lekérdezésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a rejtvények lekérdezésekor',
+                exception: $e,
+                context: [
+                    'user_id' => $user?->getAuthIdentifier(),
+                    'status_filter' => $request->input('status', 'status_all'),
+                    'sort_order' => $request->input('sortOrder', 'dateDesc'),
+                ],
+            );
 
             return response()->json([
                 'success' => false,
@@ -168,7 +186,15 @@ class CrosswordController extends Controller
                 'message' => 'A megadott szó nem található a keresztrejtvényben.',
             ], 404);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a szó érvényesítésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a vendég megfejtésének ellenőrzésekor',
+                exception: $e,
+                context: [
+                    'crossword_id' => $validated['crossword_id'],
+                    'placement_id' => $validated['placement_id'],
+                ],
+            );
 
             return response()->json([
                 'success' => false,
@@ -216,7 +242,16 @@ class CrosswordController extends Controller
                 'errors' => $e->layoutErrors,
             ], 422);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a rejtvény láthatóságának váltásakor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a rejtvény láthatóságának módosításakor',
+                exception: $e,
+                context: [
+                    'user_id' => $user?->getAuthIdentifier(),
+                    'crossword_id' => $validated['id'],
+                    'requested_visibility' => $validated['is_public'],
+                ],
+            );
 
             return response()->json([
                 'success' => false,
@@ -246,7 +281,15 @@ class CrosswordController extends Controller
                 'message' => $e->getMessage(),
             ], 403);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a rejtvény lekérdezésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a szerkesztendő rejtvény lekérdezésekor',
+                exception: $e,
+                context: [
+                    'user_id' => $user?->getAuthIdentifier(),
+                    'crossword_id' => $validated['id'],
+                ],
+            );
 
             return response()->json([
                 'success' => false,
@@ -286,7 +329,17 @@ class CrosswordController extends Controller
                 'message' => $e->getMessage(),
             ], 409);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a rejtvény frissítésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a rejtvény frissítésekor',
+                exception: $e,
+                context: [
+                    'user_id' => $user?->getAuthIdentifier(),
+                    'crossword_id' => $data['id'],
+                    'entry_count' => count($data['entries'] ?? $data['clue_ids'] ?? []),
+                    'topic_ids' => $data['topic_ids'] ?? [],
+                ],
+            );
 
             return response()->json([
                 'success' => false,
@@ -321,12 +374,37 @@ class CrosswordController extends Controller
                 'message' => $e->getMessage(),
             ], 409);
         } catch (Throwable $e) {
-            Log::error('Váratlan hiba a rejtvény törlésekor', ['error' => $e->getMessage()]);
+            $this->logUnexpectedFailure(
+                request: $request,
+                operation: 'a rejtvény törlésekor',
+                exception: $e,
+                context: [
+                    'user_id' => $user?->getAuthIdentifier(),
+                    'crossword_id' => $validated['id'],
+                ],
+            );
             
             return response()->json([
                 'success' => false,
                 'message' => 'Hiba történt a rejtvény törlésekor! Kérjük, próbálja meg újból!',
             ], 500);
         }
+    }
+
+    /**
+     * Naplózza a kezelt, de váratlan vezérlőhibát teljes kivétel-információval.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function logUnexpectedFailure(
+        Request $request,
+        string $operation,
+        Throwable $exception,
+        array $context = [],
+    ): void {
+        Log::error('Váratlan hiba ' . $operation . '.', [
+            ...$context,
+            'exception' => $exception,
+        ]);
     }
 }
