@@ -38,5 +38,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "@/styles/navBar.scss";
+.nav-link {
+    color: white;
+}
 </style>
