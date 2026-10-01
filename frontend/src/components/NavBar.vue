@@ -4,6 +4,7 @@
       <RouterLink class="nav-link" to="/">Főoldal</RouterLink>
       <RouterLink class="nav-link" to="/crosswordlist">Rejtvények</RouterLink>
       <RouterLink v-if="auth.isLoggedIn" class="nav-link" to="/create">Rejtvény létrehozása</RouterLink>
+      <RouterLink v-if="auth.isAdmin" class="nav-link" to="/admin">Admin panel</RouterLink>
     </div>
     <div class="navbar-nav ms-auto">
       <template v-if="auth.isLoggedIn">

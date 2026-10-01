@@ -9,6 +9,7 @@ import CrosswordPage from '@/pages/CrosswordPage.vue'
 import CrosswordCreator from '@/pages/CrosswordCreator.vue'
 
 import ProfilePage from '@/pages/ProfilePage.vue'
+import AdminPage from '@/pages/AdminPage.vue'
 
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
@@ -25,6 +26,7 @@ const routes = [
       { path: 'crossword/:id', name: 'crossword', component: CrosswordPage, props: true },
       { path: 'create', name: 'crosswordcreator', component: CrosswordCreator, meta: { requiresAuth: true } },
       { path: 'profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
+      { path: 'admin', name: 'admin', component: AdminPage, meta: { requiresAuth: true, requiresAdmin: true } },
     ],
   },
   {
@@ -49,6 +51,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const token = localStorage.getItem('token')
+  const role = localStorage.getItem('role')
 
   // Bejelentkezést igénylő oldalak esetén, ha nincs token, a bejelentkezési oldalra irányítjuk a felhasználót
   if (to.meta.requiresAuth && !token) {
@@ -58,6 +61,11 @@ router.beforeEach((to) => {
         redirect: to.fullPath,
       },
     }
+  }
+
+  // Adminisztrátori jogosultságot igénylő oldalak esetén, ha a felhasználó nem adminisztrátor, a főoldalra irányítjuk
+  if (to.meta.requiresAdmin && role !== 'admin') {
+    return { name: 'home' }
   }
 
   // Bejelentkezett felhasználót a főoldalra navigáljuk, ha a bejelentkezési vagy regisztrációs oldalra próbál navigálni

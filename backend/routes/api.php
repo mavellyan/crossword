@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -14,6 +15,21 @@ Route::get('/health', function () {
     ]);
 });
 
+// Admin controller routes
+Route::prefix('admin')
+    ->middleware(['auth:sanctum', 'admin'])
+    ->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+
+        Route::get('/users', [AdminController::class, 'users']);
+        Route::patch('/users/{user}/status', [AdminController::class, 'setUserStatus']);
+
+        Route::get('/crosswords', [AdminController::class, 'crosswords']);
+        Route::delete('/crosswords/{crossword}', [AdminController::class, 'deleteCrossword']);
+
+        Route::get('/clues', [AdminController::class, 'clues']);
+        Route::delete('/clues/{clue}', [AdminController::class, 'deleteClue']);
+    });
 
 // Auth controller routes
 Route::post('/register', [\App\Http\Controllers\AuthController::class, 'register']);

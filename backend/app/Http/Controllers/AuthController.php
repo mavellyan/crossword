@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
-use Laravel\Sanctum\HasApiTokens;
 
 class AuthController extends Controller
 {
@@ -61,10 +60,11 @@ class AuthController extends Controller
 
         if (!Auth::attempt([
             'email' => $validatedData['email'],
-            'password' => $validatedData['password']
+            'password' => $validatedData['password'],
+            'is_active' => true
         ])) {
             return response()->json([
-                'message' => 'Hibás email cím vagy jelszó!',
+                'message' => 'Hibás email cím vagy jelszó, vagy a felhasználó fiókja inaktív!',
             ], 401);
         }
 
@@ -75,8 +75,9 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Sikeres bejelentkezés!',
             'user_id' => $user->id,
+            'role' => $user->role,
             'token' => $token,
-        ], 201);
+        ], 200);
     }
 
     /**

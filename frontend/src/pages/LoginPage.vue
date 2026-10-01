@@ -72,7 +72,7 @@ export default {
         if (error.response.status === 401) {
           this.fieldErrors.push({
             field: 'invalid-login',
-            message: 'Hibás email cím vagy jelszó!'
+            message: 'Hibás email cím vagy jelszó, vagy a felhasználó fiókja inaktív!'
           })
         } else {
           this.fieldErrors.push({
