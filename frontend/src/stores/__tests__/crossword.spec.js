@@ -245,4 +245,47 @@ describe('crossword store', () => {
     expect(attemptStore.modified).toBe(true)
     store.cancelScheduledSave()
   })
+
+  
+  it('teljes entry kitöltésekor azonnali mentést kér', () => {
+    localStorage.setItem('token', 'token')
+
+    const crosswordStore = useCrosswordStore()
+    crosswordStore.initializePlayState(shortCrossword())
+    crosswordStore.cellInputs['0:0'] = 'A'
+
+    const attemptStore = useAttemptStore()
+    attemptStore.id = 101
+    attemptStore.status = 'in_progress'
+
+    const immediateSaveSpy = vi
+      .spyOn(attemptStore, 'requestImmediateSave')
+      .mockResolvedValue({ status: 'saved' })
+
+    crosswordStore.updateCell(0, 1, 'B')
+
+    expect(immediateSaveSpy).toHaveBeenCalledOnce()
+    expect(crosswordStore.entryStatus['21'].pending).toBe(true)
+  })
+
+  it('részleges entrynél továbbra is ütemezett mentést használ', () => {
+    localStorage.setItem('token', 'token')
+
+    const crosswordStore = useCrosswordStore()
+    crosswordStore.initializePlayState(shortCrossword())
+
+    const attemptStore = useAttemptStore()
+    const immediateSaveSpy = vi.spyOn(
+      attemptStore,
+      'requestImmediateSave',
+    )
+    const scheduleSpy = vi
+      .spyOn(crosswordStore, 'scheduleSave')
+      .mockImplementation(() => {})
+
+    crosswordStore.updateCell(0, 0, 'A')
+
+    expect(immediateSaveSpy).not.toHaveBeenCalled()
+    expect(scheduleSpy).toHaveBeenCalledOnce()
+  })
 })

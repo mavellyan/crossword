@@ -388,26 +388,36 @@ export const useCrosswordStore = defineStore('crossword', {
         return
       }
 
+      const affectedEntryIds = this.getEntriesForCell(row, col)
+
       this.cellInputs[key] = normalizeLetter(value)
       this.refreshEntriesAtCell(row, col)
 
       const authStore = useAuthStore()
 
       if (!authStore.isLoggedIn) {
-        const entries = this.getEntriesForCell(row, col)
+        affectedEntryIds.forEach(entryId => {
+          const status = this.entryStatus[String(entryId)]
 
-        entries.forEach(entryId => {
-          if (this.entryStatus[String(entryId)]?.filled && !this.entryStatus[String(entryId)]?.correct) {
+          if (status?.filled && !status?.correct) {
             this.validateGuestEntry(entryId).catch(error => {
               console.error('Hiba a szó ellenőrzése közben:', error)
             })
           }
         })
+
         return
       }
 
       const attemptStore = useAttemptStore()
       attemptStore.modified = true
+
+      const hasFilledAffectedEntry = affectedEntryIds.some(entryId => { return this.entryStatus[String(entryId)]?.filled === true })
+
+      if (hasFilledAffectedEntry) {
+        void attemptStore.requestImmediateSave()
+        return
+      }
 
       this.scheduleSave()
     },

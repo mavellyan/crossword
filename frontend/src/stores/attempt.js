@@ -104,6 +104,13 @@ export const useAttemptStore = defineStore('attempt', {
      * @type {string|null}
      */
     displayError: null,
+    /**
+     * Ha egy szó teljesen kitöltésre kerül, akkor indítunk egy azonnali mentést, hogy ne kelljen 1.5 másodpercet várnia a usernek a validálásra.
+     * User Experience szempontból sokkal kényelmesebb és élvezhetőbb így a játék.
+     * 
+     * @type {boolean}
+     */
+    immediateSaveQueued: false,
   }),
 
   getters: {
@@ -137,6 +144,7 @@ export const useAttemptStore = defineStore('attempt', {
       this.saving = false
       this.bestAttempts = []
       this.wasCompleted = false
+      this.idmediateSaveQueued = false
     },
     initializeAttemptState(attempt) {
       this.id = attempt.id
@@ -275,6 +283,28 @@ export const useAttemptStore = defineStore('attempt', {
       }
     },
     /**
+     * Azonnali mentést kér, például egy bejegyzés teljes kitöltésekor.
+     * Ha már fut mentés, egy újabb mentést ütemez annak befejezése után.
+     *
+     * @returns {Promise<object>} A mentés eredménye vagy a sorba állítás állapota.
+     */
+    async requestImmediateSave() {
+      const crosswordStore = useCrosswordStore()
+
+      crosswordStore.cancelScheduledSave()
+      this.modified = true
+
+      if (this.saving) {
+        this.immediateSaveQueued = true
+
+        return {
+          status: 'queued',
+        }
+      }
+
+      return this.saveProgress()
+    },
+    /**
      * Elmenti a rejtvény aktuális állapotát, 2 másodpercenként fut.
      * Ha nincs bejelentkezett felhasználó, nincs attemptId, vagy a rejtvény már be van fejezve,
      * nem történt módosítás, vagy van jelenleg futó mentés, akkor nem történik semmi.
@@ -356,7 +386,18 @@ export const useAttemptStore = defineStore('attempt', {
           status: 'failed',
         }
       } finally {
+        const shouldRunQueuedSave = this.immediateSaveQueued
+
+        this.immediateSaveQueued = false
         this.saving = false
+
+        if (shouldRunQueuedSave && this.modified && this.status !== 'completed') {
+          crosswordStore.cancelScheduledSave()
+
+          queueMicrotask(() => {
+            this.saveProgress()
+          })
+        }
       }
     },
     /**
