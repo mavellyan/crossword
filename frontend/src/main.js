@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 library.add(faArrowLeft, faArrowRight, faCheck, faTimes, faPlus, faMinus, faTrashCan, faSpinner, faTriangleExclamation, faFloppyDisk)
 
-axios.defaults.baseURL = 'http://localhost:8000/api'
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 axios.interceptors.request.use(config => {
     const token = localStorage.getItem('token')
