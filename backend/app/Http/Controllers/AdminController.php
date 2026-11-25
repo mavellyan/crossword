@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class AdminController extends Controller
 {
     /**
-     * Adminisztrátori dashboard statisztikák lekérése
+     * Dashboard statisztikák lekérése
      */
     public function dashboard(): JsonResponse
     {
@@ -37,7 +37,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Adminisztrátori felhasználói lista lekérése, keresési és lapozási lehetőséggel
+     * Felhasználói lista lekérése, keresési és lapozási lehetőséggel
      * A felhasználókhoz tartozó statisztikák is lekérdezhetők, mint a rejtvények száma és a próbálkozások száma
      * A keresés a felhasználónév és az email cím alapján történik
      */
@@ -77,7 +77,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Adminisztrátori felhasználói státusz módosítása (aktiválás / letiltás)
+     * Felhasználói státusz módosítása (aktiválás / letiltás)
      * A saját adminisztrátori fiók nem tiltható le
      */
     public function setUserStatus(Request $request, User $user): JsonResponse
@@ -116,7 +116,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Adminisztrátori rejtvény lista lekérése, keresési és lapozási lehetőséggel
+     * Rejtvény lista lekérése, keresési és lapozási lehetőséggel
      * A keresés a rejtvény cím alapján történik
      */
     public function crosswords(Request $request): JsonResponse
@@ -154,12 +154,17 @@ class AdminController extends Controller
     }
 
     /**
-     * Adminisztrátori rejtvény törlése
-     * A törléshez a rejtvényhez tartozó próbálkozások is törlődnek, ezért a törlés végleges és nem visszavonható
+     * Rejtvény törlése
+     * A törlés során a rejtvényhez tartozó próbálkozások is törlődnek, ezért a törlés végleges és nem visszavonható
      */
     public function deleteCrossword(Crossword $crossword): JsonResponse
     {
-        $crossword->delete();
+        DB::transaction(function () use ($crossword): void {
+            $crossword->attempts()->delete();
+            $crossword->crosswordClues()->delete();
+            $crossword->topics()->detach();
+            $crossword->delete();
+        });
 
         return response()->json([
             'success' => true,
@@ -168,7 +173,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Adminisztrátori szó lista lekérése, keresési és lapozási lehetőséggel
+     * Szó lista lekérése, keresési és lapozási lehetőséggel
      * A keresés a szó megoldás és definíció alapján történik
      * A szavakhoz tartozó statisztikák is lekérdezhetők, mint a felhasználók száma, akik használják a szót a rejtvényeikben
      * A szavakhoz tartozó témák is lekérdezhetők
@@ -211,8 +216,8 @@ class AdminController extends Controller
     }
 
     /**
-     * Adminisztrátori szó törlése
-     * A törléshez a szóhoz tartozó rejtvény próbálkozások is törlődnek, ezért a törlés végleges és nem visszavonható
+     * Szó törlése
+     * A törlés során a szóhoz tartozó rejtvény próbálkozások is törlődnek, ezért a törlés végleges és nem visszavonható
      * A szó nem törölhető, ha legalább egy rejtvény használja a szót, ebben az esetben a kliensnek 409-es státuszkódot küld vissza a szerver
      */
     public function deleteClue(Clue $clue): JsonResponse

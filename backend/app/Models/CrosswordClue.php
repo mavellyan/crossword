@@ -5,9 +5,12 @@ namespace App\Models;
 use App\Enums\Direction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CrosswordClue extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'crossword_id',
         'clue_id',

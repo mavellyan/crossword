@@ -350,7 +350,7 @@ class CrosswordFeatureTest extends TestCase
         $response->assertStatus(200);
         $this->assertDatabaseHas('crosswords', ['id' => $crossword->id, 'title' => 'Updated Title']);
 
-        $this->assertDatabaseMissing('crossword_clues', [
+        $this->assertSoftDeleted('crossword_clues', [
             'id' => $oldEntry->id,
         ]);
 

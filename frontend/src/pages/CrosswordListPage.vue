@@ -4,137 +4,140 @@
       Rejtvények
     </h1>
 
-    <div class="d-flex">
-      <div class="d-flex flex-column align-items-center w-25 bg-light mx-3 p-3 rounded sticky-top border">
-        <h3>
-          Szűrők
-        </h3>
-        <div v-if="isLoggedIn" class="mb-3 w-75 text-center">
-          <label class="form-label mb-1">Státusz:</label>
-          <div class="d-flex justify-content-center gap-2">
-            <div
-              class="badge pill border border-secondary border-2 bg-light text-dark px-2 hover-effect"
-              :class="{'opacity-50': selectedStatus !== 'status_all'}"
-              @click="setSelectedStatus('status_all')"
+    <div class="row g-3 mx-0">
+      <aside class="col-12 col-lg-3">
+        <div class="d-flex flex-column align-items-center w-100 bg-light p-3 rounded border sticky-lg-top">
+          <h3>
+            Szűrők
+          </h3>
+          <div v-if="isLoggedIn" class="mb-3 w-100 text-center">
+            <label class="form-label mb-1">Státusz:</label>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+              <div
+                class="badge pill border border-secondary border-2 bg-light text-dark px-2 hover-effect"
+                :class="{'opacity-50': selectedStatus !== 'status_all'}"
+                @click="setSelectedStatus('status_all')"
+              >
+                Mind
+              </div>
+              <div
+                class="badge pill border border-secondary border-2 bg-info text-dark px-2 hover-effect"
+                :class="{'opacity-50': selectedStatus !== 'status_new'}"
+                @click="setSelectedStatus('status_new')"
+              >
+                Új
+              </div>
+              <div
+                class="badge pill border border-secondary border-2 bg-warning text-dark px-2 hover-effect"
+                :class="{'opacity-50': selectedStatus !== 'status_in_progress'}"
+                @click="setSelectedStatus('status_in_progress')"
             >
-              Mind
-            </div>
-            <div
-              class="badge pill border border-secondary border-2 bg-info text-dark px-2 hover-effect"
-              :class="{'opacity-50': selectedStatus !== 'status_new'}"
-              @click="setSelectedStatus('status_new')"
-            >
-              Új
-            </div>
-            <div
-              class="badge pill border border-secondary border-2 bg-warning text-dark px-2 hover-effect"
-              :class="{'opacity-50': selectedStatus !== 'status_in_progress'}"
-              @click="setSelectedStatus('status_in_progress')"
-           >
-              Folyamatban
-            </div>
-            <div
-              class="badge pill border border-secondary border-2 bg-success text-dark px-2 hover-effect"
-              :class="{'opacity-50': selectedStatus !== 'status_completed'}"
-              @click="setSelectedStatus('status_completed')"
-            >
-              Befejezett
+                Folyamatban
+              </div>
+              <div
+                class="badge pill border border-secondary border-2 bg-success text-dark px-2 hover-effect"
+                :class="{'opacity-50': selectedStatus !== 'status_completed'}"
+                @click="setSelectedStatus('status_completed')"
+              >
+                Befejezett
+              </div>
             </div>
           </div>
-        </div>
-        <div class="mb-3 w-75 text-center">
-          <label class="form-label mb-1">Témakör:</label>
-          <v-select
-            v-model="selectedTopics"
-            name="topic-v-select"
-            class="rounded"
-            label="name"
-            :placeholder="'Válassz témakört...'"
-            :options="topicOptions"
-            multiple
-            @update:modelValue="loadCrosswords"
-          ></v-select>
-        </div>
-        <div class="mb-3 w-75 text-center">
-          <label class="form-label mb-1">Nehézség:</label>
-          <div>
-            <div
-              class="form-check form-check-inline"
-              v-for="difficulty in difficultyOptions"
-              :key="difficulty.value"
-            >
-              <input
-                v-model="selectedDifficulties"
-                class="form-check-input"
-                type="checkbox"
-                :id="'difficulty-' + difficulty.value"
-                :value="difficulty.value"
-                @change="loadCrosswords"
-              />
-              <label class="form-check-label" :for="'difficulty-' + difficulty.value">
-                {{ difficulty.label }}
-              </label>
+          <div class="mb-3 w-100 text-center">
+            <label class="form-label mb-1">Témakör:</label>
+            <v-select
+              v-model="selectedTopics"
+              name="topic-v-select"
+              class="rounded"
+              label="name"
+              :placeholder="'Válassz témakört...'"
+              :options="topicOptions"
+              multiple
+              @update:modelValue="loadCrosswords"
+            ></v-select>
+          </div>
+          <div class="mb-3 w-100 text-center">
+            <label class="form-label mb-1">Nehézség:</label>
+            <div>
+              <div
+                class="form-check form-check-inline"
+                v-for="difficulty in difficultyOptions"
+                :key="difficulty.value"
+              >
+                <input
+                  v-model="selectedDifficulties"
+                  class="form-check-input"
+                  type="checkbox"
+                  :id="'difficulty-' + difficulty.value"
+                  :value="difficulty.value"
+                  @change="loadCrosswords"
+                />
+                <label class="form-check-label" :for="'difficulty-' + difficulty.value">
+                  {{ difficulty.label }}
+                </label>
+              </div>
             </div>
           </div>
+          <div class="mb-3 w-100 text-center">
+            <label class="form-label mb-1">Készítő:</label>
+            <v-select
+              v-model="selectedCreators"
+              name="creator-v-select"
+              class="rounded"
+              label="username"
+              :placeholder="'Válassz készítőt...'"
+              :options="creatorOptions"
+              multiple
+              @update:modelValue="loadCrosswords"
+            ></v-select>
+          </div>
+          <div class="mt-3 w-100 text-center">
+            <button
+              type="button"
+              class="btn btn-secondary w-100 d-flex justify-content-center align-items-center gap-2"
+              @click="clearFilters"
+            >
+              Szűrők törlése
+              <font-awesome-icon icon="fa-solid fa-trash-can" />
+            </button>
+          </div>
         </div>
-        <div class="mb-3 w-75 text-center">
-          <label class="form-label mb-1">Készítő:</label>
-          <v-select
-            v-model="selectedCreators"
-            name="creator-v-select"
-            class="rounded"
-            label="username"
-            :placeholder="'Válassz készítőt...'"
-            :options="creatorOptions"
-            multiple
-            @update:modelValue="loadCrosswords"
-          ></v-select>
-        </div>
-        <div class="mt-3 w-75 text-center">
-          <button
-            type="button"
-            class="btn btn-secondary w-100 d-flex justify-content-center align-items-center gap-2"
-            @click="clearFilters"
-          >
-            Szűrők törlése
-            <font-awesome-icon icon="fa-solid fa-trash-can" />
-          </button>
-        </div>
-      </div>
-      <div class="w-75">
-        <div class="d-flex align-items-center justify-content-center mb-3">
+      </aside>
+      <main class="col-12 col-lg-9">
+        <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2 mb-3">
           <input
             v-model="search"
             type="text"
-            class="form-control w-75 mx-auto mb-3"
+            class="form-control flex-grow-1"
             placeholder="Keresés cím alapján..."
             @input="loadCrosswords"
           />
+
           <select
             v-model="sortOrder"
-            class="form-control w-auto mx-auto mb-3"
+            class="form-select w-auto mx-auto"
             @change="loadCrosswords"
           >
-            <option value="dateDesc" selected>Legújabb</option>
+            <option value="dateDesc">Legújabb</option>
             <option value="dateAsc">Legrégebbi</option>
             <option value="titleAsc">Cím szerint (A-Z)</option>
             <option value="titleDesc">Cím szerint (Z-A)</option>
           </select>
-          </div>
+        </div>
         <div v-if="isListVisible" class="list-group w-100">
           <RouterLink
             v-for="crossword in crosswords"
             :key="crossword.id"
             :to="{ name: 'crossword', params: { id: crossword.id } }"
-            class="list-group-item list-group-item-action w-50 mx-auto mb-3 rounded shadow-sm border border-1"
+            class="list-group-item list-group-item-action crossword-card mx-auto mb-3 rounded shadow-sm border border-1"
             :class="{
               'easy' : 'border-success',
               'medium' : 'border-warning',
               'hard' : 'border-danger'
             }[crossword.difficulty]"
           >
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-2">
+              <div class="text-break">
                 <h5 class="mb-1">
                   {{ crossword.title }}
                 </h5>
@@ -153,7 +156,7 @@
                 </small>
               </div>
 
-              <div class="d-flex flex-column gap-2 align-items-end">
+              <div class="d-flex flex-column gap-2 align-items-start align-items-sm-end flex-shrink-0">
                 <small class="text-muted">
                   {{ crossword.created_at }}
                 </small>
@@ -178,7 +181,7 @@
             Még nincs elérhető rejtvény.
           </p>
         </div>
-      </div>
+      </main>
     </div>
   </div>
 </template>
@@ -370,6 +373,27 @@ export default {
 
   &:hover {
     opacity: 1 !important;
+  }
+}
+
+.crossword-card {
+  width: 75%;
+}
+
+.sort-select {
+  width: auto;
+  min-width: 11rem;
+}
+
+@media (max-width: 767.98px) {
+  .crossword-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .sort-select {
+    width: 100%;
   }
 }
 
