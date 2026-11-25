@@ -262,9 +262,13 @@
       </button>
     </div>
 
+  </div>
+
+  <Teleport to="body">
     <div
       v-if="isEditMode && !isLoadingEditor && isPopupVisible"
-      class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center z-3 p-3"
+      class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center p-3"
+      style="z-index: 1055;"
       @click.self="cancelDelete"
     >
       <div class="card shadow-lg p-4 p-md-5 text-center" style="max-width: 520px; width: 100%;">
@@ -296,7 +300,8 @@
         </div>
       </div>
     </div>
-  </div>
+  </Teleport>
+
   <ClueCreatorModal
     ref="clueCreatorModal"
     :topic-options="topics"
@@ -698,6 +703,13 @@ export default {
     guidedLayoutIsValid() {
       return this.isCrosswordVisible && this.selectedWords.length === this.mainSolutionChars.length && this.selectedWords.every(word => word !== null)
     },
+    /**
+     * Ellenőrzi, hogy bármelyik felugró ablak nyitva van-e
+     * Ennek segítségével megakadályozhatjuk, hogy a felhasználó görgethessen közben
+     */
+    isAnyModalOpen() {
+      return this.isClueCreatorModalOpen || this.isPopupVisible
+    },
   },
   watch: {
     /**
@@ -735,9 +747,19 @@ export default {
       this.editorStore.resetEditor()
       this.loadCreatorWords()
     },
+    /**
+     * Figyeli, hogy bármelyik felugró ablak nyitva van-e, és ennek megfelelően tiltja vagy engedélyezi a görgetést az oldalon.
+     * 
+     * @param isOpen True, ha bármelyik felugró ablak nyitva van, false egyébként.
+     */
+    isAnyModalOpen(isOpen) {
+      document.body.style.overflow = isOpen ? 'hidden' : ''
+    },
   },
   beforeRouteLeave() {
     this.clearEditor()
+    // Biztonsági visszaállítás, ha modal nyitott állapotában navigálna el a user
+    document.body.style.overflow = ''
   },
   async beforeRouteUpdate(to, from, next) {
     try {
@@ -1163,9 +1185,8 @@ export default {
 
 .blur-background {
   filter: blur(4px);
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  pointer-events: none;
+  user-select: none;
 }
 
 .input-max-width {
