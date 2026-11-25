@@ -463,6 +463,10 @@ class CrosswordService
                 throw new ConflictHttpException('Ez a rejtvény nyilvános vagy már rendelkezik megkezdett próbálkozásokkal, így nem törölhető.');
             }
 
+            $crossword->crosswordClues()->delete();
+
+            $crossword->topics()->detach();
+
             $crossword->delete();
         });
     }
